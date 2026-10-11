@@ -1,0 +1,9 @@
+{
+  "name": "@voidaccess/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./pricing": "./src/pricing.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "devDependencies": { "typescript": "^5.9.0" }
+}

@@ -1,0 +1,48 @@
+/*
+ * VoidAccess brand tokens, shared by apps/site and apps/app.
+ * Palette carried over from the engine UI (voidaccess/web/app/globals.css) so the
+ * cloud product and the OSS UI look like one family. Fonts: Space Grotesk (display),
+ * Inter (body), JetBrains Mono (mono) — load them per app with next/font and map
+ * to --font-display / --font-body / --font-mono.
+ * Use with Tailwind v4: @import "@voidaccess/ui/tokens.css"; then the @theme block
+ * below exposes them as utilities (bg-void, text-accent, font-mono …).
+ */
+@theme {
+  --color-void: #080b11;
+  --color-surface: #0d1117;
+  --color-raised: #161b22;
+  --color-overlay: #1c2128;
+
+  --color-border-dim: rgb(255 255 255 / 0.06);
+  --color-border-subtle: rgb(255 255 255 / 0.1);
+  --color-border-strong: rgb(255 255 255 / 0.18);
+
+  --color-fg: #e6edf3;
+  --color-fg-secondary: #8b949e;
+  --color-fg-muted: #6e7681;
+  --color-fg-inverse: #080b11;
+
+  --color-accent: #9b9fee;
+  --color-accent-dim: rgb(155 159 238 / 0.15);
+  --color-accent-border: rgb(155 159 238 / 0.3);
+
+  --color-danger: #f85149;
+  --color-warning: #d29922;
+  --color-success: #3fb950;
+  --color-neutral: #6e7681;
+
+  /* entity colours (graph + entity chips) */
+  --color-entity-actor: #e05c5c;
+  --color-entity-wallet: #9b9fee;
+  --color-entity-malware: #d08770;
+  --color-entity-forum: #79b8ff;
+  --color-entity-cve: #f0e68c;
+  --color-entity-paste: #56b6c2;
+  --color-entity-onion: #9ecbff;
+  --color-entity-email: #c9a35a;
+  --color-entity-pgp: #73d397;
+
+  --font-display: var(--font-display), ui-sans-serif, system-ui;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+}

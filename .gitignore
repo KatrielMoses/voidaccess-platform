@@ -15,3 +15,8 @@ __pycache__/
 runner/baseline/matrix_state.json
 *.tfstate*
 .terraform/
+.worktrees/
+.wrangler/
+next-env.d.ts
+*.tsbuildinfo
+out/
