@@ -1,0 +1,2672 @@
+{
+  "schema_version": 1,
+  "run_id": "fixture-dprk-deep-typed",
+  "query": "Cl0p MOVEit extortion group",
+  "refined_queries": ["Cl0p MOVEit ransomware"],
+  "depth": "deep",
+  "started_at": "2026-10-11T19:21:16.260Z",
+  "completed_at": "2026-10-11T19:28:16.321Z",
+  "engine_version": "0a0ed800",
+  "summary": {
+    "markdown": "### Intelligence Summary: Cl0p MOVEit Ransomware **Threat Activity Found:** The query \"Cl0p MOVEit ransomware\" yielded insights into ransomware-related activity on dark web forums. Notably, the RansomLook platform (http://s7nkzfidtdsifuypedipxufuo5jh6tjb6qz2hjxrp553s55auxwrsl5d.onion/p/f57f30) provides a comprehensive overview of ransomware groups, including Cl0p. The platform tracks 43 active ransomware groups, with 2 new groups emerging in the past week. Cl0p is not explicitly mentioned in the provided data, but the context suggests it operates within this ecosystem, given its prominence in recent ransomware campaigns. The platform also highlights 9,369 leaks, 936 ransom notes, and 11,192 cryptocurrency addresses, indicating a robust ransomware economy. **Key Actors, Tools, or Infrastructure Identified:** The Injection Team Group (http://w5oirss3p6gdkr5wh2lx66i365d4jlxnik3x66uvyb7cintjut3pk3bd.onion/p/143cca) positions itself as a hub for ethical hacking and cybersecurity resources. While not directly linked to Cl0p, such forums often serve as breeding grounds for ransomware tools and techniques. The RansomLook platform identifies 631 groups, 147 markets, and 32 actors, suggesting a highly organized ransomware landscape. The presence of 1,801 cross-group IPs and 1,424 swarms tracked indicates shared infrastructure and collaboration among ransomware operators. **Operational Significance for Security Teams:** Security teams should monitor platforms like RansomLook for emerging ransomware groups and trends, as they provide actionable intelligence on active campaigns and infrastructure. The Injection Team Group, while claiming ethical intentions, could be a source of leaked tools or techniques that threat actors might exploit. Tracking cryptocurrency addresses and cross-group IPs can help identify shared infrastructure and disrupt ransomware operations. Additionally, the high volume of leaks and ransom notes underscores the need for robust incident response and data protection strategies to mitigate ransomware impacts.",
+    "key_findings": [
+      "Intelligence Summary: Cl0p MOVEit Ransomware Threat Activity Found: The query \"Cl0p MOVEit ransomware\" yielded insights into ransomware-related activity on dark web forums.",
+      "Notably, the RansomLook platform (http://s7nkzfidtdsifuypedipxufuo5jh6tjb6qz2hjxrp553s55auxwrsl5d.onion/p/f57f30) provides a comprehensive overview of ransomware groups, including Cl0p.",
+      "The platform tracks 43 active ransomware groups, with 2 new groups emerging in the past week.",
+      "Cl0p is not explicitly mentioned in the provided data, but the context suggests it operates within this ecosystem, given its prominence in recent ransomware campaigns."
+    ],
+    "risk_notes": [
+      "32 typed relationships are model-extracted co-mentions and are not verified attribution.",
+      "0 entities are flagged sensitive and shown masked."
+    ],
+    "confidence": "medium",
+    "source_count": 9
+  },
+  "entities": [
+    {
+      "id": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "type": "RANSOMWARE_GROUP",
+      "value": "CL0P",
+      "display_value": "CL0P",
+      "sensitive": false,
+      "confidence": 0.5603807999999999,
+      "first_seen": "2026-10-11T19:26:25.427Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "dc36fa4b-4f54-464e-b436-74eaea4e5a20",
+      "type": "RANSOMWARE_GROUP",
+      "value": "lockbit",
+      "display_value": "lockbit",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:24.988Z",
+      "source_ids": ["s6"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "0b877dca-fc40-4e34-9618-585447bea109",
+      "type": "MALWARE_FAMILY",
+      "value": "StealBit",
+      "display_value": "StealBit",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:25.027Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "0cfb7cea-b395-4139-9e33-2b753154018a",
+      "type": "MALWARE_FAMILY",
+      "value": "Cobalt Strike",
+      "display_value": "Cobalt Strike",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:25.018Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "10ddc818-af2f-4c47-910b-c8f04532f2ac",
+      "type": "MALWARE_FAMILY",
+      "value": "LockBit 2.0",
+      "display_value": "LockBit 2.0",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:25.015Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "520fad3b-b93a-46ea-bd78-e11e47464f88",
+      "type": "MALWARE_FAMILY",
+      "value": "LockBit 3.0",
+      "display_value": "LockBit 3.0",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:25.030Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "ONION_URL",
+      "value": "http://r3qpybm34jaqorzbdn5rnreduhd7vgnua7t57lwuds233hgib4govcxd.onion",
+      "display_value": "http://r3qpybm34jaqorzbdn5rnreduhd7vgnua7t57lwuds233hgib4govcxd.onion",
+      "sensitive": false,
+      "confidence": 0.9506,
+      "first_seen": "2026-10-11T19:26:24.985Z",
+      "source_ids": ["s6"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "a3404f4e-b5b3-418a-9d40-b43db784b397",
+      "type": "CVE_NUMBER",
+      "value": "CVE-2023-34362",
+      "display_value": "CVE-2023-34362",
+      "sensitive": false,
+      "confidence": 0.5865199999999999,
+      "first_seen": "2026-10-11T19:26:25.403Z",
+      "source_ids": ["s9"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "03556d11-18ad-4366-a7fb-bdd82e3aeaf8",
+      "type": "THREAT_ACTOR_HANDLE",
+      "value": "silent_raven77",
+      "display_value": "silent_raven77",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:24.981Z",
+      "source_ids": ["s2"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "2b718087-cceb-4da5-852f-c59a425074e8",
+      "type": "MALWARE_FAMILY",
+      "value": "Babadeda Crypter",
+      "display_value": "Babadeda Crypter",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:25.021Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "37cadd47-df03-4269-bff3-c59c71182819",
+      "type": "MALWARE_FAMILY",
+      "value": "Ragnar Locker",
+      "display_value": "Ragnar Locker",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:25.032Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "3c8475b4-dc18-430e-902c-504e9c24a181",
+      "type": "MALWARE_FAMILY",
+      "value": "SocGholish",
+      "display_value": "SocGholish",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:25.024Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "ae5d8b12-8c7d-45a1-84eb-d92696f50d39",
+      "type": "MALWARE_FAMILY",
+      "value": "BLISTER",
+      "display_value": "BLISTER",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:25.035Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "eca8d685-a5a6-4dfc-95cb-7f01516c6963",
+      "type": "MALWARE_FAMILY",
+      "value": "PrivateLoader",
+      "display_value": "PrivateLoader",
+      "sensitive": false,
+      "confidence": 0.8795108,
+      "first_seen": "2026-10-11T19:26:24.997Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "42a76d27-a2a3-4e5f-862b-552f4b2ee53b",
+      "type": "ONION_URL",
+      "value": "http://xn46mxo5rlk53aa52s3ghbvvobcslv5d2j6lsb7yavjqdkn27lsxtspd.onion",
+      "display_value": "http://xn46mxo5rlk53aa52s3ghbvvobcslv5d2j6lsb7yavjqdkn27lsxtspd.onion",
+      "sensitive": false,
+      "confidence": 0.9506,
+      "first_seen": "2026-10-11T19:26:25.391Z",
+      "source_ids": ["s7"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "3e4e5258-e01b-44ee-bbff-d8724e5eef39",
+      "type": "THREAT_ACTOR_HANDLE",
+      "value": "vivid_raven25",
+      "display_value": "vivid_raven25",
+      "sensitive": false,
+      "confidence": 0.8434468,
+      "first_seen": "2026-10-11T19:26:25.395Z",
+      "source_ids": ["s8"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "2751c350-0372-424d-93b3-fb7d06a86607",
+      "type": "RANSOMWARE_GROUP",
+      "value": "alphv",
+      "display_value": "alphv",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:25.009Z",
+      "source_ids": ["s6"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "455397a2-0c99-4ecd-b591-677abd66034d",
+      "type": "RANSOMWARE_GROUP",
+      "value": "maze",
+      "display_value": "maze",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:24.994Z",
+      "source_ids": ["s6"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "8a6daf05-7067-4371-8d80-2838a7727d82",
+      "type": "RANSOMWARE_GROUP",
+      "value": "darkside",
+      "display_value": "darkside",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:25.006Z",
+      "source_ids": ["s6"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "ac319731-0c2b-4d11-a9ce-fc572b7b6c7d",
+      "type": "RANSOMWARE_GROUP",
+      "value": "blackmatter",
+      "display_value": "blackmatter",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:25.003Z",
+      "source_ids": ["s6"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "aee8f57c-ad8e-4329-9b7d-30e7d6216045",
+      "type": "RANSOMWARE_GROUP",
+      "value": "revil",
+      "display_value": "revil",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:25.000Z",
+      "source_ids": ["s6"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "b31e7618-e078-4079-8aa1-fedf6f88ccaf",
+      "type": "RANSOMWARE_GROUP",
+      "value": "Qilin",
+      "display_value": "Qilin",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:24.970Z",
+      "source_ids": ["s2"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "bb21b491-ad15-4d9a-ad02-51e926eff0dc",
+      "type": "RANSOMWARE_GROUP",
+      "value": "Nightspire ▲",
+      "display_value": "Nightspire ▲",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:24.978Z",
+      "source_ids": ["s2"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "c4a359a3-7875-41dd-b533-889b5ca67e6c",
+      "type": "RANSOMWARE_GROUP",
+      "value": "blackcat",
+      "display_value": "blackcat",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:25.012Z",
+      "source_ids": ["s6"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "d33e5121-4018-4ea1-ba67-f70848965d97",
+      "type": "RANSOMWARE_GROUP",
+      "value": "hive",
+      "display_value": "hive",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:25.038Z",
+      "source_ids": ["s6"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "ea575b64-44fd-404a-b3a3-d575f0980124",
+      "type": "RANSOMWARE_GROUP",
+      "value": "conti",
+      "display_value": "conti",
+      "sensitive": false,
+      "confidence": 0.9083424,
+      "first_seen": "2026-10-11T19:26:24.991Z",
+      "source_ids": ["s6"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "14ed0528-cc80-4ba8-89dc-6196e2c0d559",
+      "type": "CVE_NUMBER",
+      "value": "CVE-2023-36932",
+      "display_value": "CVE-2023-36932",
+      "sensitive": false,
+      "confidence": 0.5865199999999999,
+      "first_seen": "2026-10-11T19:26:25.418Z",
+      "source_ids": ["s9"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "22f54902-1e17-4207-9d8c-09c62b078798",
+      "type": "WIRE_HANDLE",
+      "value": "cold_mantis68",
+      "display_value": "cold_mantis68",
+      "sensitive": false,
+      "confidence": 0.5865199999999999,
+      "first_seen": "2026-10-11T19:26:25.424Z",
+      "source_ids": ["s9"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "28e3fc4f-0c27-40a6-85d2-a9849d1ae3c8",
+      "type": "CVE_NUMBER",
+      "value": "CVE-2023-34363",
+      "display_value": "CVE-2023-34363",
+      "sensitive": false,
+      "confidence": 0.5865199999999999,
+      "first_seen": "2026-10-11T19:26:25.409Z",
+      "source_ids": ["s9"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "36704fb7-df39-4adc-91e2-4c1fe934f204",
+      "type": "CVE_NUMBER",
+      "value": "CVE-2023-36934",
+      "display_value": "CVE-2023-36934",
+      "sensitive": false,
+      "confidence": 0.5865199999999999,
+      "first_seen": "2026-10-11T19:26:25.415Z",
+      "source_ids": ["s9"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "718da9cc-6d20-4744-9911-527da5c17b6e",
+      "type": "CVE_NUMBER",
+      "value": "CVE-2023-35708",
+      "display_value": "CVE-2023-35708",
+      "sensitive": false,
+      "confidence": 0.5865199999999999,
+      "first_seen": "2026-10-11T19:26:25.412Z",
+      "source_ids": ["s9"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "8f34bc63-dca4-41af-a163-0431df6b9dbc",
+      "type": "CVE_NUMBER",
+      "value": "CVE-2023-36933",
+      "display_value": "CVE-2023-36933",
+      "sensitive": false,
+      "confidence": 0.5865199999999999,
+      "first_seen": "2026-10-11T19:26:25.421Z",
+      "source_ids": ["s9"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "b0c55f11-f307-4c45-bf1c-364998f2caed",
+      "type": "CVE_NUMBER",
+      "value": "CVE-2023-35036",
+      "display_value": "CVE-2023-35036",
+      "sensitive": false,
+      "confidence": 0.5865199999999999,
+      "first_seen": "2026-10-11T19:26:25.406Z",
+      "source_ids": ["s9"],
+      "tags": ["method:regex"]
+    },
+    {
+      "id": "ce717d6a-7c91-4577-a148-9f77edea1419",
+      "type": "RANSOMWARE_GROUP",
+      "value": "Clop",
+      "display_value": "Clop",
+      "sensitive": false,
+      "confidence": 0.5603807999999999,
+      "first_seen": "2026-10-11T19:26:25.430Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "287f17ff-ce95-4b5c-ba55-34a110c8e45b",
+      "type": "ORGANIZATION_NAME",
+      "value": "Silverline Dental Group",
+      "display_value": "Silverline Dental Group",
+      "sensitive": false,
+      "confidence": 0.5392512,
+      "first_seen": "2026-10-11T19:26:25.472Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "2a027b5d-6eab-4a96-8f96-cb88416ab291",
+      "type": "ORGANIZATION_NAME",
+      "value": "Meridian Schools",
+      "display_value": "Meridian Schools",
+      "sensitive": false,
+      "confidence": 0.5392512,
+      "first_seen": "2026-10-11T19:26:25.486Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "32cf7cca-0816-4636-bf9d-930d6206695e",
+      "type": "ORGANIZATION_NAME",
+      "value": "Harborview Clinics",
+      "display_value": "Harborview Clinics",
+      "sensitive": false,
+      "confidence": 0.5392512,
+      "first_seen": "2026-10-11T19:26:25.501Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "6d7e1787-fefb-4af7-86d8-b7397de531e6",
+      "type": "ORGANIZATION_NAME",
+      "value": "Cedar Freight",
+      "display_value": "Cedar Freight",
+      "sensitive": false,
+      "confidence": 0.5392512,
+      "first_seen": "2026-10-11T19:26:25.489Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "726eb376-d425-49e8-8506-1c1e1ce71d15",
+      "type": "ORGANIZATION_NAME",
+      "value": "Cedar Insurance",
+      "display_value": "Cedar Insurance",
+      "sensitive": false,
+      "confidence": 0.5392512,
+      "first_seen": "2026-10-11T19:26:25.469Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "859d3172-f71a-4c6f-bc15-ea4bacd13576",
+      "type": "ORGANIZATION_NAME",
+      "value": "Lakeshore Logistics",
+      "display_value": "Lakeshore Logistics",
+      "sensitive": false,
+      "confidence": 0.5392512,
+      "first_seen": "2026-10-11T19:26:25.495Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "8aefe132-bbc2-45ab-a6df-6025aeac1bc0",
+      "type": "ORGANIZATION_NAME",
+      "value": "Summit Textiles",
+      "display_value": "Summit Textiles",
+      "sensitive": false,
+      "confidence": 0.5392512,
+      "first_seen": "2026-10-11T19:26:25.519Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "a311dad3-5bdf-4de6-8451-7fd9557be574",
+      "type": "ORGANIZATION_NAME",
+      "value": "Harborview Construction",
+      "display_value": "Harborview Construction",
+      "sensitive": false,
+      "confidence": 0.5392512,
+      "first_seen": "2026-10-11T19:26:25.504Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "d95b3244-e222-45c3-8966-10a03597347f",
+      "type": "ORGANIZATION_NAME",
+      "value": "Harborview Freight",
+      "display_value": "Harborview Freight",
+      "sensitive": false,
+      "confidence": 0.5392512,
+      "first_seen": "2026-10-11T19:26:25.510Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "166f5cd6-ac36-44e4-8148-c66e15d99b5b",
+      "type": "ORGANIZATION_NAME",
+      "value": "Bluegate Clinics",
+      "display_value": "Bluegate Clinics",
+      "sensitive": false,
+      "confidence": 0.5330016000000001,
+      "first_seen": "2026-10-11T19:26:25.474Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "4de4a266-3c67-457f-b3cc-b679ba8156c8",
+      "type": "ORGANIZATION_NAME",
+      "value": "Falcon Law Offices",
+      "display_value": "Falcon Law Offices",
+      "sensitive": false,
+      "confidence": 0.5330016000000001,
+      "first_seen": "2026-10-11T19:26:25.483Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "a8879493-4f77-4118-95e3-e22bfb4fc719",
+      "type": "ORGANIZATION_NAME",
+      "value": "Pinecrest Systems",
+      "display_value": "Pinecrest Systems",
+      "sensitive": false,
+      "confidence": 0.5330016000000001,
+      "first_seen": "2026-10-11T19:26:25.466Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "0eed6d77-a429-4c8d-b9d6-30c044d85985",
+      "type": "ORGANIZATION_NAME",
+      "value": "Stonehaven Foods",
+      "display_value": "Stonehaven Foods",
+      "sensitive": false,
+      "confidence": 0.5258592000000001,
+      "first_seen": "2026-10-11T19:26:25.463Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "df557c91-3b02-4128-a189-1946f2e7875f",
+      "type": "ORGANIZATION_NAME",
+      "value": "Stonehaven Health Partners",
+      "display_value": "Stonehaven Health Partners",
+      "sensitive": false,
+      "confidence": 0.5258592000000001,
+      "first_seen": "2026-10-11T19:26:25.492Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "05df992e-e980-417d-82b8-e4438d0739a3",
+      "type": "ORGANIZATION_NAME",
+      "value": "Summit Logistics",
+      "display_value": "Summit Logistics",
+      "sensitive": false,
+      "confidence": 0.5213952000000001,
+      "first_seen": "2026-10-11T19:26:25.457Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "13a63595-6ceb-47fc-a8a0-46b76009349b",
+      "type": "ORGANIZATION_NAME",
+      "value": "Bluegate Foods",
+      "display_value": "Bluegate Foods",
+      "sensitive": false,
+      "confidence": 0.5213952000000001,
+      "first_seen": "2026-10-11T19:26:25.516Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "59e3b8a7-9b11-42a2-acfb-afca34e9c4f5",
+      "type": "ORGANIZATION_NAME",
+      "value": "Ironbridge Clinics",
+      "display_value": "Ironbridge Clinics",
+      "sensitive": false,
+      "confidence": 0.5213952000000001,
+      "first_seen": "2026-10-11T19:26:25.477Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "7ad6df4d-3c5a-4cdd-b720-801b466d063b",
+      "type": "ORGANIZATION_NAME",
+      "value": "Stonehaven Textiles",
+      "display_value": "Stonehaven Textiles",
+      "sensitive": false,
+      "confidence": 0.5213952000000001,
+      "first_seen": "2026-10-11T19:26:25.545Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "d2b2a11b-505f-4a9b-bd3c-056716859379",
+      "type": "ORGANIZATION_NAME",
+      "value": "Silverline Dental Group II",
+      "display_value": "Silverline Dental Group II",
+      "sensitive": false,
+      "confidence": 0.5213952000000001,
+      "first_seen": "2026-10-11T19:26:25.454Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "f6a9dcbe-ea65-4d33-b302-e26c13165a12",
+      "type": "ORGANIZATION_NAME",
+      "value": "Bluegate Construction",
+      "display_value": "Bluegate Construction",
+      "sensitive": false,
+      "confidence": 0.5213952000000001,
+      "first_seen": "2026-10-11T19:26:25.451Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "012599e8-a498-4db6-8a30-2ead87030edf",
+      "type": "ORGANIZATION_NAME",
+      "value": "Summit Health Partners",
+      "display_value": "Summit Health Partners",
+      "sensitive": false,
+      "confidence": 0.5196096,
+      "first_seen": "2026-10-11T19:26:25.528Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "172db316-65de-4d02-b388-c4068db3f682",
+      "type": "ORGANIZATION_NAME",
+      "value": "Summit Capital",
+      "display_value": "Summit Capital",
+      "sensitive": false,
+      "confidence": 0.5196096,
+      "first_seen": "2026-10-11T19:26:25.480Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "206a6984-da13-4403-8c41-0ee2a06ce746",
+      "type": "ORGANIZATION_NAME",
+      "value": "Pinecrest Health Partners",
+      "display_value": "Pinecrest Health Partners",
+      "sensitive": false,
+      "confidence": 0.5196096,
+      "first_seen": "2026-10-11T19:26:25.525Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "a245e212-78e6-4f1a-86e0-fdc3c9542c44",
+      "type": "ORGANIZATION_NAME",
+      "value": "Stonehaven Freight",
+      "display_value": "Stonehaven Freight",
+      "sensitive": false,
+      "confidence": 0.5196096,
+      "first_seen": "2026-10-11T19:26:25.448Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "a3f5e247-d538-4d82-97ce-9fa2ffffbe31",
+      "type": "ORGANIZATION_NAME",
+      "value": "Northwind Freight",
+      "display_value": "Northwind Freight",
+      "sensitive": false,
+      "confidence": 0.5196096,
+      "first_seen": "2026-10-11T19:26:25.498Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "62e6ea35-f6e0-4a07-93c4-b6e0ce9a50e5",
+      "type": "MALWARE_FAMILY",
+      "value": "Norton",
+      "display_value": "Norton",
+      "sensitive": false,
+      "confidence": 0.5365728,
+      "first_seen": "2026-10-11T19:26:25.433Z",
+      "source_ids": ["s9"],
+      "tags": ["method:ner"]
+    },
+    {
+      "id": "cc55be5e-daa1-40f7-9e29-e642f79efd03",
+      "type": "MALWARE_FAMILY",
+      "value": "RAAS",
+      "display_value": "RAAS",
+      "sensitive": false,
+      "confidence": 0.77763,
+      "first_seen": "2026-10-11T19:26:25.398Z",
+      "source_ids": ["s8"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "0036529a-532a-4a14-8184-3c05f501218c",
+      "type": "URL",
+      "value": "https://hollow-dc83.example.net/345074",
+      "display_value": "https://hollow-dc83.example.net/345074",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.350Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "01a4c5fe-6ffb-4b3b-b2e4-364f6d8a6596",
+      "type": "URL",
+      "value": "https://vivid-ab48.example.net/eedd4c",
+      "display_value": "https://vivid-ab48.example.net/eedd4c",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.292Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "0597091a-c2b1-463e-af34-50d303e2c1e0",
+      "type": "URL",
+      "value": "https://vivid-c21d.example.net/726f92",
+      "display_value": "https://vivid-c21d.example.net/726f92",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.141Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "063370d3-e009-430b-b17d-6880e6cdae40",
+      "type": "URL",
+      "value": "https://pale-7e8f.example.net/3156eb",
+      "display_value": "https://pale-7e8f.example.net/3156eb",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.261Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "0d2564fa-a5a9-4e48-be97-b270113697c2",
+      "type": "URL",
+      "value": "https://cold-db72.example.net/2fcbcf",
+      "display_value": "https://cold-db72.example.net/2fcbcf",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.153Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "1103f4b4-b308-4c3c-b451-27856813b152",
+      "type": "URL",
+      "value": "https://shadow-daed.example.net/366a25",
+      "display_value": "https://shadow-daed.example.net/366a25",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.050Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "19f19584-a2aa-4c36-bc2f-814b388767f0",
+      "type": "URL",
+      "value": "https://silent-f44e.example.net/6adb3e",
+      "display_value": "https://silent-f44e.example.net/6adb3e",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.329Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "1ab9b7eb-76f4-4f1e-86a8-bcd14af068aa",
+      "type": "URL",
+      "value": "https://rusty-de8e.example.net/9209f8",
+      "display_value": "https://rusty-de8e.example.net/9209f8",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.252Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "1c0442ce-89d5-4c11-bda0-52caf621b575",
+      "type": "URL",
+      "value": "https://pale-7e8f.example.net/1ab80a",
+      "display_value": "https://pale-7e8f.example.net/1ab80a",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.310Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "1c718b74-3c8e-43e8-adef-e24f4768140a",
+      "type": "URL",
+      "value": "https://iron-0f0e.example.net/82fe84",
+      "display_value": "https://iron-0f0e.example.net/82fe84",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.368Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "1dbb973e-f7f1-4be1-9337-1db52ead5dcd",
+      "type": "URL",
+      "value": "https://shadow-9c31.example.net/d78410",
+      "display_value": "https://shadow-9c31.example.net/d78410",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.356Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "1de460bf-7079-466e-b3b6-79301318bc4e",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.074Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "23f177c3-b431-42d6-a9c6-0681bec88b41",
+      "type": "URL",
+      "value": "https://vivid-07e2.example.net/46c237",
+      "display_value": "https://vivid-07e2.example.net/46c237",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.041Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "241f57bc-5006-4568-a6da-e24a721a13cd",
+      "type": "URL",
+      "value": "https://iron-0825.example.net/cde120",
+      "display_value": "https://iron-0825.example.net/cde120",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.224Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "2443146f-9df1-451d-bfff-b9ebe10ad876",
+      "type": "URL",
+      "value": "https://vivid-b4f7.example.net/c8341d",
+      "display_value": "https://vivid-b4f7.example.net/c8341d",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.088Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "24c82add-d4de-47d4-aada-17fa41b4cafc",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.258Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "2c262d5d-42f5-4823-8982-5b082145a9fe",
+      "type": "URL",
+      "value": "https://silent-d51c.example.net/0417f1",
+      "display_value": "https://silent-d51c.example.net/0417f1",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.085Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "2e5ed40b-22e6-471e-af9d-0f13e8333fe8",
+      "type": "URL",
+      "value": "https://vivid-900e.example.net/ca3df7",
+      "display_value": "https://vivid-900e.example.net/ca3df7",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.135Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "2ee80fe7-1322-451c-9233-cadb7f62472f",
+      "type": "URL",
+      "value": "https://shadow-daed.example.net/c81ca2",
+      "display_value": "https://shadow-daed.example.net/c81ca2",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.102Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "3061b61e-5093-465e-a2dc-4f0076b56056",
+      "type": "URL",
+      "value": "https://iron-0825.example.net/6658a3",
+      "display_value": "https://iron-0825.example.net/6658a3",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.092Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "35d3d13c-50aa-43db-aeb8-31cf24899bac",
+      "type": "URL",
+      "value": "https://vivid-07e2.example.net/61b4c7",
+      "display_value": "https://vivid-07e2.example.net/61b4c7",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.245Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "3672faff-deb2-4f99-84d9-7c07ac8a2d1b",
+      "type": "URL",
+      "value": "https://hollow-dc83.example.net/e1ac33",
+      "display_value": "https://hollow-dc83.example.net/e1ac33",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.095Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "36af60bc-bcd6-4652-be51-b7e3fb3a9dc5",
+      "type": "URL",
+      "value": "https://vivid-2e97.example.net/2af887",
+      "display_value": "https://vivid-2e97.example.net/2af887",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.383Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "375b2938-e331-4de5-80d6-32a69819f341",
+      "type": "URL",
+      "value": "https://vivid-ab48.example.net/d3646f",
+      "display_value": "https://vivid-ab48.example.net/d3646f",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.056Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "381941d3-a54d-4f73-95fd-33c3bb539af0",
+      "type": "URL",
+      "value": "https://silent-3ab0.example.net/3c7a07",
+      "display_value": "https://silent-3ab0.example.net/3c7a07",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.268Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "3d2ba7fd-9083-4742-9124-01a2bd5bd93a",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.386Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "3dfe7d83-843a-44bd-9f0b-8c0dea2e8012",
+      "type": "URL",
+      "value": "https://rusty-3be1.example.net/513b82",
+      "display_value": "https://rusty-3be1.example.net/513b82",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.274Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "3fdfb8c3-f737-4ca2-b4ec-3688128a11f5",
+      "type": "URL",
+      "value": "https://shadow-769e.example.net/5f32c1",
+      "display_value": "https://shadow-769e.example.net/5f32c1",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.332Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "413452f7-ed43-4d6c-8e43-4cd736afcc71",
+      "type": "URL",
+      "value": "https://cold-6ea6.example.net/1c1695",
+      "display_value": "https://cold-6ea6.example.net/1c1695",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.209Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "41c4325e-303a-42b7-be1e-0ef2b492e5da",
+      "type": "URL",
+      "value": "https://silent-6860.example.net/2b3486",
+      "display_value": "https://silent-6860.example.net/2b3486",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.206Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "430430ab-0e33-4e1d-967f-1a2ce0a9bf66",
+      "type": "URL",
+      "value": "https://vivid-900e.example.net/799cd6",
+      "display_value": "https://vivid-900e.example.net/799cd6",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.126Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "49eb4c56-765b-4320-a48b-2223121a872b",
+      "type": "URL",
+      "value": "https://silent-6b1f.example.net/a05817",
+      "display_value": "https://silent-6b1f.example.net/a05817",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.062Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "4b0c94c9-2ade-4136-b442-b2e9c4dcea2b",
+      "type": "URL",
+      "value": "https://iron-ddae.example.net/9acae8",
+      "display_value": "https://iron-ddae.example.net/9acae8",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.138Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "4c54fc1c-5f44-4bc0-8d34-5783be71756a",
+      "type": "URL",
+      "value": "https://silent-d51c.example.net/6a6081",
+      "display_value": "https://silent-d51c.example.net/6a6081",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.314Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "4fb33321-cc79-4c8a-b1aa-1d86c97387d7",
+      "type": "URL",
+      "value": "https://silent-f112.example.net/c5f96e",
+      "display_value": "https://silent-f112.example.net/c5f96e",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.277Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "52891425-cc94-453e-9e18-76c0ba720934",
+      "type": "URL",
+      "value": "https://silent-6ef9.example.net/521f87",
+      "display_value": "https://silent-6ef9.example.net/521f87",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.377Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "5532e5ca-eebf-4647-9393-c2eae5d96dec",
+      "type": "URL",
+      "value": "https://pale-ae58.example.net/3856ae",
+      "display_value": "https://pale-ae58.example.net/3856ae",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.150Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "57041539-5ab8-481c-bf6a-97c51c5ba65f",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.079Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "605ef850-90c7-4af3-9e53-d338a904e249",
+      "type": "URL",
+      "value": "https://iron-d9b2.example.net/058faa",
+      "display_value": "https://iron-d9b2.example.net/058faa",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.117Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "61c01105-8668-4a39-a05d-5fa83ae01869",
+      "type": "URL",
+      "value": "https://vivid-16a0.example.net/09618d",
+      "display_value": "https://vivid-16a0.example.net/09618d",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.286Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "64d1c0be-d6be-4566-928a-e2b835d0a729",
+      "type": "URL",
+      "value": "https://hollow-aaab.example.net/e8fe02",
+      "display_value": "https://hollow-aaab.example.net/e8fe02",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.359Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "672cb4f0-9ec8-4fc3-8e3c-9a5aba47a78d",
+      "type": "URL",
+      "value": "https://shadow-769e.example.net/d7a69c",
+      "display_value": "https://shadow-769e.example.net/d7a69c",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.304Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "6cb0bfd4-8c25-41ff-b667-51000a82961e",
+      "type": "URL",
+      "value": "https://shadow-daed.example.net/8c02ff",
+      "display_value": "https://shadow-daed.example.net/8c02ff",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.159Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "6d86ae73-402e-4396-ae59-f317ae899acd",
+      "type": "URL",
+      "value": "https://pale-7c4e.example.net/f816c6",
+      "display_value": "https://pale-7c4e.example.net/f816c6",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.236Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "764f5d81-4bc1-4244-b27d-d42f5d084823",
+      "type": "URL",
+      "value": "https://cold-1dca.example.net/faf318",
+      "display_value": "https://cold-1dca.example.net/faf318",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.114Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "76a591dd-970a-4418-9eaf-04bbed5cf909",
+      "type": "URL",
+      "value": "https://vivid-3a55.example.net/da88ff",
+      "display_value": "https://vivid-3a55.example.net/da88ff",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.059Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "77355c0a-7965-45e1-bcc6-6453fd729212",
+      "type": "URL",
+      "value": "https://cold-71a4.example.net/fb79bb",
+      "display_value": "https://cold-71a4.example.net/fb79bb",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.307Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "7a965213-ba6b-4994-80ed-743087404306",
+      "type": "URL",
+      "value": "https://night-e771.example.net/498e55",
+      "display_value": "https://night-e771.example.net/498e55",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.374Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "7b9b3a1e-c751-4406-a6cb-1dc0757cc26a",
+      "type": "URL",
+      "value": "https://quiet-547d.example.net/a9b11e",
+      "display_value": "https://quiet-547d.example.net/a9b11e",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.185Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "7f9141f0-c55c-40b5-b609-b48d37ce741a",
+      "type": "URL",
+      "value": "https://rusty-3be1.example.net/3d354b",
+      "display_value": "https://rusty-3be1.example.net/3d354b",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.179Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "7fb42adb-80bd-4263-afdf-11a4376ca087",
+      "type": "URL",
+      "value": "https://hollow-d3cb.example.net/f91448",
+      "display_value": "https://hollow-d3cb.example.net/f91448",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.298Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "8100c140-e9c2-488c-bb7c-abc7b3e344ab",
+      "type": "URL",
+      "value": "https://iron-2b0a.example.net/6c18fe",
+      "display_value": "https://iron-2b0a.example.net/6c18fe",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.320Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "8163c59c-e600-469e-9bbc-29521530916e",
+      "type": "URL",
+      "value": "https://vivid-bcef.example.net/25b6de",
+      "display_value": "https://vivid-bcef.example.net/25b6de",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.280Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "82f3db7d-50af-451c-be69-f703586f021d",
+      "type": "URL",
+      "value": "https://hollow-c754.example.net/cb4951",
+      "display_value": "https://hollow-c754.example.net/cb4951",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.044Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "83059258-0198-417d-aac9-35a3b29266b0",
+      "type": "URL",
+      "value": "https://shadow-daed.example.net/21e50d",
+      "display_value": "https://shadow-daed.example.net/21e50d",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.144Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "84d25e41-d553-4d1f-97eb-7ce8c5308ebe",
+      "type": "URL",
+      "value": "https://shadow-daed.example.net/5b975c",
+      "display_value": "https://shadow-daed.example.net/5b975c",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.323Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "84fdfd23-f8c3-48d4-9444-5debbef5d0b1",
+      "type": "URL",
+      "value": "https://shadow-4609.example.net/9a1c93",
+      "display_value": "https://shadow-4609.example.net/9a1c93",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.120Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "853adc7e-f36b-4ee5-9ab1-c89cc8cd9dc0",
+      "type": "URL",
+      "value": "https://hollow-dc83.example.net/46d865",
+      "display_value": "https://hollow-dc83.example.net/46d865",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.227Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "89ba28d3-a26a-4f54-874a-4588f5f66582",
+      "type": "URL",
+      "value": "https://cold-e9ae.example.net/ebdaae",
+      "display_value": "https://cold-e9ae.example.net/ebdaae",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.053Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "8cd0de53-29a1-4970-9bc3-fbbdee547caf",
+      "type": "URL",
+      "value": "https://night-2850.example.net/b40928",
+      "display_value": "https://night-2850.example.net/b40928",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.165Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "8def8796-8294-4785-bec8-d7700f461640",
+      "type": "URL",
+      "value": "https://shadow-5dd1.example.net/76e834",
+      "display_value": "https://shadow-5dd1.example.net/76e834",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.215Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "9058887c-d478-455c-afc8-a9cecb694403",
+      "type": "URL",
+      "value": "https://night-76b3.example.net/a11b42",
+      "display_value": "https://night-76b3.example.net/a11b42",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.371Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "910ff38f-b0f7-488e-b24e-782b77c5085e",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.182Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "91ca614c-b4c1-4a5b-968a-077eba7b1bc4",
+      "type": "URL",
+      "value": "https://pale-ffb0.example.net/659700",
+      "display_value": "https://pale-ffb0.example.net/659700",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.365Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "93926ceb-f183-450a-b385-f0a0d14a9109",
+      "type": "URL",
+      "value": "https://shadow-daed.example.net/6291b9",
+      "display_value": "https://shadow-daed.example.net/6291b9",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.239Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "95449c37-5e7c-4fbf-bfcd-dde9f6db3dfd",
+      "type": "URL",
+      "value": "https://vivid-af90.example.net/28cd77",
+      "display_value": "https://vivid-af90.example.net/28cd77",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.111Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "9912fd1b-8431-4c24-81cd-4043ecb3417d",
+      "type": "URL",
+      "value": "https://silent-d51c.example.net/451483",
+      "display_value": "https://silent-d51c.example.net/451483",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.335Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "99af494f-12d3-4fe7-969e-3b0e1d2d09b9",
+      "type": "URL",
+      "value": "https://night-150d.example.net/ab91fa",
+      "display_value": "https://night-150d.example.net/ab91fa",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.167Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "9c46fcbb-add5-488d-b029-4f90b8b10424",
+      "type": "URL",
+      "value": "https://vivid-8577.example.net/5cae47",
+      "display_value": "https://vivid-8577.example.net/5cae47",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.082Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "9ca94149-65bd-4685-830d-c695645e9537",
+      "type": "URL",
+      "value": "https://shadow-4609.example.net/65e532",
+      "display_value": "https://shadow-4609.example.net/65e532",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.362Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "9edbbe66-58b5-4a52-b9db-bad8c9e185c1",
+      "type": "URL",
+      "value": "https://iron-44b3.example.net/37c5b7",
+      "display_value": "https://iron-44b3.example.net/37c5b7",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.233Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "a65116d4-bd3f-4ad3-bc69-9af88d9958dc",
+      "type": "URL",
+      "value": "https://vivid-de32.example.net/67db09",
+      "display_value": "https://vivid-de32.example.net/67db09",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.176Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "a6c4dee8-0aec-49fd-a0d4-e6c8955b8cfd",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.249Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "a8cc0b98-6bb4-41c0-8eb0-7fd1f7743d61",
+      "type": "URL",
+      "value": "https://hollow-8a89.example.net/cb82a9",
+      "display_value": "https://hollow-8a89.example.net/cb82a9",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.047Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "aa0bc768-0d22-4ad7-993d-817c1ae5c906",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.347Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "aef38b6f-dc85-4938-ae3b-4a5d8a7bcf69",
+      "type": "URL",
+      "value": "https://silent-3b77.example.net/d95f7d",
+      "display_value": "https://silent-3b77.example.net/d95f7d",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.295Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "af77e151-ecc8-4088-b4ea-50e6e94d0c38",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.301Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "af8f0fd8-71d4-4408-9aad-3e1a57086cb8",
+      "type": "URL",
+      "value": "https://shadow-2ca5.example.net/897764",
+      "display_value": "https://shadow-2ca5.example.net/897764",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.338Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "b07c4c94-b39b-4d87-af95-dd4dace5a20a",
+      "type": "URL",
+      "value": "https://silent-7833.example.net/4307f9",
+      "display_value": "https://silent-7833.example.net/4307f9",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.218Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "b2412556-a175-4ccc-9d96-1eb79c807b4b",
+      "type": "URL",
+      "value": "https://vivid-ab48.example.net/a26254",
+      "display_value": "https://vivid-ab48.example.net/a26254",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.271Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "b6fea847-1a99-4769-af2d-281431943b04",
+      "type": "URL",
+      "value": "https://pale-7e8f.example.net/053a35",
+      "display_value": "https://pale-7e8f.example.net/053a35",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.289Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "b8747876-0e42-4158-866e-db1d7aab4809",
+      "type": "URL",
+      "value": "https://cold-34fa.example.net/8a75d4",
+      "display_value": "https://cold-34fa.example.net/8a75d4",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.123Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "b8a6704a-1cd2-4526-932e-5da497430a2c",
+      "type": "URL",
+      "value": "https://quiet-3b5e.example.net/a147f6",
+      "display_value": "https://quiet-3b5e.example.net/a147f6",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.353Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "c371fc28-4b97-4dcb-a4c7-12f8d7260083",
+      "type": "URL",
+      "value": "https://pale-7e8f.example.net/019c3b",
+      "display_value": "https://pale-7e8f.example.net/019c3b",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.197Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "c49288a8-1cd9-4cdf-a487-20e8ee7f3feb",
+      "type": "URL",
+      "value": "https://hollow-31fd.example.net/b8ac99",
+      "display_value": "https://hollow-31fd.example.net/b8ac99",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.265Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "c5a47057-9a94-4901-b753-fe6c2c64b100",
+      "type": "URL",
+      "value": "https://shadow-daed.example.net/040afe",
+      "display_value": "https://shadow-daed.example.net/040afe",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.098Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "c85b62e2-7c89-44ec-940e-3aab48d758c6",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.170Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cad326ae-bc0c-4030-923a-33353acc8a0f",
+      "type": "URL",
+      "value": "https://hollow-eb52.example.net/2a7ee7",
+      "display_value": "https://hollow-eb52.example.net/2a7ee7",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.344Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cb622878-940e-4aa3-a22f-da3e0be0dedd",
+      "type": "URL",
+      "value": "https://iron-ddae.example.net/cd6cd0",
+      "display_value": "https://iron-ddae.example.net/cd6cd0",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.317Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cd03198a-19d5-4064-b4ac-3ac6a81daa2d",
+      "type": "URL",
+      "value": "https://shadow-4609.example.net/af39cc",
+      "display_value": "https://shadow-4609.example.net/af39cc",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.077Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cd57d1f5-b0e7-4dce-a54a-1d94e3139f02",
+      "type": "URL",
+      "value": "https://silent-d51c.example.net/d86f64",
+      "display_value": "https://silent-d51c.example.net/d86f64",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.221Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cd8e8a85-5fee-44d0-8dcf-dfc7e94e77a6",
+      "type": "URL",
+      "value": "https://pale-ae58.example.net/edf4a1",
+      "display_value": "https://pale-ae58.example.net/edf4a1",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.067Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cddba402-6e81-4265-9705-c6e21b806b84",
+      "type": "URL",
+      "value": "https://rusty-3be1.example.net/2d6f22",
+      "display_value": "https://rusty-3be1.example.net/2d6f22",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.341Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cdf8991b-ecbe-4392-a790-bb24b0525b24",
+      "type": "URL",
+      "value": "https://shadow-769e.example.net/86fc9b",
+      "display_value": "https://shadow-769e.example.net/86fc9b",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.173Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cf2ab6dc-cf73-41f7-9e33-63c4cded4ca1",
+      "type": "URL",
+      "value": "https://hollow-3c8b.example.net/47485b",
+      "display_value": "https://hollow-3c8b.example.net/47485b",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.129Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cf5b4b0f-ba1b-4339-8afb-129f91d7e0ae",
+      "type": "URL",
+      "value": "https://vivid-561a.example.net/f95872",
+      "display_value": "https://vivid-561a.example.net/f95872",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.194Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "cf65a5fd-2938-45c2-8bd0-d19a725087d7",
+      "type": "URL",
+      "value": "https://cold-7dbe.example.net/2e8f73",
+      "display_value": "https://cold-7dbe.example.net/2e8f73",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.283Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "d27c8c1d-ff8f-416f-a93d-f27fafe20c4c",
+      "type": "URL",
+      "value": "https://hollow-4ad4.example.net/71adf6",
+      "display_value": "https://hollow-4ad4.example.net/71adf6",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.147Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "d34e33b1-d23d-4541-9b4d-9c02fd7aed07",
+      "type": "URL",
+      "value": "https://shadow-daed.example.net/376afb",
+      "display_value": "https://shadow-daed.example.net/376afb",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.380Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "d9164856-daba-4ba9-ae74-664d72a75f68",
+      "type": "URL",
+      "value": "https://pale-ffb0.example.net/4972fb",
+      "display_value": "https://pale-ffb0.example.net/4972fb",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.064Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "e121483e-4a16-4df1-83b1-c8795fd28473",
+      "type": "URL",
+      "value": "https://hollow-dc83.example.net/b7e740",
+      "display_value": "https://hollow-dc83.example.net/b7e740",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.132Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "e25af740-10f0-4dd4-aa13-998d0b8c48af",
+      "type": "URL",
+      "value": "https://hollow-8d72.example.net/9c87d7",
+      "display_value": "https://hollow-8d72.example.net/9c87d7",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.326Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "e3cfd8ee-df2b-4c8c-b66d-2b3b467cdf0c",
+      "type": "URL",
+      "value": "https://hollow-aaab.example.net/2a3634",
+      "display_value": "https://hollow-aaab.example.net/2a3634",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.156Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "e72c48c7-f44f-450a-9c7d-04375a16d667",
+      "type": "URL",
+      "value": "https://vivid-451e.example.net/478598",
+      "display_value": "https://vivid-451e.example.net/478598",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.255Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "ea571707-c096-4857-96ce-f4faf05f3e2a",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.105Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "ea9bd6a6-b4ef-4202-b323-d76fabc5fa54",
+      "type": "URL",
+      "value": "https://vivid-ab48.example.net/e7d652",
+      "display_value": "https://vivid-ab48.example.net/e7d652",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.108Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "ec131f2d-7647-4199-a4eb-1360637fe5ef",
+      "type": "URL",
+      "value": "https://cold-b4f7.example.net/2e5c62",
+      "display_value": "https://cold-b4f7.example.net/2e5c62",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.162Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "ec577e80-baa1-4307-81f0-6e7b827f1f70",
+      "type": "URL",
+      "value": "https://hollow-4ad4.example.net/2c5b78",
+      "display_value": "https://hollow-4ad4.example.net/2c5b78",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.071Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "ed64ce26-43d4-4a1a-b7ba-3f6feae6cea0",
+      "type": "URL",
+      "value": "https://rusty-828f.example.net/fa31f3",
+      "display_value": "https://rusty-828f.example.net/fa31f3",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.203Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "ef0037c9-7e0a-497c-8c80-44286403ca17",
+      "type": "URL",
+      "value": "https://iron-b337.example.net/ccd670",
+      "display_value": "https://iron-b337.example.net/ccd670",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.188Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "f49d1232-a133-4eb5-98ca-ed8eb1973011",
+      "type": "URL",
+      "value": "https://shadow-daed.example.net/b430cc",
+      "display_value": "https://shadow-daed.example.net/b430cc",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.242Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "f57ea924-3607-465a-bfcb-12fcf43cf68a",
+      "type": "URL",
+      "value": "https://vivid-de32.example.net/2523c8",
+      "display_value": "https://vivid-de32.example.net/2523c8",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.230Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "f5da8345-f617-4659-90e3-be4dbb33378c",
+      "type": "URL",
+      "value": "https://www.bleepingcomputer.com/",
+      "display_value": "https://www.bleepingcomputer.com/",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.212Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "f7a8be53-a06f-49e8-b27c-f4a68c71c73a",
+      "type": "URL",
+      "value": "https://vivid-c54c.example.net/87960d",
+      "display_value": "https://vivid-c54c.example.net/87960d",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.200Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    },
+    {
+      "id": "f9563459-92af-4030-896f-a165c70e3911",
+      "type": "URL",
+      "value": "https://silent-f112.example.net/8562fb",
+      "display_value": "https://silent-f112.example.net/8562fb",
+      "sensitive": false,
+      "confidence": 0.7663600000000002,
+      "first_seen": "2026-10-11T19:26:25.191Z",
+      "source_ids": ["s6"],
+      "tags": ["method:llm"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "dc36fa4b-4f54-464e-b436-74eaea4e5a20",
+      "target": "10ddc818-af2f-4c47-910b-c8f04532f2ac",
+      "type": "USES",
+      "weight": 0.9,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "dc36fa4b-4f54-464e-b436-74eaea4e5a20",
+      "target": "0cfb7cea-b395-4139-9e33-2b753154018a",
+      "type": "USES",
+      "weight": 0.9,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "dc36fa4b-4f54-464e-b436-74eaea4e5a20",
+      "target": "0b877dca-fc40-4e34-9618-585447bea109",
+      "type": "USES",
+      "weight": 0.9,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "dc36fa4b-4f54-464e-b436-74eaea4e5a20",
+      "target": "520fad3b-b93a-46ea-bd78-e11e47464f88",
+      "type": "USES",
+      "weight": 0.9,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "dc36fa4b-4f54-464e-b436-74eaea4e5a20",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CONTROLS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "a3404f4e-b5b3-418a-9d40-b43db784b397",
+      "type": "EXPLOITS",
+      "weight": 0.9,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "726eb376-d425-49e8-8506-1c1e1ce71d15",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "287f17ff-ce95-4b5c-ba55-34a110c8e45b",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "2a027b5d-6eab-4a96-8f96-cb88416ab291",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "6d7e1787-fefb-4af7-86d8-b7397de531e6",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "859d3172-f71a-4c6f-bc15-ea4bacd13576",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "32cf7cca-0816-4636-bf9d-930d6206695e",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "a311dad3-5bdf-4de6-8451-7fd9557be574",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "d95b3244-e222-45c3-8966-10a03597347f",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "8aefe132-bbc2-45ab-a6df-6025aeac1bc0",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "a8879493-4f77-4118-95e3-e22bfb4fc719",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "166f5cd6-ac36-44e4-8148-c66e15d99b5b",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "4de4a266-3c67-457f-b3cc-b679ba8156c8",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "0eed6d77-a429-4c8d-b9d6-30c044d85985",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "df557c91-3b02-4128-a189-1946f2e7875f",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "f6a9dcbe-ea65-4d33-b302-e26c13165a12",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "d2b2a11b-505f-4a9b-bd3c-056716859379",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "05df992e-e980-417d-82b8-e4438d0739a3",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "59e3b8a7-9b11-42a2-acfb-afca34e9c4f5",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "13a63595-6ceb-47fc-a8a0-46b76009349b",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "7ad6df4d-3c5a-4cdd-b720-801b466d063b",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "a245e212-78e6-4f1a-86e0-fdc3c9542c44",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "172db316-65de-4d02-b388-c4068db3f682",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "a3f5e247-d538-4d82-97ce-9fa2ffffbe31",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "206a6984-da13-4403-8c41-0ee2a06ce746",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "599940cf-c3aa-4322-938c-7deb04f5307d",
+      "target": "012599e8-a498-4db6-8a30-2ead87030edf",
+      "type": "TARGETS",
+      "weight": 0.8,
+      "evidence_source_ids": ["s9"]
+    },
+    {
+      "source": "3e4e5258-e01b-44ee-bbff-d8724e5eef39",
+      "target": "cc55be5e-daa1-40f7-9e29-e642f79efd03",
+      "type": "USES",
+      "weight": 0.9,
+      "evidence_source_ids": ["s8"]
+    },
+    {
+      "source": "455397a2-0c99-4ecd-b591-677abd66034d",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "eca8d685-a5a6-4dfc-95cb-7f01516c6963",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "8a6daf05-7067-4371-8d80-2838a7727d82",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "2751c350-0372-424d-93b3-fb7d06a86607",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "10ddc818-af2f-4c47-910b-c8f04532f2ac",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "0cfb7cea-b395-4139-9e33-2b753154018a",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "2b718087-cceb-4da5-852f-c59a425074e8",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "3c8475b4-dc18-430e-902c-504e9c24a181",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "0b877dca-fc40-4e34-9618-585447bea109",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "520fad3b-b93a-46ea-bd78-e11e47464f88",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "37cadd47-df03-4269-bff3-c59c71182819",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    },
+    {
+      "source": "ae5d8b12-8c7d-45a1-84eb-d92696f50d39",
+      "target": "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+      "type": "CO_APPEARED_ON",
+      "weight": 1,
+      "evidence_source_ids": ["s6"]
+    }
+  ],
+  "actors": [
+    {
+      "id": "a1",
+      "handle": "CL0P",
+      "aliases": [],
+      "entity_ids": [
+        "599940cf-c3aa-4322-938c-7deb04f5307d",
+        "a3404f4e-b5b3-418a-9d40-b43db784b397",
+        "726eb376-d425-49e8-8506-1c1e1ce71d15",
+        "287f17ff-ce95-4b5c-ba55-34a110c8e45b",
+        "2a027b5d-6eab-4a96-8f96-cb88416ab291",
+        "6d7e1787-fefb-4af7-86d8-b7397de531e6",
+        "859d3172-f71a-4c6f-bc15-ea4bacd13576",
+        "32cf7cca-0816-4636-bf9d-930d6206695e",
+        "a311dad3-5bdf-4de6-8451-7fd9557be574",
+        "d95b3244-e222-45c3-8966-10a03597347f",
+        "8aefe132-bbc2-45ab-a6df-6025aeac1bc0",
+        "a8879493-4f77-4118-95e3-e22bfb4fc719",
+        "166f5cd6-ac36-44e4-8148-c66e15d99b5b"
+      ],
+      "first_seen": "2026-10-11T19:26:25.427Z",
+      "last_seen": "2026-10-11T19:26:25.427Z",
+      "summary": "Ransomware group referenced with 12 related entities in this run."
+    },
+    {
+      "id": "a2",
+      "handle": "lockbit",
+      "aliases": [],
+      "entity_ids": [
+        "dc36fa4b-4f54-464e-b436-74eaea4e5a20",
+        "10ddc818-af2f-4c47-910b-c8f04532f2ac",
+        "0cfb7cea-b395-4139-9e33-2b753154018a",
+        "0b877dca-fc40-4e34-9618-585447bea109",
+        "520fad3b-b93a-46ea-bd78-e11e47464f88",
+        "027e6b36-0f9d-4629-8ab3-0696a14402f2"
+      ],
+      "first_seen": "2026-10-11T19:26:24.988Z",
+      "last_seen": "2026-10-11T19:26:24.988Z",
+      "summary": "Ransomware group referenced with 5 related entities in this run."
+    },
+    {
+      "id": "a3",
+      "handle": "silent_raven77",
+      "aliases": [],
+      "entity_ids": ["03556d11-18ad-4366-a7fb-bdd82e3aeaf8"],
+      "first_seen": "2026-10-11T19:26:24.981Z",
+      "last_seen": "2026-10-11T19:26:24.981Z",
+      "summary": "Actor handle referenced with 0 related entities in this run."
+    },
+    {
+      "id": "a4",
+      "handle": "vivid_raven25",
+      "aliases": [],
+      "entity_ids": ["3e4e5258-e01b-44ee-bbff-d8724e5eef39", "cc55be5e-daa1-40f7-9e29-e642f79efd03"],
+      "first_seen": "2026-10-11T19:26:25.395Z",
+      "last_seen": "2026-10-11T19:26:25.395Z",
+      "summary": "Actor handle referenced with 1 related entities in this run."
+    },
+    {
+      "id": "a5",
+      "handle": "alphv",
+      "aliases": [],
+      "entity_ids": ["2751c350-0372-424d-93b3-fb7d06a86607", "027e6b36-0f9d-4629-8ab3-0696a14402f2"],
+      "first_seen": "2026-10-11T19:26:25.009Z",
+      "last_seen": "2026-10-11T19:26:25.009Z",
+      "summary": "Ransomware group referenced with 1 related entities in this run."
+    },
+    {
+      "id": "a6",
+      "handle": "maze",
+      "aliases": [],
+      "entity_ids": ["455397a2-0c99-4ecd-b591-677abd66034d", "027e6b36-0f9d-4629-8ab3-0696a14402f2"],
+      "first_seen": "2026-10-11T19:26:24.994Z",
+      "last_seen": "2026-10-11T19:26:24.994Z",
+      "summary": "Ransomware group referenced with 1 related entities in this run."
+    },
+    {
+      "id": "a7",
+      "handle": "darkside",
+      "aliases": [],
+      "entity_ids": ["8a6daf05-7067-4371-8d80-2838a7727d82", "027e6b36-0f9d-4629-8ab3-0696a14402f2"],
+      "first_seen": "2026-10-11T19:26:25.006Z",
+      "last_seen": "2026-10-11T19:26:25.006Z",
+      "summary": "Ransomware group referenced with 1 related entities in this run."
+    },
+    {
+      "id": "a8",
+      "handle": "blackmatter",
+      "aliases": [],
+      "entity_ids": ["ac319731-0c2b-4d11-a9ce-fc572b7b6c7d"],
+      "first_seen": "2026-10-11T19:26:25.003Z",
+      "last_seen": "2026-10-11T19:26:25.003Z",
+      "summary": "Ransomware group referenced with 0 related entities in this run."
+    },
+    {
+      "id": "a9",
+      "handle": "revil",
+      "aliases": [],
+      "entity_ids": ["aee8f57c-ad8e-4329-9b7d-30e7d6216045"],
+      "first_seen": "2026-10-11T19:26:25.000Z",
+      "last_seen": "2026-10-11T19:26:25.000Z",
+      "summary": "Ransomware group referenced with 0 related entities in this run."
+    },
+    {
+      "id": "a10",
+      "handle": "Qilin",
+      "aliases": [],
+      "entity_ids": ["b31e7618-e078-4079-8aa1-fedf6f88ccaf"],
+      "first_seen": "2026-10-11T19:26:24.970Z",
+      "last_seen": "2026-10-11T19:26:24.970Z",
+      "summary": "Ransomware group referenced with 0 related entities in this run."
+    },
+    {
+      "id": "a11",
+      "handle": "Nightspire ▲",
+      "aliases": [],
+      "entity_ids": ["bb21b491-ad15-4d9a-ad02-51e926eff0dc"],
+      "first_seen": "2026-10-11T19:26:24.978Z",
+      "last_seen": "2026-10-11T19:26:24.978Z",
+      "summary": "Ransomware group referenced with 0 related entities in this run."
+    },
+    {
+      "id": "a12",
+      "handle": "blackcat",
+      "aliases": [],
+      "entity_ids": ["c4a359a3-7875-41dd-b533-889b5ca67e6c"],
+      "first_seen": "2026-10-11T19:26:25.012Z",
+      "last_seen": "2026-10-11T19:26:25.012Z",
+      "summary": "Ransomware group referenced with 0 related entities in this run."
+    },
+    {
+      "id": "a13",
+      "handle": "hive",
+      "aliases": [],
+      "entity_ids": ["d33e5121-4018-4ea1-ba67-f70848965d97"],
+      "first_seen": "2026-10-11T19:26:25.038Z",
+      "last_seen": "2026-10-11T19:26:25.038Z",
+      "summary": "Ransomware group referenced with 0 related entities in this run."
+    },
+    {
+      "id": "a14",
+      "handle": "conti",
+      "aliases": [],
+      "entity_ids": ["ea575b64-44fd-404a-b3a3-d575f0980124"],
+      "first_seen": "2026-10-11T19:26:24.991Z",
+      "last_seen": "2026-10-11T19:26:24.991Z",
+      "summary": "Ransomware group referenced with 0 related entities in this run."
+    },
+    {
+      "id": "a15",
+      "handle": "Clop",
+      "aliases": [],
+      "entity_ids": ["ce717d6a-7c91-4577-a148-9f77edea1419"],
+      "first_seen": "2026-10-11T19:26:25.430Z",
+      "last_seen": "2026-10-11T19:26:25.430Z",
+      "summary": "Ransomware group referenced with 0 related entities in this run."
+    }
+  ],
+  "communities": [
+    {
+      "id": 0,
+      "entity_ids": [
+        "a3404f4e-b5b3-418a-9d40-b43db784b397",
+        "599940cf-c3aa-4322-938c-7deb04f5307d",
+        "a245e212-78e6-4f1a-86e0-fdc3c9542c44",
+        "f6a9dcbe-ea65-4d33-b302-e26c13165a12",
+        "d2b2a11b-505f-4a9b-bd3c-056716859379",
+        "05df992e-e980-417d-82b8-e4438d0739a3",
+        "0eed6d77-a429-4c8d-b9d6-30c044d85985",
+        "a8879493-4f77-4118-95e3-e22bfb4fc719",
+        "726eb376-d425-49e8-8506-1c1e1ce71d15",
+        "287f17ff-ce95-4b5c-ba55-34a110c8e45b",
+        "166f5cd6-ac36-44e4-8148-c66e15d99b5b",
+        "59e3b8a7-9b11-42a2-acfb-afca34e9c4f5",
+        "172db316-65de-4d02-b388-c4068db3f682",
+        "4de4a266-3c67-457f-b3cc-b679ba8156c8",
+        "2a027b5d-6eab-4a96-8f96-cb88416ab291",
+        "6d7e1787-fefb-4af7-86d8-b7397de531e6",
+        "df557c91-3b02-4128-a189-1946f2e7875f",
+        "859d3172-f71a-4c6f-bc15-ea4bacd13576",
+        "a3f5e247-d538-4d82-97ce-9fa2ffffbe31",
+        "32cf7cca-0816-4636-bf9d-930d6206695e",
+        "a311dad3-5bdf-4de6-8451-7fd9557be574",
+        "d95b3244-e222-45c3-8966-10a03597347f",
+        "13a63595-6ceb-47fc-a8a0-46b76009349b",
+        "8aefe132-bbc2-45ab-a6df-6025aeac1bc0",
+        "206a6984-da13-4403-8c41-0ee2a06ce746",
+        "012599e8-a498-4db6-8a30-2ead87030edf",
+        "7ad6df4d-3c5a-4cdd-b720-801b466d063b"
+      ],
+      "label": "CL0P"
+    },
+    {
+      "id": 1,
+      "entity_ids": [
+        "027e6b36-0f9d-4629-8ab3-0696a14402f2",
+        "dc36fa4b-4f54-464e-b436-74eaea4e5a20",
+        "455397a2-0c99-4ecd-b591-677abd66034d",
+        "eca8d685-a5a6-4dfc-95cb-7f01516c6963",
+        "8a6daf05-7067-4371-8d80-2838a7727d82",
+        "2751c350-0372-424d-93b3-fb7d06a86607",
+        "10ddc818-af2f-4c47-910b-c8f04532f2ac",
+        "0cfb7cea-b395-4139-9e33-2b753154018a",
+        "2b718087-cceb-4da5-852f-c59a425074e8",
+        "3c8475b4-dc18-430e-902c-504e9c24a181",
+        "0b877dca-fc40-4e34-9618-585447bea109",
+        "520fad3b-b93a-46ea-bd78-e11e47464f88",
+        "37cadd47-df03-4269-bff3-c59c71182819",
+        "ae5d8b12-8c7d-45a1-84eb-d92696f50d39"
+      ],
+      "label": "lockbit"
+    },
+    {
+      "id": 2,
+      "entity_ids": ["3e4e5258-e01b-44ee-bbff-d8724e5eef39", "cc55be5e-daa1-40f7-9e29-e642f79efd03"],
+      "label": "vivid_raven25"
+    },
+    {
+      "id": 3,
+      "entity_ids": ["b31e7618-e078-4079-8aa1-fedf6f88ccaf"],
+      "label": "Qilin"
+    },
+    {
+      "id": 4,
+      "entity_ids": ["bb21b491-ad15-4d9a-ad02-51e926eff0dc"],
+      "label": "Nightspire ▲"
+    },
+    {
+      "id": 5,
+      "entity_ids": ["03556d11-18ad-4366-a7fb-bdd82e3aeaf8"],
+      "label": "silent_raven77"
+    },
+    {
+      "id": 6,
+      "entity_ids": ["ea575b64-44fd-404a-b3a3-d575f0980124"],
+      "label": "conti"
+    },
+    {
+      "id": 7,
+      "entity_ids": ["aee8f57c-ad8e-4329-9b7d-30e7d6216045"],
+      "label": "revil"
+    },
+    {
+      "id": 8,
+      "entity_ids": ["ac319731-0c2b-4d11-a9ce-fc572b7b6c7d"],
+      "label": "blackmatter"
+    },
+    {
+      "id": 9,
+      "entity_ids": ["c4a359a3-7875-41dd-b533-889b5ca67e6c"],
+      "label": "blackcat"
+    },
+    {
+      "id": 10,
+      "entity_ids": ["d33e5121-4018-4ea1-ba67-f70848965d97"],
+      "label": "hive"
+    },
+    {
+      "id": 11,
+      "entity_ids": ["42a76d27-a2a3-4e5f-862b-552f4b2ee53b"]
+    },
+    {
+      "id": 12,
+      "entity_ids": ["b0c55f11-f307-4c45-bf1c-364998f2caed"]
+    },
+    {
+      "id": 13,
+      "entity_ids": ["28e3fc4f-0c27-40a6-85d2-a9849d1ae3c8"]
+    },
+    {
+      "id": 14,
+      "entity_ids": ["718da9cc-6d20-4744-9911-527da5c17b6e"]
+    },
+    {
+      "id": 15,
+      "entity_ids": ["36704fb7-df39-4adc-91e2-4c1fe934f204"]
+    },
+    {
+      "id": 16,
+      "entity_ids": ["14ed0528-cc80-4ba8-89dc-6196e2c0d559"]
+    },
+    {
+      "id": 17,
+      "entity_ids": ["8f34bc63-dca4-41af-a163-0431df6b9dbc"]
+    },
+    {
+      "id": 18,
+      "entity_ids": ["22f54902-1e17-4207-9d8c-09c62b078798"]
+    },
+    {
+      "id": 19,
+      "entity_ids": ["ce717d6a-7c91-4577-a148-9f77edea1419"],
+      "label": "Clop"
+    },
+    {
+      "id": 20,
+      "entity_ids": ["62e6ea35-f6e0-4a07-93c4-b6e0ce9a50e5"],
+      "label": "Norton"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "kind": "onion_page",
+      "name": "onion page #1",
+      "url": "http://fhoww6r36ibtm242wbxglglsyrzqfzwjq3feam2wywfpjzanalhfsn5d.onion/p/d98515",
+      "fetched_at": "2026-10-11T19:21:41.464Z",
+      "excerpt": ""
+    },
+    {
+      "id": "s2",
+      "kind": "onion_page",
+      "name": "onion page #2",
+      "url": "http://xmtyw765k6ap5alvlqbxoi3hfjaetvjcxelmtwunjhk62ajv3la2nvyd.onion/p/9ca272",
+      "fetched_at": "2026-10-11T19:22:06.667Z",
+      "excerpt": "RansomLook Open ransomware intelligence - This week 231 posts · last 7 days ▼ -6.5% 43 active groups ▼ -10.4% 2 new groups this week NEW The Gentlemen top group 43 posts · 18.6% Top movers 7d vs pr..."
+    },
+    {
+      "id": "s3",
+      "kind": "onion_page",
+      "name": "onion page #3",
+      "url": "http://6wlvyj7vlzfqrrhrf4er4xqvpvpsoimttz4as7u7hknuu7n2tnkwtqdd.onion/p/41603b",
+      "fetched_at": "2026-10-11T19:22:31.871Z",
+      "excerpt": ""
+    },
+    {
+      "id": "s4",
+      "kind": "onion_page",
+      "name": "onion page #4",
+      "url": "http://z75bhl4xxmrkkrqlj6jtflz7k3xmf7nyohbtqhvtintd6bz45dhishdd.onion/p/b9649e",
+      "fetched_at": "2026-10-11T19:22:57.074Z",
+      "excerpt": ""
+    },
+    {
+      "id": "s5",
+      "kind": "onion_page",
+      "name": "onion page #5",
+      "url": "http://yqb3ylca3zjxayo76w3xrakflttvvkxiui3s27bjov3mzsd6dkello6d.onion/p/c64aed",
+      "fetched_at": "2026-10-11T19:23:22.278Z",
+      "excerpt": ""
+    },
+    {
+      "id": "s6",
+      "kind": "onion_page",
+      "name": "onion page #6",
+      "url": "http://r3qpybm34jaqorzbdn5rnreduhd7vgnua7t57lwuds233hgib4govcxd.onion/p/a33704",
+      "fetched_at": "2026-10-11T19:23:47.482Z",
+      "excerpt": "http://2ct7mw4u2nds45niesqosivbdhxhbg5fdyfwccffywtdpeze7vuj24qd.onion/p/eb82b5 - | https://rusty-bfe0.example.net/34f4b3 | | https://shadow-e61d.example.net/9221f3 | | https://cold-78e5.example.net..."
+    },
+    {
+      "id": "s7",
+      "kind": "onion_page",
+      "name": "onion page #7",
+      "url": "http://xn46mxo5rlk53aa52s3ghbvvobcslv5d2j6lsb7yavjqdkn27lsxtspd.onion/p/c68a33",
+      "fetched_at": "2026-10-11T19:24:12.685Z",
+      "excerpt": "http://xh4qvn4nphsacxh7oaz7qy7x3kewv24gtgkyairwmppe5nwerktvnysd.onion/p/b362ec"
+    },
+    {
+      "id": "s8",
+      "kind": "onion_page",
+      "name": "onion page #8",
+      "url": "http://ddk64ov4apvxtixuvkp7kmsiwgopy67y6ouu5x24o2t5rbwksot7xgid.onion/p/73b74b",
+      "fetched_at": "2026-10-11T19:24:37.889Z",
+      "excerpt": "vivid_raven25 RAAS"
+    },
+    {
+      "id": "s9",
+      "kind": "code_forge",
+      "name": "code forge #9",
+      "url": "https://shadow-3aeb.example.net/c90f19",
+      "fetched_at": "2026-10-11T19:25:03.093Z",
+      "excerpt": "ty.yara) | | 2 June | Resource | Sigma rule for MOVEit exploitation | [github.com/tsale](https://shadow-3aeb.example.net/bd1bbd) | | 2 June | Resource | MOVEit Web Shell Checker | [github.com/Zephr..."
+    }
+  ],
+  "metrics": {
+    "duration_ms": 420060,
+    "tor_bootstrap_ms": 2277,
+    "stage_ms": {
+      "refine": 2112,
+      "collect": 32955,
+      "filter": 10463,
+      "fetch": 26908,
+      "extract": 271708,
+      "enrich": 40004,
+      "graph": 142,
+      "summarize": 23742
+    },
+    "llm_calls": 17,
+    "llm_tokens_in": 26640,
+    "llm_tokens_out": 6852,
+    "llm_cost_usd": 0.01462308,
+    "pages_fetched": 9,
+    "bytes_fetched": 82642,
+    "enrichment_calls": {
+      "rss": 20,
+      "github": 1,
+      "tor_search": 50
+    }
+  }
+}

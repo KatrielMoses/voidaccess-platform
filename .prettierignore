@@ -1,0 +1,17 @@
+node_modules
+.next
+.turbo
+dist
+runner
+apps/site
+pnpm-lock.yaml
+**/drizzle/meta
+infra/terraform/.terraform
+.worktrees
+docs
+AGENTS.md
+infra/bootstrap
+package.json
+packages/config
+tsconfig.base.json
+turbo.json

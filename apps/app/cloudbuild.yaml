@@ -1,0 +1,28 @@
+# Run from the monorepo root:
+#   gcloud builds submit --config apps/app/cloudbuild.yaml \
+#     --substitutions=_COMMIT_SHA=$(git rev-parse --short HEAD) .
+# Needs BuildKit for apps/app/Dockerfile.dockerignore (DOCKER_BUILDKIT=1 below).
+substitutions:
+  _IMAGE: us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/va-app
+  _COMMIT_SHA: manual
+  _APP_VERSION: 0.0.0
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: build
+    env: ["DOCKER_BUILDKIT=1"]
+    args:
+      - build
+      - -f
+      - apps/app/Dockerfile
+      - --build-arg=COMMIT_SHA=${_COMMIT_SHA}
+      - --build-arg=APP_VERSION=${_APP_VERSION}
+      - -t
+      - ${_IMAGE}:${_COMMIT_SHA}
+      - -t
+      - ${_IMAGE}:latest
+      - .
+images:
+  - ${_IMAGE}:${_COMMIT_SHA}
+  - ${_IMAGE}:latest
+options:
+  logging: CLOUD_LOGGING_ONLY

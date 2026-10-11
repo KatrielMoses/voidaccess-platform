@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "duration_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "tor_bootstrap_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "stage_ms": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "enum": ["refine", "collect", "filter", "fetch", "extract", "enrich", "graph", "summarize"]
+      },
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "llm_calls": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "llm_tokens_in": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "llm_tokens_out": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "llm_cost_usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "pages_fetched": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "bytes_fetched": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "enrichment_calls": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      }
+    }
+  },
+  "required": [
+    "duration_ms",
+    "tor_bootstrap_ms",
+    "stage_ms",
+    "llm_calls",
+    "llm_tokens_in",
+    "llm_tokens_out",
+    "llm_cost_usd",
+    "pages_fetched",
+    "bytes_fetched",
+    "enrichment_calls"
+  ],
+  "additionalProperties": false,
+  "$id": "https://voidaccess.dev/schemas/RunMetrics.json",
+  "title": "RunMetrics"
+}

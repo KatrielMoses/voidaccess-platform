@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/coverage
+.git
+.worktrees
+**/.env
+**/.env.*
+!**/.env.example
+runner
+infra
+apps/site
+docs

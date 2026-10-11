@@ -1,6 +1,6 @@
 # Engine contract: `voidaccess job run` (cloud job mode)
 
-**Status:** draft v0.2, 2026-10-11. Implemented by engine phase E4 (see ROADMAP.md) and mirrored by `packages/engine-mock` so the platform can be built in parallel. The canonical TypeScript types will live in `packages/engine-client/src/types.ts`.
+**Status:** v0.3, 2026-10-12 (§2–3 reconciled with P0's engine-client). Draft v0.2 was 2026-10-11. Implemented by engine phase E4 (see ROADMAP.md) and mirrored by `packages/engine-mock` so the platform can be built in parallel. The canonical TypeScript types will live in `packages/engine-client/src/types.ts`.
 
 ## 1. Invocation
 
@@ -32,17 +32,19 @@ type RunSpec = {
 ## 2. Callbacks (job → platform)
 
 - `POST callback_url`, JSON body `ProgressEvent`
-- Headers: `X-VA-Run: <run_id>`, `X-VA-Seq: <n>`, `X-VA-Signature: sha256=<hex HMAC(callback_secret, raw body)>`
+- Headers: `X-VA-Run: <run_id>`, `X-VA-Seq: <n>`, `X-VA-Timestamp: <unix seconds>`, `X-VA-Signature: sha256=<hex HMAC-SHA256(callback_secret, "<X-VA-Timestamp>.<raw body>")>`. The verifier rejects more than 300 s of skew. Implemented in `packages/engine-client`.
 - Retries use exponential backoff (via `pacing`). The platform deduplicates on `(run_id, seq)`.
 - The pipeline must never block on a slow callback. Use a bounded queue and drop intermediate `counts` events if the buffer fills; `stage` and terminal events are never dropped.
 
 ```ts
-type Stage = "refine" | "collect" | "filter" | "fetch" | "enrich" | "extract" | "graph" | "summarize";
+// Execution order: the engine runs extract BEFORE enrich. Canonical list: STAGES in @voidaccess/config.
+type Stage = "refine" | "collect" | "filter" | "fetch" | "extract" | "enrich" | "graph" | "summarize";
 
 type ProgressEvent = {
   run_id: string; seq: number; at: string;
   type: "stage" | "counts" | "refined" | "completed" | "failed" | "cancelled";
-  stage?: Stage; stage_index?: number; stage_total: 8;
+  stage?: Stage; stage_index?: number /* 1-based, 1..8 */; stage_total: 8;
+  status?: "started" | "completed"; duration_ms?: number;   // optional per-stage timing
   refined_queries?: string[];                       // on type "refined", shown in the UI
   counts?: { sources_queried: number; results_found: number; pages_fetched: number; entities_found: number; actors_found: number };
   message?: string;                                 // human label; never raw dark-web text
@@ -83,7 +85,7 @@ type RunMetrics = {
 };
 ```
 
-`EntityType` is the engine's existing taxonomy (crypto, network, file, credential, messaging, vulnerability, actor, org, …). It is enumerated in `types.ts` and generated from the engine's list in E4.
+`EntityType` uses the engine's own UPPER_SNAKE names (e.g. `RANSOMWARE_GROUP`, `ONION_URL`, `THREAT_ACTOR_HANDLE`, `ORGANIZATION_NAME`, `CVE`), not lowercase categories. The canonical schema is in `packages/engine-client` (zod + `schemas/*.json`). `at` may be a Python `isoformat()` string with an offset.
 
 ## 4. Cloud policy (`VA_CLOUD_POLICY=1`): guarantees the job must enforce
 
