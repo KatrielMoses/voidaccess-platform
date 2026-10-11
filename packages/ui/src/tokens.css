@@ -2,8 +2,8 @@
  * VoidAccess brand tokens, shared by apps/site and apps/app.
  * Palette carried over from the engine UI (voidaccess/web/app/globals.css) so the
  * cloud product and the OSS UI look like one family. Fonts: Space Grotesk (display),
- * Inter (body), JetBrains Mono (mono) — load them per app with next/font and map
- * to --font-display / --font-body / --font-mono.
+ * Inter (body), JetBrains Mono (mono). Load them per app with next/font using
+ * variable names --nf-display / --nf-body / --nf-mono; the theme maps those below.
  * Use with Tailwind v4: @import "@voidaccess/ui/tokens.css"; then the @theme block
  * below exposes them as utilities (bg-void, text-accent, font-mono …).
  */
@@ -42,7 +42,7 @@
   --color-entity-email: #c9a35a;
   --color-entity-pgp: #73d397;
 
-  --font-display: var(--font-display), ui-sans-serif, system-ui;
-  --font-sans: var(--font-body), ui-sans-serif, system-ui;
-  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-display: var(--nf-display), ui-sans-serif, system-ui;
+  --font-sans: var(--nf-body), ui-sans-serif, system-ui;
+  --font-mono: var(--nf-mono), ui-monospace, monospace;
 }

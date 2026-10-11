@@ -27,6 +27,26 @@ export const DEPTHS: Record<Depth, { credits: number; launched: boolean; paidOnl
 };
 export const DEFAULT_DEPTH: Depth = "standard";
 
+/** Engine pipeline stages, in execution order (engine runs extract before enrich). */
+export const STAGES = ["refine", "collect", "filter", "fetch", "extract", "enrich", "graph", "summarize"] as const;
+export type Stage = (typeof STAGES)[number];
+
+/**
+ * Share of a run's cost per stage (sums to 100), from the E0 stage timings
+ * (docs/baseline/E0-REPORT.md §6). Used only for partial refunds on cancel/fail:
+ * refund = ceil(credits_charged * weight_of_stages_not_run / 100).
+ */
+export const STAGE_WEIGHTS: Record<Stage, number> = {
+  refine: 2,
+  collect: 20,
+  filter: 2,
+  fetch: 22,
+  extract: 26,
+  enrich: 18,
+  graph: 2,
+  summarize: 8,
+};
+
 export const ACTIONS = {
   rerun: "same_as_depth",
   monitorCheckCredits: 20, // P1, Pro+ only

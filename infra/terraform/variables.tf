@@ -27,9 +27,9 @@ variable "enable_database_url" {
 }
 
 variable "allow_unauthenticated" {
-  description = "Grant allUsers run.invoker on va-app (needed for public /api/health)."
+  description = "Grant allUsers run.invoker on va-app. Keep false until auth ships (P2); /dev/ui must be gated first."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "manage_iam" {

@@ -2,17 +2,6 @@
 @import "@voidaccess/ui/tokens.css";
 @source "../../../packages/ui/src";
 
-/*
- * next/font exposes --nf-display / --nf-body / --nf-mono on <html>. tokens.css
- * defines --font-display: var(--font-display) which is self-referential, so we
- * redefine the final font stacks here from the next/font variables.
- */
-:root {
-  --font-display: var(--nf-display), ui-sans-serif, system-ui;
-  --font-sans: var(--nf-body), ui-sans-serif, system-ui;
-  --font-mono: var(--nf-mono), ui-monospace, monospace;
-}
-
 html {
   color-scheme: dark;
 }
