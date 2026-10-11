@@ -23,7 +23,8 @@ export class LogTransport implements EmailTransport {
     const entry = { ...msg, at: new Date().toISOString() };
     this.outbox.push(entry);
     if (this.file) appendFileSync(this.file, JSON.stringify(entry) + "\n");
-    if (process.env.NODE_ENV !== "test") console.log(`[email:log] to=${msg.to} template=${msg.template}\n${msg.text}\n`);
+    if (process.env.NODE_ENV !== "test")
+      console.log(`[email:log] to=${msg.to} template=${msg.template}\n${msg.text}\n`);
   }
 }
 
@@ -49,7 +50,11 @@ let log: LogTransport | undefined;
 /** Resend when RESEND_API_KEY is set (production), otherwise the log transport. */
 export function getTransport(env: NodeJS.ProcessEnv = process.env): EmailTransport {
   if (transport) return transport;
-  if (env.RESEND_API_KEY) transport = new ResendTransport(env.RESEND_API_KEY, env.EMAIL_FROM ?? "VoidAccess <no-reply@voidaccess.pro>");
+  if (env.RESEND_API_KEY)
+    transport = new ResendTransport(
+      env.RESEND_API_KEY,
+      env.EMAIL_FROM ?? "VoidAccess <no-reply@voidaccess.pro>",
+    );
   else transport = log = new LogTransport();
   return transport;
 }
@@ -60,16 +65,21 @@ export function getLogTransport(): LogTransport | undefined {
   return log;
 }
 
-const fill = (tpl: string, vars: Record<string, string>) => tpl.replace(/\{\{(\w+)\}\}/g, (_, k: string) => vars[k] ?? "");
-const compose = (t: { subject: string; body: string }, vars: Record<string, string>) =>
-  ({ subject: t.subject, text: `${fill(t.body, vars)}\n\n${EMAIL_CONTENT.signature}\n` });
+const fill = (tpl: string, vars: Record<string, string>) =>
+  tpl.replace(/\{\{(\w+)\}\}/g, (_, k: string) => vars[k] ?? "");
+const compose = (t: { subject: string; body: string }, vars: Record<string, string>) => ({
+  subject: t.subject,
+  text: `${fill(t.body, vars)}\n\n${EMAIL_CONTENT.signature}\n`,
+});
 
 export const templates = {
   verifyEmail: (p: { name: string; url: string }) => compose(EMAIL_CONTENT.verifyEmail, p),
-  magicLink: (p: { url: string; minutes?: number }) => compose(EMAIL_CONTENT.magicLink, { url: p.url, minutes: String(p.minutes ?? 5) }),
+  magicLink: (p: { url: string; minutes?: number }) =>
+    compose(EMAIL_CONTENT.magicLink, { url: p.url, minutes: String(p.minutes ?? 5) }),
   passwordReset: (p: { name: string; url: string }) => compose(EMAIL_CONTENT.passwordReset, p),
   changeEmail: (p: { name: string; url: string }) => compose(EMAIL_CONTENT.changeEmail, p),
-  resultsReady: (p: { name: string; query: string; resultsUrl: string }) => compose(EMAIL_CONTENT.resultsReady, p),
+  resultsReady: (p: { name: string; query: string; resultsUrl: string }) =>
+    compose(EMAIL_CONTENT.resultsReady, p),
 };
 
 export type TemplateName = keyof typeof templates;
@@ -80,6 +90,8 @@ export async function sendEmail<T extends TemplateName>(
   to: string,
   params: Parameters<(typeof templates)[T]>[0],
 ): Promise<void> {
-  const { subject, text } = (templates[template] as (p: typeof params) => { subject: string; text: string })(params);
+  const { subject, text } = (templates[template] as (p: typeof params) => { subject: string; text: string })(
+    params,
+  );
   await getTransport().send({ to, subject, text, template });
 }
