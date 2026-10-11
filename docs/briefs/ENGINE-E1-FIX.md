@@ -1,3 +1,5 @@
+> **STATUS: DONE, do not send.** The architect applied these fixes directly on 2026-10-11. Engine commit eb7fab7, merged to local main as d384b1e. Full suite: 1576 passed, 1 pre-existing pacing timing failure. CLI smoke run passed.
+
 BRIEF — Lane ENGINE, Sub-phase E1-FIX: Close out E1 (test fix, summary coverage, commit)
 
 Follow-up in the same chat as E1. Validation of your E1 handoff (2026-10-11, Python 3.11 venv, full suite on `main` vs your branch):
