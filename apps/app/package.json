@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test e2e/app.spec.ts",
+    "test:screenshots": "playwright test e2e/screenshots.spec.ts"
   },
   "dependencies": {
     "@voidaccess/config": "workspace:*",
@@ -20,6 +22,7 @@
     "better-auth": "^1.7.7",
     "drizzle-orm": "^0.45.4",
     "next": "^16.4.0",
+    "pg": "^8.23.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zod": "^4.6.0"
@@ -33,6 +36,7 @@
     "typescript": "^5.9.0",
     "vitest": "^5.0.0",
     "@playwright/test": "^1.60.0",
-    "tsx": "^4.23.0"
+    "tsx": "^4.23.0",
+    "@types/pg": "^8.23.0"
   }
 }

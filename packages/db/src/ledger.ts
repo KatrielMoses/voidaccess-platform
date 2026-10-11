@@ -141,11 +141,13 @@ export interface RefundResult {
  * Refund a reserved run, once per investigation. Full by default; pass `stagesCompleted` for a partial
  * refund of the stages that did not run. Credits return to the buckets they were taken from, most
  * recently spent first (top-up lots, then grant).
+ * `refundAmount` (credits, clamped to 0..charged) overrides the stage-weight maths, so the caller can apply
+ * its own rounding rule (the platform uses ceil(charged * weight_not_run / 100) for cancels).
  */
 export async function refund(
   userId: string,
   investigationId: string,
-  opts: { stagesCompleted?: readonly Stage[] } = {},
+  opts: { stagesCompleted?: readonly Stage[]; refundAmount?: number } = {},
   ctx: Ctx = {},
 ): Promise<RefundResult> {
   return inSystem(ctx, "ledger.refund", async (tx) => {
@@ -161,7 +163,10 @@ export async function refund(
       return { refunded: prior.reduce((a, r) => a + r.amount, 0), charged, alreadyRefunded: true };
     }
     const keep = opts.stagesCompleted ? Math.round(charged * consumedShare(opts.stagesCompleted)) : 0;
-    let left = Math.max(0, Math.min(charged, charged - keep));
+    let left =
+      opts.refundAmount !== undefined
+        ? Math.max(0, Math.min(charged, Math.floor(opts.refundAmount)))
+        : Math.max(0, Math.min(charged, charged - keep));
     const refunded = left;
 
     const lotReserves = reserves.filter((r) => r.lotId);

@@ -202,6 +202,21 @@ describe("ledger", () => {
     await assertConsistent(u);
   });
 
+  it("refund: an explicit refundAmount overrides the stage maths (ceil rule), clamped to the charge", async () => {
+    const u = await makeUser("free");
+    await adminGrant(u, 100, u, "ra:" + u, {}, ctx);
+    const inv = await newInvestigation(u, "standard");
+    await reserve(u, inv, "standard", ctx); // 40
+    // ceil(40 * 78 / 100) = 32 (the stage-share path would give 40 - round(8.8) = 31)
+    const r = await refund(u, inv, { refundAmount: Math.ceil((40 * 78) / 100) }, ctx);
+    expect(r).toMatchObject({ charged: 40, refunded: 32, alreadyRefunded: false });
+    expect(await refund(u, inv, { refundAmount: 40 }, ctx)).toMatchObject({ alreadyRefunded: true });
+    const inv2 = await newInvestigation(u, "quick");
+    await reserve(u, inv2, "quick", ctx); // 20
+    expect((await refund(u, inv2, { refundAmount: 999 }, ctx)).refunded).toBe(20);
+    await assertConsistent(u);
+  });
+
   it("20 parallel reserves cannot double-spend", async () => {
     const u = await makeUser("free");
     await adminGrant(u, 100, u, "par:" + u, {}, ctx); // 100 credits → exactly 2 standard runs (40 each), 20 left
