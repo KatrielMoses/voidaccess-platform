@@ -9,7 +9,8 @@ import { seed } from "./seed";
 const owner = new URL(process.env.MIGRATE_DATABASE_URL ?? "postgres://localhost/voidaccess_dev");
 if (!["localhost", "127.0.0.1", ""].includes(owner.hostname))
   throw new Error("dev-setup only runs against a local database");
-const DEV_PASSWORD = "va_app_dev";
+// va_app is a cluster-wide role: dev-setup and tests must agree on its local password.
+const DEV_PASSWORD = process.env.VA_APP_LOCAL_PASSWORD ?? "va_app_local";
 
 await runMigrations(owner.toString());
 const client = new pg.Client({ connectionString: owner.toString() });
