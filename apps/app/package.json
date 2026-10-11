@@ -13,7 +13,12 @@
   "dependencies": {
     "@voidaccess/config": "workspace:*",
     "@voidaccess/db": "workspace:*",
+    "@voidaccess/emails": "workspace:*",
+    "@voidaccess/engine-client": "workspace:*",
+    "@voidaccess/engine-mock": "workspace:*",
     "@voidaccess/ui": "workspace:*",
+    "better-auth": "^1.7.7",
+    "drizzle-orm": "^0.45.4",
     "next": "^16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -26,6 +31,8 @@
     "@types/react-dom": "^19.3.0",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.9.0",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "@playwright/test": "^1.60.0",
+    "tsx": "^4.23.0"
   }
 }
