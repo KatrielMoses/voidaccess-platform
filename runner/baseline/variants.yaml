@@ -1,0 +1,25 @@
+# E1B variants. Applied by policy.apply_variant_env() after the depth preset.
+# A = speed profile, full sources (isolates the speed effect)
+# B = speed profile + cloud enrichment allowlist (the launch configuration)
+# C = B at 1 vCPU / 1 GiB (memory check; the vCPU/memory come from the execution)
+# Values below are the profile under test; the recommended final values are
+# settled by the measurement and written to docs/baseline/E1B-REPORT.md.
+speed_profile: &speed
+  VOIDACCESS_PACE: aggressive
+  VOIDACCESS_SEARCH_WORKERS: "16"
+  VOIDACCESS_SCRAPE_WORKERS: "12"
+  VOIDACCESS_EXTRACT_CONCURRENCY: "8"
+  VOIDACCESS_SEARCH_DEADLINE: "25"
+  VOIDACCESS_CONCURRENT_COLLECT: "1"
+  VOIDACCESS_ENRICHMENT_TIMEOUT: "45"
+
+A:
+  env: *speed
+B:
+  env:
+    <<: *speed
+    VOIDACCESS_ENRICHMENT_SOURCES: "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack"
+C:
+  env:
+    <<: *speed
+    VOIDACCESS_ENRICHMENT_SOURCES: "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack"
