@@ -1,0 +1,3 @@
+# Image-side harness deps. The engine pins httpx and pyyaml itself, so only the
+# GCS client is added on top.
+google-cloud-storage==2.19.0

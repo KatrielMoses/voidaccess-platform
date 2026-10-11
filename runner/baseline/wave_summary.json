@@ -1,0 +1,18 @@
+{
+  "wave": "w1791740461",
+  "executions": {
+    "w1791740461": "engine-baseline-rs4vb",
+    "w1791740461c2": "engine-baseline-922xj"
+  },
+  "cells": {
+    "ok": 110,
+    "timeout": 0,
+    "error": 0,
+    "missing": 4
+  },
+  "est_llm_usd_from_tokens": 2.3078980999999983,
+  "key_usage_delta_usd": 1.851105835,
+  "relative_difference": 0.24676723305774587,
+  "within_tolerance": false,
+  "tolerance": 0.1
+}

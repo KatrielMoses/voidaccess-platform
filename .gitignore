@@ -12,5 +12,6 @@ coverage/
 __pycache__/
 *.pyc
 .venv/
+runner/baseline/matrix_state.json
 *.tfstate*
 .terraform/

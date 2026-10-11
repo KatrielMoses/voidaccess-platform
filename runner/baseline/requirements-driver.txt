@@ -1,0 +1,5 @@
+# Local matrix driver only (not installed in the image).
+google-cloud-storage==2.19.0
+google-cloud-run==0.10.19
+httpx==0.28.1
+PyYAML==6.0.3

@@ -1,0 +1,31 @@
+steps:
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        ENGINE_SHA=$(cat engine/ENGINE_GIT_SHA.txt)
+        echo "Engine snapshot: $$ENGINE_SHA"
+        if find engine \( -name '.env' -o \( -name '.env.*' ! -name '.env.example' \) \) | grep -q .; then
+          echo 'FATAL: .env in build context' >&2
+          exit 1
+        fi
+        echo 'Build context secret check: OK (no .env files under engine/)'
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - runner/baseline/Dockerfile
+      - --build-arg
+      - ENGINE_GIT_SHA=$_ENGINE_GIT_SHA
+      - -t
+      - us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/engine-baseline:$_ENGINE_GIT_SHA
+      - .
+
+images:
+  - us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/engine-baseline:$_ENGINE_GIT_SHA
+
+substitutions:
+  _ENGINE_GIT_SHA: unknown

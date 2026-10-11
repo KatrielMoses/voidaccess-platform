@@ -1,0 +1,32 @@
+# Maps VoidAccess Cloud depth names → CLI flags and env caps.
+# See README.md for how run_one applies these before importing engine modules.
+
+quick:
+  cli_depth: shallow
+  env:
+    ENABLE_RELATIONSHIP_EXTRACTION: "false"
+    MAX_LLM_PAGES_PER_INV: "3"
+    MAX_REL_PAGES_PER_INV: "3"
+    PASTE_MAX_RESULTS: "5"
+    GITHUB_MAX_RESULTS: "5"
+    GITLAB_MAX_RESULTS: "5"
+  notes: >
+    Low LLM page budget via MAX_LLM_PAGES_PER_INV (harness patch for CLI;
+    API reads the same env natively). Relationship extraction disabled.
+
+standard:
+  cli_depth: normal
+  env: {}
+  notes: Engine defaults (MAX_LLM_PAGES_PER_INV=10, MAX_REL_PAGES_PER_INV=10, result caps from .env.example).
+
+deep:
+  cli_depth: deep
+  env:
+    MAX_LLM_PAGES_PER_INV: "20"
+    MAX_REL_PAGES_PER_INV: "15"
+    PASTE_MAX_RESULTS: "25"
+    GITHUB_MAX_RESULTS: "25"
+    GITLAB_MAX_RESULTS: "25"
+  notes: >
+    Raised caps and deep concurrency (top_n=40). The CLI investigate path does
+    not run the recursive .onion crawler (crawler/spider.py is API-only today).
