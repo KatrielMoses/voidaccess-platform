@@ -9,4 +9,4 @@ export * from "./founding";
 export * from "./platform";
 export * from "./vault";
 export * from "./archive";
-// export * from "./waitlist"; // P1 (SITE) adds this line
+export * from "./waitlist";

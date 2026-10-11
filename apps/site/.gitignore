@@ -1,0 +1,8 @@
+.dev.vars
+.open-next/
+.wrangler/
+test-results/
+playwright-report/
+.env.local
+next-env.d.ts
+tsconfig.tsbuildinfo
