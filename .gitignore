@@ -13,7 +13,5 @@ __pycache__/
 *.pyc
 .venv/
 runner/baseline/matrix_state.json
-runner/baseline/results.csv
-runner/baseline/results.jsonl
 *.tfstate*
 .terraform/
