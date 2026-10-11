@@ -1,4 +1,4 @@
-"""Generate docs/baseline/E0-REPORT.md from results.csv + GCS samples."""
+"""Compute E0 report tables from results.csv (metrics only; no page text)."""
 
 from __future__ import annotations
 
@@ -13,87 +13,124 @@ from typing import Any
 from baseline.constants import MAX_COST_CENTS_PER_CREDIT
 
 _PKG = Path(__file__).resolve().parent
-_CSV = _PKG / "results.csv"
-_REPORT = _PKG.parent.parent / "docs" / "baseline" / "E0-REPORT.md"
+STRAWMAN = {"quick": 10, "standard": 25, "deep": 60}
+DEPTHS = ("quick", "standard", "deep")
+METRICS = (
+    ("duration_ms", "Duration (s)", 1000.0),
+    ("tor_bootstrap_ms", "Tor bootstrap (s)", 1000.0),
+    ("pages_count", "Pages", 1.0),
+    ("entities_total", "Entities", 1.0),
+    ("relationships_total", "Relationships", 1.0),
+    ("llm_calls", "LLM calls", 1.0),
+    ("llm_cost_usd", "LLM $", 1.0),
+    ("compute_cost_usd", "Compute $", 1.0),
+    ("total_cost_usd", "Total $", 1.0),
+)
 
 
-def _percentile(values: list[float], p: float) -> float | None:
-    if not values:
+def percentile(values: list[float], q: float) -> float:
+    ordered = sorted(values)
+    if not ordered:
+        return float("nan")
+    k = (len(ordered) - 1) * q
+    lo, hi = math.floor(k), math.ceil(k)
+    return ordered[lo] + (ordered[hi] - ordered[lo]) * (k - lo)
+
+
+def load_rows() -> list[dict[str, str]]:
+    """results.csv rows with compute/total cost filled in where the run did not record it.
+
+    The parallel wave did not pass the Cloud Run rates into the tasks, so compute cost is
+    derived here from the recorded duration, vCPU and memory with the rates verified on
+    CLOUD_RUN_PRICING_URL on 2026-10-11 (same formula as compute.compute_cost_usd).
+    """
+    from baseline.constants import CLOUD_RUN_GIB_PER_S_USD, CLOUD_RUN_VCPU_PER_S_USD
+
+    with (_PKG / "results.csv").open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    for r in rows:
+        if r.get("status") not in ("ok", "completed") or not r.get("duration_ms"):
+            continue
+        if not r.get("compute_cost_usd"):
+            secs = float(r["duration_ms"]) / 1000.0
+            r["compute_cost_usd"] = str(
+                float(r["vcpu"]) * secs * CLOUD_RUN_VCPU_PER_S_USD
+                + float(r["memory_gib"]) * secs * CLOUD_RUN_GIB_PER_S_USD
+            )
+        r["total_cost_usd"] = str(float(r.get("llm_cost_usd") or 0.0) + float(r["compute_cost_usd"]))
+    return rows
+
+
+def _num(row: dict[str, str], key: str) -> float | None:
+    try:
+        return float(row[key]) if row.get(key) not in (None, "") else None
+    except ValueError:
         return None
-    values = sorted(values)
-    k = (len(values) - 1) * p
-    f = math.floor(k)
-    c = math.ceil(k)
-    if f == c:
-        return values[int(k)]
-    return values[f] * (c - k) + values[c] * (k - f)
 
 
-def _stats(rows: list[dict[str, Any]], field: str) -> dict[str, float | None]:
-    vals = [float(r[field]) for r in rows if r.get(field) not in (None, "", "None")]
-    if not vals:
-        return {"p50": None, "p90": None, "max": None}
-    return {
-        "p50": statistics.median(vals),
-        "p90": _percentile(vals, 0.9),
-        "max": max(vals),
-    }
+def stats(rows: list[dict[str, str]], key: str, scale: float) -> tuple[float, float, float] | None:
+    vals = [v / scale for r in rows if (v := _num(r, key)) is not None]
+    return (percentile(vals, 0.5), percentile(vals, 0.9), max(vals)) if vals else None
+
+
+def fmt(triple: tuple[float, float, float] | None, money: bool = False) -> str:
+    if triple is None:
+        return "n/a"
+    f = (lambda x: f"{x:.4f}") if money else (lambda x: f"{x:.1f}")
+    return " / ".join(f(x) for x in triple)
+
+
+def main_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Default variant, successful runs (sequential 6 + wave)."""
+    return [r for r in rows if r.get("variant") == "default" and r.get("status") == "completed" or
+            (r.get("variant") == "default" and r.get("status") == "ok")]
+
+
+def headline(rows: list[dict[str, str]]) -> str:
+    out = ["| Metric (p50 / p90 / max) | quick | standard | deep |", "|---|---|---|---|"]
+    by_depth = {d: [r for r in main_rows(rows) if r["depth"] == d] for d in DEPTHS}
+    out.append("| n (successful cells) | " + " | ".join(str(len(by_depth[d])) for d in DEPTHS) + " |")
+    for key, label, scale in METRICS:
+        money = key.endswith("usd")
+        out.append(f"| {label} | " + " | ".join(fmt(stats(by_depth[d], key, scale), money) for d in DEPTHS) + " |")
+    return "\n".join(out)
+
+
+def credits_table(rows: list[dict[str, str]]) -> str:
+    out = ["| Depth | p90 total cost (¢) | credits = ceil(p90 / 0.0778¢) | PRD strawman |", "|---|---:|---:|---:|"]
+    for d in DEPTHS:
+        t = stats([r for r in main_rows(rows) if r["depth"] == d], "total_cost_usd", 0.01)
+        if t is None:
+            out.append(f"| {d} | n/a | n/a | {STRAWMAN[d]} |")
+            continue
+        out.append(f"| {d} | {t[1]:.3f} | {math.ceil(t[1] / MAX_COST_CENTS_PER_CREDIT)} | {STRAWMAN[d]} |")
+    return "\n".join(out)
+
+
+def stage_breakdown(rows: list[dict[str, str]], depth: str = "quick") -> str:
+    sel = [r for r in main_rows(rows) if r["depth"] == depth]
+    stage_keys = [k for k in (sel[0] if sel else {}) if k.startswith("stage_")]
+    out = [f"| Stage ({depth}, n={len(sel)}) | p50 s | p90 s | max s | share of p50 total |", "|---|---:|---:|---:|---:|"]
+    total_p50 = statistics.median([_num(r, "duration_ms") / 1000 for r in sel if _num(r, "duration_ms")]) if sel else 0
+    for key in ["tor_bootstrap_ms", *stage_keys]:
+        t = stats(sel, key, 1000.0)
+        if t:
+            out.append(f"| {key.removeprefix('stage_').removesuffix('_ms')} | {t[0]:.1f} | {t[1]:.1f} | {t[2]:.1f} | {100 * t[0] / total_p50:.0f}% |")
+    return "\n".join(out)
+
+
+def variant_compare(rows: list[dict[str, str]], variant: str, metrics: tuple[str, ...]) -> dict[str, Any]:
+    base = {r["query_id"]: r for r in main_rows(rows) if r["depth"] == "standard"}
+    other = [r for r in rows if r.get("variant") == variant and r.get("status") in ("ok", "completed")]
+    pairs = [(base[r["query_id"]], r) for r in other if r["query_id"] in base]
+    return {"n": len(other), "paired": len(pairs), "pairs": pairs}
 
 
 def main() -> None:
-    if not _CSV.exists():
-        raise SystemExit(f"missing {_CSV}")
-
-    rows = list(csv.DictReader(_CSV.open(encoding="utf-8")))
-    by_depth: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for row in rows:
-        if row.get("error"):
-            continue
-        if row.get("exit_code") not in (None, "", "0", 0):
-            continue
-        by_depth[row.get("depth") or "unknown"].append(row)
-
-    lines = [
-        "# E0 baseline report",
-        "",
-        "Auto-generated from `runner/baseline/results.csv`. Re-run `python -m baseline.report` after the matrix completes.",
-        "",
-        "## Headline cost table (USD)",
-        "",
-        "| Depth | p50 duration (s) | p90 duration (s) | p50 pages | p90 LLM $ | p90 compute $ | p90 total $ |",
-        "|---|---:|---:|---:|---:|---:|---:|",
-    ]
-    credit_rows = []
-    for depth in ("quick", "standard", "deep"):
-        bucket = by_depth.get(depth, [])
-        dur = _stats(bucket, "duration_ms")
-        pages = _stats(bucket, "pages_count")
-        llm = _stats(bucket, "llm_cost_usd")
-        comp = _stats(bucket, "compute_cost_usd")
-        tot = _stats(bucket, "total_cost_usd")
-        lines.append(
-            f"| {depth} | {(dur['p50'] or 0)/1000:.1f} | {(dur['p90'] or 0)/1000:.1f} | "
-            f"{pages['p50'] or 0:.0f} | {llm['p90'] or 0:.4f} | {comp['p90'] or 0:.4f} | {tot['p90'] or 0:.4f} |"
-        )
-        if tot["p90"] is not None:
-            cents = tot["p90"] * 100
-            credits = math.ceil(cents / MAX_COST_CENTS_PER_CREDIT)
-            credit_rows.append((depth, credits, cents))
-
-    lines.extend(["", "## Recommended credits per depth", ""])
-    for depth, credits, cents in credit_rows:
-        lines.append(f"- **{depth}**: {credits} credits (p90 cost ≈ {cents:.3f}¢)")
-    lines.append("")
-    lines.append("PRD strawman comparison: quick 10 / standard 25 / deep 60.")
-    lines.append("")
-    failures = [r for r in rows if r.get("error") or r.get("exit_code") not in (None, "", "0")]
-    lines.extend(["## Failures", "", f"Count: {len(failures)}", ""])
-    for f in failures[:40]:
-        lines.append(f"- {f.get('query_id')} {f.get('depth')} {f.get('variant')}: {f.get('error') or f.get('exit_code')}")
-
-    _REPORT.parent.mkdir(parents=True, exist_ok=True)
-    _REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(_REPORT)
+    data = load_rows()
+    print(headline(data), "\n")
+    print(credits_table(data), "\n")
+    print(stage_breakdown(data))
 
 
 if __name__ == "__main__":

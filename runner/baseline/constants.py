@@ -24,9 +24,8 @@ SECRET_OPENROUTER_KEY = "openrouter-api-key"
 CLOUD_RUN_VCPU_PER_S_USD = 0.000018
 CLOUD_RUN_GIB_PER_S_USD = 0.000002
 
-# Comparison subsets (vcpu / bypass / model) use the first N queries. 8, not 10: three
-# executions were spent debugging the harness and the 120-execution cap has no slack.
-COMPARE_SUBSET_SIZE = 8
+# Comparison subsets (vcpu / bypass / model) use the first N queries.
+COMPARE_SUBSET_SIZE = 10
 
 # Model comparison: the model the product plans to ship (DeepSeek V4.1 Flash).
 FLASH_COMPARE_MODEL = "openrouter/deepseek/deepseek-v4.1-flash"
@@ -50,3 +49,14 @@ CLOUD_RUN_PRICING_URL = "https://cloud.google.com/run/pricing"
 REVENUE_CENTS_PER_CREDIT = 0.389
 TARGET_MARGIN = 0.80
 MAX_COST_CENTS_PER_CREDIT = REVENUE_CENTS_PER_CREDIT * (1.0 - TARGET_MARGIN)  # ≈ 0.0778
+
+# Parallel wave (redirect 2026-10-11): per-cell wall-clock limits enforced inside the
+# entrypoint (a Cloud Run task has one timeout per execution), plus a backstop.
+CELL_TIMEOUT_QUICK_STANDARD_S = 30 * 60
+CELL_TIMEOUT_DEEP_S = 40 * 60
+CLOUD_RUN_TASK_TIMEOUT_BACKSTOP_S = 41 * 60
+WAVE_PARALLELISM = 50
+WAVE_SPEND_POLL_INTERVAL_S = 120.0
+WAVE_MIN_LIMIT_REMAINING_USD = 9.0
+WAVE_USAGE_CROSSCHECK_TOLERANCE = 0.10
+GCS_WAVE_PREFIX = "baseline/waves"

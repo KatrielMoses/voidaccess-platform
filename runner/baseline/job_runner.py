@@ -12,8 +12,14 @@ from pathlib import Path
 from typing import Any
 
 from baseline import __version__ as harness_version
+from baseline.constants import (
+    CELL_TIMEOUT_DEEP_S,
+    CELL_TIMEOUT_QUICK_STANDARD_S,
+    FLASH_COMPARE_MODEL,
+)
+from baseline.llm_usage import UsageRecorder, install_usage_recording
 from baseline.compute import CloudRunRates, compute_cost_usd
-from baseline.metrics import aggregate_entity_counts, aggregate_relationship_counts, collect_sqlite_metrics
+from baseline.metrics import latest_investigation_id, aggregate_entity_counts, aggregate_relationship_counts, collect_sqlite_metrics
 from baseline.openrouter import fetch_key_usage, wait_for_stable_usage
 from baseline.policy import (
     apply_cloud_policy_base,
@@ -28,6 +34,41 @@ from baseline.progress_hook import ProgressCapture, install_display_hook
 from baseline.refusal import detect_refusals
 from baseline.storage import upload_result
 from baseline.tor_service import start_tor, stop_tor
+
+
+def _apply_task_cell() -> None:
+    """Parallel mode: map CLOUD_RUN_TASK_INDEX to a cell in WAVE_CELLS (base64 JSON list of
+    [query_id, depth, variant]). The runner service account can write to the bucket but not
+    read it, so the manifest travels in an env var. vCPU/memory come from the execution's
+    BASELINE_VCPU / BASELINE_MEMORY_GIB env."""
+    wave = os.environ.get("WAVE_ID", "").strip()
+    index = os.environ.get("CLOUD_RUN_TASK_INDEX")
+    if not wave or index is None:
+        return
+    import base64
+
+    cells = json.loads(base64.b64decode(os.environ["WAVE_CELLS"]).decode("utf-8"))
+    query_id, depth, variant = cells[int(index)]
+    os.environ["RUN_ID"] = f"{wave}-{int(index):03d}"
+    os.environ["QUERY_ID"] = query_id
+    os.environ["DEPTH"] = depth
+    os.environ["RUN_VARIANT"] = variant
+    os.environ["SAFETY_BYPASS"] = "1" if variant == "bypass_compare" else "0"
+    os.environ["MEASURE_LLM_COST"] = "0"
+    if variant == "flash_compare":
+        os.environ["MODEL_OVERRIDE"] = FLASH_COMPARE_MODEL
+    else:
+        os.environ.pop("MODEL_OVERRIDE", None)
+
+
+def _configured_model(cfg: dict[str, Any]) -> str:
+    from voidaccess.llm import DEFAULT_MODEL  # noqa: F401  (documented fallback)
+
+    return str(cfg.get("llm", {}).get("model") or DEFAULT_MODEL)
+
+
+def _cell_timeout_s(depth_name: str) -> float:
+    return CELL_TIMEOUT_DEEP_S if depth_name == "deep" else CELL_TIMEOUT_QUICK_STANDARD_S
 
 
 def _run_dir() -> Path:
@@ -57,25 +98,31 @@ async def _execute_investigation(
     out_dir: Path,
     model: str | None,
     quiet: bool,
+    timeout_s: float,
 ) -> int:
     from voidaccess_cli.commands.investigate import _run_investigation
 
-    await _run_investigation(
-        query=query,
-        out_dir=out_dir,
-        model=model,
-        no_tor=False,
-        no_llm=False,
-        depth=cli_depth,
-        fmt="json",
-        quiet=quiet,
+    await asyncio.wait_for(
+        _run_investigation(
+            query=query,
+            out_dir=out_dir,
+            model=model,
+            no_tor=False,
+            no_llm=False,
+            depth=cli_depth,
+            fmt="json",
+            quiet=quiet,
+        ),
+        timeout=timeout_s,
     )
     return 0
 
 
 def main() -> None:
     t0 = time.monotonic()
+    _apply_task_cell()
     exit_code = 0
+    status = "ok"
     tor_proc = None
     tor_bootstrap_ms: float | None = None
     run_base = _run_dir()
@@ -121,6 +168,8 @@ def main() -> None:
         print("safety-bypass switch did not take effect", file=sys.stderr)
         sys.exit(2)
 
+    usage_recorder = UsageRecorder()
+    install_usage_recording(usage_recorder)
     patch_cli_llm_page_cap()
     progress = ProgressCapture()
     install_display_hook(progress)
@@ -146,12 +195,22 @@ def main() -> None:
         os.environ["TOR_PROXY_PORT"] = "9050"
 
         try:
-            asyncio.run(_execute_investigation(query_text, cli_depth, out_dir, model_override, quiet=True))
+            asyncio.run(
+                _execute_investigation(
+                    query_text, cli_depth, out_dir, model_override, True, _cell_timeout_s(depth_name)
+                )
+            )
+        except asyncio.TimeoutError:
+            status = "timeout"
+            exit_code = 124
+            print(f"investigation timed out after {_cell_timeout_s(depth_name):.0f}s", file=sys.stderr)
         except SystemExit as exc:
             exit_code = int(exc.code) if isinstance(exc.code, int) else 1
+            status = "error" if exit_code else "ok"
         except Exception as exc:
             print(f"investigation failed: {exc}", file=sys.stderr)
             exit_code = 1
+            status = "error"
     finally:
         stop_tor(tor_proc)
 
@@ -161,7 +220,7 @@ def main() -> None:
     if json_path and json_path.exists():
         cli_payload = json.loads(json_path.read_text(encoding="utf-8"))
 
-    inv_id = str(cli_payload.get("id") or "")
+    inv_id = str(cli_payload.get("id") or latest_investigation_id(db_path))
     sqlite_metrics = (
         collect_sqlite_metrics(db_path, inv_id) if inv_id and db_path.exists() else {}
     )
@@ -178,9 +237,11 @@ def main() -> None:
         pages_count=int(sqlite_metrics.get("pages_count") or len(cli_payload.get("pages_scraped") or [])),
     )
 
-    llm_cost_usd = None
+    llm_usage = usage_recorder.summarize(model_override or cli_payload.get("model_used") or _configured_model(cfg))
+    llm_cost_usd = llm_usage["est_cost_usd"]
+    measured_delta_usd = None
     if measure_cost and usage_before is not None:
-        llm_cost_usd = wait_for_stable_usage(api_key, usage_before)
+        measured_delta_usd = wait_for_stable_usage(api_key, usage_before)
 
     vcpu = float(os.environ.get("BASELINE_VCPU", "1"))
     memory_gib = float(os.environ.get("BASELINE_MEMORY_GIB", "2"))
@@ -208,6 +269,7 @@ def main() -> None:
         "harness_version": harness_version,
         "engine_version": os.environ.get("ENGINE_GIT_SHA", "unknown"),
         "model_used": cli_payload.get("model_used") or model_override,
+        "llm_usage": llm_usage,
         "cli_payload": cli_payload,
         "metrics": {
             "duration_ms": duration_ms,
@@ -215,7 +277,12 @@ def main() -> None:
             "exit_code": exit_code,
             **sqlite_metrics,
             **refusal,
+            "status": status,
             "llm_cost_usd": llm_cost_usd,
+            "llm_cost_measured_delta_usd": measured_delta_usd,
+            "llm_calls_recorded": llm_usage["llm_calls"],
+            "prompt_tokens": llm_usage["prompt_tokens"],
+            "completion_tokens": llm_usage["completion_tokens"],
             "compute_cost_usd": compute_usd,
             "total_cost_usd": (
                 (llm_cost_usd or 0.0) + (compute_usd or 0.0)

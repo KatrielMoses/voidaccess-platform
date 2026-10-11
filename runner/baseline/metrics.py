@@ -119,3 +119,13 @@ def aggregate_relationship_counts(relationships: list[dict[str, Any]]) -> Counte
         rt = rel.get("type") or rel.get("relationship_type") or "unknown"
         counts[str(rt)] += 1
     return counts
+
+
+def latest_investigation_id(db_path: Path) -> str:
+    """Fallback when no CLI JSON exists (timeout): newest investigation row in this run's DB."""
+    try:
+        with _connect(db_path) as conn:
+            row = conn.execute("SELECT id FROM investigations ORDER BY created_at DESC LIMIT 1").fetchone()
+        return str(row["id"]) if row else ""
+    except sqlite3.Error:
+        return ""
