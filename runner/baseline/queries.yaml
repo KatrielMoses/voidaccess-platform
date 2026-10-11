@@ -1,0 +1,94 @@
+# Legitimate OSINT queries only — organisations, groups, malware, CVEs, public IOCs.
+# One-line public-source note per row (committed before any Cloud Run execution).
+
+queries:
+  - id: q01
+    query: "LockBit ransomware leak site"
+    source_note: "Public reporting on LockBit takedown and leak-site mirrors (CISA / Europol advisories)."
+  - id: q02
+    query: "BlackCat ALPHV ransomware victims"
+    source_note: "FBI flash alert and vendor reports naming ALPHV/BlackCat campaigns."
+  - id: q03
+    query: "Cl0p MOVEit extortion group"
+    source_note: "CISA AA23-158a and MS-ISAC guidance on Cl0p MOVEit exploitation."
+  - id: q04
+    query: "Akira ransomware group profile"
+    source_note: "Public summaries on Akira ransomware (CISA #StopRansomware hub)."
+  - id: q05
+    query: "Royal ransomware dark web"
+    source_note: "Joint cybersecurity advisories referencing Royal ransomware operations."
+  - id: q06
+    query: "Play ransomware leak blog"
+    source_note: "Vendor threat reports documenting Play ransomware victim listings."
+  - id: q07
+    query: "Scattered Spider social engineering"
+    source_note: "CISA/Multi-agency advisory on Scattered Spider (UNC3944) techniques."
+  - id: q08
+    query: "Lazarus Group cryptocurrency theft"
+    source_note: "FBI/DHS advisory on DPRK Lazarus-linked crypto heists."
+  - id: q09
+    query: "FIN7 Carbanak cybercrime"
+    source_note: "DOJ indictments and public profiles of FIN7/Carbanak activity."
+  - id: q10
+    query: "Qakbot malware infrastructure"
+    source_note: "Operation Duck Hunt takedown press release and CISA Qakbot guidance."
+  - id: q11
+    query: "Emotet botnet distribution"
+    source_note: "Public Emotet takedown reporting and CISA alert AA20-280A."
+  - id: q12
+    query: "RedLine stealer logs marketplace"
+    source_note: "Industry reports on RedLine infostealer log sales (named malware family)."
+  - id: q13
+    query: "Cobalt Strike C2 servers"
+    source_note: "Public C2 tracking feeds and MITRE S0154 technique documentation."
+  - id: q14
+    query: "IcedID banking trojan"
+    source_note: "Public malware encyclopedia entries and CISA malware analysis reports."
+  - id: q15
+    query: "CVE-2023-34362 MOVEit vulnerability"
+    source_note: "NVD entry CVE-2023-34362 and vendor PSIRT bulletins."
+  - id: q16
+    query: "CVE-2021-44228 Log4Shell exploitation"
+    source_note: "CISA known-exploited catalog listing for Log4Shell."
+  - id: q17
+    query: "CVE-2024-3400 PAN-OS command injection"
+    source_note: "Palo Alto PSIRT and CISA KEV entry for CVE-2024-3400."
+  - id: q18
+    query: "Conti ransomware source code leak"
+    source_note: "Public reporting on Conti source leak after group internal chat exposure."
+  - id: q19
+    query: "Hive ransomware decryption keys release"
+    source_note: "FBI/DOJ announcement of Hive takedown and key release."
+  - id: q20
+    query: "Colonial Pipeline DarkSide ransomware"
+    source_note: "Public incident reporting on DarkSide attack against Colonial Pipeline."
+  - id: q21
+    query: "MGM Resorts Scattered Spider attack"
+    source_note: "Public news coverage of 2023 MGM cyber incident attributed to Scattered Spider."
+  - id: q22
+    query: "Change Healthcare BlackCat ransomware"
+    source_note: "HHS/ industry reporting on Change Healthcare ransomware incident."
+  - id: q23
+    query: "SolarWinds SUNBURST supply chain"
+    source_note: "CISA emergency directive and public SUNBURST analysis."
+  - id: q24
+    query: "WannaCry ransomware kill switch"
+    source_note: "Public Marcus Hutchins analysis and NCSC WannaCry guidance."
+  - id: q25
+    query: "TrickBot botnet takedown"
+    source_note: "Microsoft/ FS-ISAC public statements on TrickBot disruption."
+  - id: q26
+    query: "Genesis Market infostealer marketplace"
+    source_note: "Europol press release on Genesis Market takedown (2023)."
+  - id: q27
+    query: "BreachForums seized domain"
+    source_note: "DOJ seizure banner and public reporting on BreachForums law-enforcement action."
+  - id: q28
+    query: "Colonial Pipeline DarkSide bitcoin ransom wallet"
+    source_note: "DOJ forfeiture filings and public blockchain analysis of Colonial Pipeline ransom payments."
+  - id: q29
+    query: "facebookcorewwwi.onion historical mirror"
+    source_note: "Facebook's public Tor hidden service announcement (2014 blog post)."
+  - id: q30
+    query: "Dread forum darknet marketplace discussion"
+    source_note: "Public OSINT references to Dread as named dark-web forum (no personal targets)."
