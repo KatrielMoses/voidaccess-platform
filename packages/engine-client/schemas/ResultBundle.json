@@ -1,0 +1,410 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "number",
+      "const": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "query": {
+      "type": "string"
+    },
+    "refined_queries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "depth": {
+      "type": "string",
+      "enum": ["quick", "standard", "deep"]
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "engine_version": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "markdown": {
+          "type": "string"
+        },
+        "key_findings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "risk_notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "source_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": ["markdown", "key_findings", "risk_notes", "confidence", "source_count"],
+      "additionalProperties": false
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "RANSOMWARE_GROUP",
+              "THREAT_ACTOR",
+              "THREAT_ACTOR_HANDLE",
+              "MITRE_TECHNIQUE",
+              "MITRE_TACTIC",
+              "MALWARE_FAMILY",
+              "FILE_HASH_MD5",
+              "FILE_HASH_SHA1",
+              "FILE_HASH_SHA256",
+              "YARA_RULE",
+              "NUCLEI_TEMPLATE",
+              "CVE_NUMBER",
+              "CVE",
+              "EXPLOIT_DB_ID",
+              "IP_ADDRESS",
+              "IPV6_ADDRESS",
+              "MAC_ADDRESS",
+              "DOMAIN",
+              "ENS_DOMAIN",
+              "URL",
+              "ONION_URL",
+              "PASTE_URL",
+              "IPFS_CID",
+              "BITCOIN_ADDRESS",
+              "BITCOIN_CASH_ADDRESS",
+              "ETHEREUM_ADDRESS",
+              "ETH_ADDRESS",
+              "MONERO_ADDRESS",
+              "LITECOIN_ADDRESS",
+              "ZCASH_ADDRESS",
+              "DOGECOIN_ADDRESS",
+              "XRP_ADDRESS",
+              "SOLANA_ADDRESS",
+              "TRON_ADDRESS",
+              "DASH_ADDRESS",
+              "CRYPTO_SEED_PHRASE",
+              "API_KEY",
+              "AWS_ACCESS_KEY",
+              "AWS_SECRET_KEY",
+              "GITHUB_TOKEN",
+              "SLACK_TOKEN",
+              "DISCORD_TOKEN",
+              "JWT_TOKEN",
+              "GOOGLE_API_KEY",
+              "STRIPE_KEY",
+              "STEALER_LOG_ENTRY",
+              "COMBO_LIST_ENTRY",
+              "TELEGRAM_HANDLE",
+              "DISCORD_HANDLE",
+              "XMPP_JID",
+              "TOX_ID",
+              "SESSION_ID",
+              "MATRIX_HANDLE",
+              "WIRE_HANDLE",
+              "ICQ_NUMBER",
+              "WICKR_ID",
+              "EMAIL_ADDRESS",
+              "PHONE_NUMBER",
+              "PERSON_NAME",
+              "PGP_KEY_BLOCK",
+              "ORGANIZATION_NAME",
+              "LOCATION",
+              "DATE"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "display_value": {
+            "type": "string"
+          },
+          "sensitive": {
+            "type": "boolean"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["id", "type", "value", "display_value", "sensitive", "confidence", "source_ids", "tags"],
+        "additionalProperties": false
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "evidence_source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["source", "target", "type", "weight", "evidence_source_ids"],
+        "additionalProperties": false
+      }
+    },
+    "actors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "handle": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entity_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "handle", "aliases", "entity_ids"],
+        "additionalProperties": false
+      }
+    },
+    "communities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "entity_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "entity_ids"],
+        "additionalProperties": false
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["tor_search", "onion_page", "paste", "code_forge", "feed", "enrichment"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": ["string", "null"]
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": ["id", "kind", "name", "url", "fetched_at", "excerpt"],
+        "additionalProperties": false
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "duration_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tor_bootstrap_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "stage_ms": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "enum": ["refine", "collect", "filter", "fetch", "extract", "enrich", "graph", "summarize"]
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "llm_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "llm_tokens_in": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "llm_tokens_out": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "llm_cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pages_fetched": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "bytes_fetched": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "enrichment_calls": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "required": [
+        "duration_ms",
+        "tor_bootstrap_ms",
+        "stage_ms",
+        "llm_calls",
+        "llm_tokens_in",
+        "llm_tokens_out",
+        "llm_cost_usd",
+        "pages_fetched",
+        "bytes_fetched",
+        "enrichment_calls"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "query",
+    "refined_queries",
+    "depth",
+    "started_at",
+    "completed_at",
+    "engine_version",
+    "summary",
+    "entities",
+    "relationships",
+    "actors",
+    "communities",
+    "sources",
+    "metrics"
+  ],
+  "additionalProperties": false,
+  "$id": "https://voidaccess.dev/schemas/ResultBundle.json",
+  "title": "ResultBundle"
+}
