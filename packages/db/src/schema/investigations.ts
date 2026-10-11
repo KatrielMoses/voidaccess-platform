@@ -41,7 +41,10 @@ export const investigations = pgTable(
     engineRunId: text("engine_run_id"),
     /** Net credits charged (reserve minus refunds). Prices come from @voidaccess/config via the ledger. */
     creditsCharged: integer("credits_charged").notNull().default(0),
-    refinedQueries: jsonb("refined_queries").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    refinedQueries: jsonb("refined_queries")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     createdAt: createdAt(),
     startedAt: tstz("started_at"),
     completedAt: tstz("completed_at"),
@@ -105,8 +108,14 @@ export const invEntities = pgTable(
     sensitive: boolean("sensitive").notNull().default(false),
     confidence: doublePrecision("confidence").notNull(),
     firstSeen: tstz("first_seen"),
-    sourceIds: text("source_ids").array().notNull().default(sql`'{}'::text[]`),
-    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+    sourceIds: text("source_ids")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
   },
   (t) => [
     uniqueIndex("inv_entities_inv_bundle_uq").on(t.investigationId, t.bundleId),
@@ -124,9 +133,15 @@ export const invRelationships = pgTable(
     targetBundleId: text("target_bundle_id").notNull(),
     type: text("type").notNull(),
     weight: doublePrecision("weight").notNull().default(1),
-    evidenceSourceIds: text("evidence_source_ids").array().notNull().default(sql`'{}'::text[]`),
+    evidenceSourceIds: text("evidence_source_ids")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
   },
-  (t) => [index("inv_relationships_inv_idx").on(t.investigationId), index("inv_relationships_user_idx").on(t.userId)],
+  (t) => [
+    index("inv_relationships_inv_idx").on(t.investigationId),
+    index("inv_relationships_user_idx").on(t.userId),
+  ],
 );
 
 export const invActors = pgTable(
@@ -135,13 +150,22 @@ export const invActors = pgTable(
     ...snapshotBase,
     bundleId: text("bundle_id").notNull(),
     handle: text("handle").notNull(),
-    aliases: text("aliases").array().notNull().default(sql`'{}'::text[]`),
-    entityBundleIds: text("entity_bundle_ids").array().notNull().default(sql`'{}'::text[]`),
+    aliases: text("aliases")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    entityBundleIds: text("entity_bundle_ids")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     firstSeen: tstz("first_seen"),
     lastSeen: tstz("last_seen"),
     summary: text("summary"),
   },
-  (t) => [uniqueIndex("inv_actors_inv_bundle_uq").on(t.investigationId, t.bundleId), index("inv_actors_user_idx").on(t.userId)],
+  (t) => [
+    uniqueIndex("inv_actors_inv_bundle_uq").on(t.investigationId, t.bundleId),
+    index("inv_actors_user_idx").on(t.userId),
+  ],
 );
 
 export const invSources = pgTable(
@@ -168,13 +192,25 @@ export const invSummary = pgTable(
   {
     ...snapshotBase,
     markdown: text("markdown").notNull(),
-    keyFindings: jsonb("key_findings").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
-    riskNotes: jsonb("risk_notes").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    keyFindings: jsonb("key_findings")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    riskNotes: jsonb("risk_notes")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     confidence: text("confidence").notNull(),
     sourceCount: integer("source_count").notNull().default(0),
-    communities: jsonb("communities").$type<Array<{ id: number; entity_ids: string[]; label?: string }>>().notNull().default(sql`'[]'::jsonb`),
+    communities: jsonb("communities")
+      .$type<Array<{ id: number; entity_ids: string[]; label?: string }>>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
   },
-  (t) => [uniqueIndex("inv_summary_inv_uq").on(t.investigationId), index("inv_summary_user_idx").on(t.userId)],
+  (t) => [
+    uniqueIndex("inv_summary_inv_uq").on(t.investigationId),
+    index("inv_summary_user_idx").on(t.userId),
+  ],
 );
 
 export const invExports = pgTable(
@@ -186,5 +222,8 @@ export const invExports = pgTable(
     bytes: bigint("bytes", { mode: "number" }),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("inv_exports_inv_format_uq").on(t.investigationId, t.format), index("inv_exports_user_idx").on(t.userId)],
+  (t) => [
+    uniqueIndex("inv_exports_inv_format_uq").on(t.investigationId, t.format),
+    index("inv_exports_user_idx").on(t.userId),
+  ],
 );

@@ -23,7 +23,10 @@ export const archiveEntities = pgTable(
   (t) => [
     uniqueIndex("archive_entities_type_value_uq").on(t.type, t.canonicalValue),
     uniqueIndex("archive_entities_type_fp_uq").on(t.type, t.fingerprint),
-    check("archive_entities_value_or_fp", sql`${t.canonicalValue} IS NOT NULL OR ${t.fingerprint} IS NOT NULL`),
+    check(
+      "archive_entities_value_or_fp",
+      sql`${t.canonicalValue} IS NOT NULL OR ${t.fingerprint} IS NOT NULL`,
+    ),
   ],
 );
 
@@ -54,7 +57,10 @@ export const archiveObservations = pgTable(
     observedAt: tstz("observed_at").notNull(),
     bundlePath: text("bundle_path").notNull(), // GCS path of the immutable dated bundle
   },
-  (t) => [index("archive_observations_entity_idx").on(t.entityId, t.observedAt), index("archive_observations_source_idx").on(t.sourceId)],
+  (t) => [
+    index("archive_observations_entity_idx").on(t.entityId, t.observedAt),
+    index("archive_observations_source_idx").on(t.sourceId),
+  ],
 );
 
 export const archiveRelationships = pgTable(
@@ -89,6 +95,8 @@ export const archiveAliases = pgTable(
     kind: text("kind").notNull().default("name"),
     firstSeen: tstz("first_seen").notNull(),
   },
-  (t) => [uniqueIndex("archive_aliases_uq").on(t.entityId, t.alias), index("archive_aliases_alias_idx").on(t.alias)],
+  (t) => [
+    uniqueIndex("archive_aliases_uq").on(t.entityId, t.alias),
+    index("archive_aliases_alias_idx").on(t.alias),
+  ],
 );
-

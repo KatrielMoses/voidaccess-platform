@@ -20,7 +20,11 @@ export interface Database {
    * Greppable by name and audited: every call writes an audit_log row carrying `reason`
    * unless `{ audit: false }` is passed explicitly (high-frequency, low-risk paths only).
    */
-  withSystem<T>(reason: string, fn: (tx: Tx) => Promise<T>, opts?: { audit?: boolean; actor?: string }): Promise<T>;
+  withSystem<T>(
+    reason: string,
+    fn: (tx: Tx) => Promise<T>,
+    opts?: { audit?: boolean; actor?: string },
+  ): Promise<T>;
   close(): Promise<void>;
 }
 

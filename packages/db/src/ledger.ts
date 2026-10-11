@@ -72,17 +72,20 @@ export async function reserve(
       .select({ amount: creditLedger.amount })
       .from(creditLedger)
       .where(and(eq(creditLedger.investigationId, investigationId), eq(creditLedger.reason, "reserve")));
-    if (prior.length > 0) return { ok: true, charged: -prior.reduce((a, r) => a + r.amount, 0), alreadyReserved: true };
+    if (prior.length > 0)
+      return { ok: true, charged: -prior.reduce((a, r) => a + r.amount, 0), alreadyReserved: true };
 
     const s = await spendable(tx, userId, now);
-    if (!DEPTHS[depth].launched) return { ok: false, reason: "depth_unavailable", needed: price, balance: s.total };
+    if (!DEPTHS[depth].launched)
+      return { ok: false, reason: "depth_unavailable", needed: price, balance: s.total };
     if (DEPTHS[depth].paidOnly) {
       const [u] = await tx.select({ plan: users.plan }).from(users).where(eq(users.id, userId));
       if (!u || PLANS[u.plan].monthlyUsd === 0) {
         return { ok: false, reason: "plan_required", needed: price, balance: s.total };
       }
     }
-    if (s.total < price) return { ok: false, reason: "insufficient_credits", needed: price, balance: s.total };
+    if (s.total < price)
+      return { ok: false, reason: "insufficient_credits", needed: price, balance: s.total };
 
     let need = price;
     const fromGrant = Math.min(s.grant, need);
@@ -111,7 +114,10 @@ export async function reserve(
       });
       need -= take;
     }
-    await tx.update(investigations).set({ creditsCharged: price }).where(eq(investigations.id, investigationId));
+    await tx
+      .update(investigations)
+      .set({ creditsCharged: price })
+      .where(eq(investigations.id, investigationId));
     return { ok: true, charged: price, alreadyReserved: false };
   });
 }
@@ -160,7 +166,10 @@ export async function refund(
 
     const lotReserves = reserves.filter((r) => r.lotId);
     const lotExpiry = new Map(
-      (await tx.select().from(topupLots).where(eq(topupLots.userId, userId))).map((l) => [l.id, l.expiresAt.getTime()]),
+      (await tx.select().from(topupLots).where(eq(topupLots.userId, userId))).map((l) => [
+        l.id,
+        l.expiresAt.getTime(),
+      ]),
     );
     lotReserves.sort((a, b) => (lotExpiry.get(b.lotId!) ?? 0) - (lotExpiry.get(a.lotId!) ?? 0));
     const order = [...lotReserves, ...reserves.filter((r) => !r.lotId)];
@@ -201,7 +210,10 @@ export async function grantMonthly(
   return inSystem(ctx, "ledger.grantMonthly", async (tx) => {
     await lockUserCredits(tx, userId);
     const key = `grant:${userId}:${period}`;
-    const [dup] = await tx.select({ id: creditLedger.id }).from(creditLedger).where(eq(creditLedger.idempotencyKey, key));
+    const [dup] = await tx
+      .select({ id: creditLedger.id })
+      .from(creditLedger)
+      .where(eq(creditLedger.idempotencyKey, key));
     if (dup) return { granted: false, expired: 0, credits };
     const [g] = await tx
       .select({ bal: sql<number>`coalesce(sum(${creditLedger.amount}), 0)::int` })
@@ -245,7 +257,10 @@ export async function topup(
   if (!tier) throw new Error(`No top-up tier for $${usd}`);
   return inSystem(ctx, "ledger.topup", async (tx) => {
     await lockUserCredits(tx, userId);
-    const [dup] = await tx.select().from(topupLots).where(and(eq(topupLots.userId, userId), eq(topupLots.paymentRef, paymentRef)));
+    const [dup] = await tx
+      .select()
+      .from(topupLots)
+      .where(and(eq(topupLots.userId, userId), eq(topupLots.paymentRef, paymentRef)));
     if (dup) return { lotId: dup.id, credits: dup.creditsInitial, duplicate: true };
     const [u] = await tx.select({ plan: users.plan }).from(users).where(eq(users.id, userId));
     if (!u) throw new Error("topup: unknown user");
@@ -296,11 +311,15 @@ export async function adminGrant(
   opts: { expiresAt?: Date } = {},
   ctx: Ctx = {},
 ): Promise<{ lotId: string; duplicate: boolean }> {
-  if (!Number.isInteger(credits) || credits <= 0) throw new Error("adminGrant: credits must be a positive integer");
+  if (!Number.isInteger(credits) || credits <= 0)
+    throw new Error("adminGrant: credits must be a positive integer");
   const now = nowOf(ctx);
   return inSystem(ctx, "ledger.adminGrant", async (tx) => {
     await lockUserCredits(tx, userId);
-    const [dup] = await tx.select().from(creditLedger).where(eq(creditLedger.idempotencyKey, `admin:${key}`));
+    const [dup] = await tx
+      .select()
+      .from(creditLedger)
+      .where(eq(creditLedger.idempotencyKey, `admin:${key}`));
     if (dup) return { lotId: dup.lotId!, duplicate: true };
     const [lot] = await tx
       .insert(topupLots)
@@ -333,7 +352,9 @@ export async function expireLots(now: Date, ctx: Ctx = {}): Promise<{ lots: numb
     const due = await tx
       .select()
       .from(topupLots)
-      .where(and(sql`${topupLots.expiresAt} <= ${now.toISOString()}::timestamptz`, gt(topupLots.remaining, 0)))
+      .where(
+        and(sql`${topupLots.expiresAt} <= ${now.toISOString()}::timestamptz`, gt(topupLots.remaining, 0)),
+      )
       .orderBy(desc(topupLots.expiresAt));
     let credits = 0;
     let lots = 0;

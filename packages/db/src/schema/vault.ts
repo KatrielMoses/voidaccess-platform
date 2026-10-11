@@ -30,5 +30,8 @@ export const credentialVault = pgTable(
     schemaVersion: integer("schema_version").notNull().default(1),
     createdAt: createdAt(),
   },
-  (t) => [index("credential_vault_user_idx").on(t.userId), index("credential_vault_fingerprint_idx").on(t.fingerprint)],
+  (t) => [
+    index("credential_vault_user_idx").on(t.userId),
+    index("credential_vault_fingerprint_idx").on(t.fingerprint),
+  ],
 );

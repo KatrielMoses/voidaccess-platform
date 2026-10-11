@@ -46,7 +46,9 @@ export class KmsKeyWrapper implements KeyWrapper {
   }
   private async call<T>(op: "encrypt" | "decrypt", data: Record<string, string>): Promise<T> {
     const { GoogleAuth } = await import("google-auth-library");
-    const client = await new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] }).getClient();
+    const client = await new GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+    }).getClient();
     const res = await client.request<T>({
       url: `https://cloudkms.googleapis.com/v1/${this.keyName}:${op}`,
       method: "POST",

@@ -24,29 +24,47 @@ beforeEach(async () => {
 });
 
 const pay = (userId: string, periodStart: Date) =>
-  db.withSystem("t", (tx) =>
-    tx.insert(payments).values({
-      userId,
-      providerPaymentId: `p_${userId}_${periodStart.toISOString()}`,
-      amountCents: FOUNDING.monthlyUsd * 100,
-      kind: "subscription",
-      paidAt: periodStart,
-      periodStart,
-      periodEnd: addMonths(periodStart, 1),
-    }),
+  db.withSystem(
+    "t",
+    (tx) =>
+      tx.insert(payments).values({
+        userId,
+        providerPaymentId: `p_${userId}_${periodStart.toISOString()}`,
+        amountCents: FOUNDING.monthlyUsd * 100,
+        kind: "subscription",
+        paidAt: periodStart,
+        periodStart,
+        periodEnd: addMonths(periodStart, 1),
+      }),
     { audit: false },
   );
 const subscribe = (userId: string, periodEnd: Date) =>
-  db.withSystem("t", (tx) =>
-    tx.insert(subscriptions).values({ userId, providerSubscriptionId: "s_" + userId, plan: "pro", status: "active", currentPeriodEnd: periodEnd }),
+  db.withSystem(
+    "t",
+    (tx) =>
+      tx
+        .insert(subscriptions)
+        .values({
+          userId,
+          providerSubscriptionId: "s_" + userId,
+          plan: "pro",
+          status: "active",
+          currentPeriodEnd: periodEnd,
+        }),
     { audit: false },
   );
 const noticesOf = (userId: string) =>
-  db.withSystem("t", (tx) => tx.select().from(foundingNotices).where(eq(foundingNotices.userId, userId)), { audit: false });
+  db.withSystem("t", (tx) => tx.select().from(foundingNotices).where(eq(foundingNotices.userId, userId)), {
+    audit: false,
+  });
 
 describe("founding seats: claims", () => {
   it("100 concurrent claims for the last 3 seats give exactly 3 winners, never more than 100 held", async () => {
-    const first = await Promise.all(Array.from({ length: FOUNDING.seats - 3 }, async () => claimFoundingSeat(await makeUser("pro"), { ...ctx, now: T0 })));
+    const first = await Promise.all(
+      Array.from({ length: FOUNDING.seats - 3 }, async () =>
+        claimFoundingSeat(await makeUser("pro"), { ...ctx, now: T0 }),
+      ),
+    );
     expect(first.every((s) => s !== null)).toBe(true);
     expect(await availableSeats(ctx)).toBe(3);
 
@@ -56,7 +74,9 @@ describe("founding seats: claims", () => {
     expect(winners).toHaveLength(3);
     expect(new Set(winners).size).toBe(3);
     expect(await availableSeats(ctx)).toBe(0);
-    const held = await ownerPool().query(`select count(*)::int n from founding_seats where holder_user_id is not null`);
+    const held = await ownerPool().query(
+      `select count(*)::int n from founding_seats where holder_user_id is not null`,
+    );
     expect(held.rows[0].n).toBe(100);
   });
 
@@ -65,7 +85,9 @@ describe("founding seats: claims", () => {
     const u = await makeUser("pro");
     const a = await claimFoundingSeat(u, { ...ctx, now: T0 });
     expect(await claimFoundingSeat(u, { ...ctx, now: T0 })).toBe(a); // idempotent
-    const racing = await Promise.all(Array.from({ length: 10 }, () => claimFoundingSeat(u, { ...ctx, now: T0 })));
+    const racing = await Promise.all(
+      Array.from({ length: 10 }, () => claimFoundingSeat(u, { ...ctx, now: T0 })),
+    );
     expect(new Set(racing)).toEqual(new Set([a]));
   });
 
@@ -83,7 +105,14 @@ describe("founding seats: yearly check", () => {
     const u = await makeUser("pro");
     const seat = (await claimFoundingSeat(u, { ...ctx, now: T0 }))!;
     for (const m of [0, 1, 2]) await pay(u, addMonths(T0, m));
-    await db.withSystem("t", (tx) => tx.insert(investigations).values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }), { audit: false });
+    await db.withSystem(
+      "t",
+      (tx) =>
+        tx
+          .insert(investigations)
+          .values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }),
+      { audit: false },
+    );
     const anniv = addMonths(T0, 12);
     const out = await runFoundingChecks(anniv, ctx);
     expect(out.filter((o) => o.userId === u)).toEqual([
@@ -95,7 +124,14 @@ describe("founding seats: yearly check", () => {
   it("does not release the day before the anniversary", async () => {
     const u = await makeUser("pro");
     await claimFoundingSeat(u, { ...ctx, now: T0 });
-    await db.withSystem("t", (tx) => tx.insert(investigations).values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }), { audit: false });
+    await db.withSystem(
+      "t",
+      (tx) =>
+        tx
+          .insert(investigations)
+          .values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }),
+      { audit: false },
+    );
     const out = (await runFoundingChecks(addDays(addMonths(T0, 12), -1), ctx)).filter((o) => o.userId === u);
     expect(out.every((o) => o.action === "notice_scheduled")).toBe(true);
   });
@@ -111,13 +147,25 @@ describe("founding seats: yearly check", () => {
     const periodEnd = addDays(anniv, 9);
     await subscribe(payer, periodEnd);
     for (const u of [payer, lapsed]) {
-      await db.withSystem("t", (tx) => tx.insert(investigations).values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }), { audit: false });
+      await db.withSystem(
+        "t",
+        (tx) =>
+          tx
+            .insert(investigations)
+            .values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }),
+        { audit: false },
+      );
     }
     const before = await availableSeats(ctx);
     const out = await runFoundingChecks(anniv, ctx);
     const p = out.find((o) => o.userId === payer)!;
     const l = out.find((o) => o.userId === lapsed)!;
-    expect(p).toMatchObject({ action: "released", reason: "renewal_failed", targetPlan: "pro", effectiveAt: periodEnd });
+    expect(p).toMatchObject({
+      action: "released",
+      reason: "renewal_failed",
+      targetPlan: "pro",
+      effectiveAt: periodEnd,
+    });
     expect(l).toMatchObject({ action: "released", reason: "renewal_failed", targetPlan: "free" });
     expect(await availableSeats(ctx)).toBe(before + 2); // reopened seats count
     const n = (await noticesOf(payer)).filter((x) => x.kind === "release_day");
@@ -136,7 +184,14 @@ describe("founding seats: yearly check", () => {
     await pay(u, T0);
     await pay(u, addDays(T0, 3)); // same calendar month
     await pay(u, addMonths(T0, 1));
-    await db.withSystem("t", (tx) => tx.insert(investigations).values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }), { audit: false });
+    await db.withSystem(
+      "t",
+      (tx) =>
+        tx
+          .insert(investigations)
+          .values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }),
+      { audit: false },
+    );
     const out = (await runFoundingChecks(addMonths(T0, 12), ctx)).find((o) => o.userId === u)!;
     expect(out).toMatchObject({ action: "released", reason: "renewal_failed" }); // only 2 distinct months
   });
@@ -147,7 +202,14 @@ describe("founding seats: yearly check", () => {
     for (const u of [risky, safe]) {
       await claimFoundingSeat(u, { ...ctx, now: T0 });
       await subscribe(u, addMonths(T0, 13));
-      await db.withSystem("t", (tx) => tx.insert(investigations).values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }), { audit: false });
+      await db.withSystem(
+        "t",
+        (tx) =>
+          tx
+            .insert(investigations)
+            .values({ userId: u, query: "q", depth: "quick", createdAt: addMonths(T0, 11) }),
+        { audit: false },
+      );
     }
     await pay(risky, T0);
     await pay(safe, T0);
@@ -159,7 +221,9 @@ describe("founding seats: yearly check", () => {
     expect((r as { scheduledFor: Date }).scheduledFor.toISOString()).toBe(addDays(anniv, -30).toISOString());
     expect(out.find((o) => o.userId === safe)).toBeUndefined();
     // not scheduled earlier than 30 days before, and not duplicated on rerun
-    expect((await runFoundingChecks(addDays(anniv, -29), ctx)).find((o) => o.userId === risky)).toBeUndefined();
+    expect(
+      (await runFoundingChecks(addDays(anniv, -29), ctx)).find((o) => o.userId === risky),
+    ).toBeUndefined();
     expect((await noticesOf(risky)).filter((n) => n.kind === "renewal_check_30d")).toHaveLength(1);
   });
 });
@@ -173,7 +237,9 @@ describe("founding seats: inactivity", () => {
     expect(await runFoundingChecks(addDays(releaseAt, -31), ctx)).toEqual([]);
     const warn = (await runFoundingChecks(addDays(releaseAt, -30), ctx)).find((o) => o.userId === u);
     expect(warn).toMatchObject({ action: "notice_scheduled", kind: "inactivity_30d" });
-    expect((await runFoundingChecks(addDays(releaseAt, -20), ctx)).find((o) => o.userId === u)).toBeUndefined(); // deduped
+    expect(
+      (await runFoundingChecks(addDays(releaseAt, -20), ctx)).find((o) => o.userId === u),
+    ).toBeUndefined(); // deduped
     const out = (await runFoundingChecks(releaseAt, ctx)).find((o) => o.userId === u);
     expect(out).toMatchObject({ action: "released", reason: "inactivity", targetPlan: "free" });
     const kinds = (await noticesOf(u)).map((n) => n.kind).sort();
@@ -184,7 +250,11 @@ describe("founding seats: inactivity", () => {
     const u = await makeUser("pro");
     await claimFoundingSeat(u, { ...ctx, now: T0 });
     const active = addMonths(T0, 6);
-    await db.withSystem("t", (tx) => tx.insert(investigations).values({ userId: u, query: "q", depth: "quick", createdAt: active }), { audit: false });
+    await db.withSystem(
+      "t",
+      (tx) => tx.insert(investigations).values({ userId: u, query: "q", depth: "quick", createdAt: active }),
+      { audit: false },
+    );
     // at T0+10 months the user would have been released without that investigation
     const early = (await runFoundingChecks(addMonths(T0, 10), ctx)).filter((o) => o.userId === u);
     expect(early.some((o) => o.action === "released")).toBe(false);
@@ -199,7 +269,12 @@ describe("founding seats: inactivity", () => {
     const periodEnd = addDays(releaseAt, 12);
     await subscribe(u, periodEnd);
     const out = (await runFoundingChecks(releaseAt, ctx)).find((o) => o.userId === u);
-    expect(out).toMatchObject({ action: "released", reason: "inactivity", targetPlan: "pro", effectiveAt: periodEnd });
+    expect(out).toMatchObject({
+      action: "released",
+      reason: "inactivity",
+      targetPlan: "pro",
+      effectiveAt: periodEnd,
+    });
   });
 });
 
@@ -208,7 +283,9 @@ describe("founding seats: explicit release", () => {
     const u = await makeUser("pro");
     await claimFoundingSeat(u, { ...ctx, now: T0 });
     const before = await availableSeats(ctx);
-    expect(await releaseFoundingSeat(u, "upgraded", { ...ctx, now: T0 })).toMatchObject({ targetPlan: "free" });
+    expect(await releaseFoundingSeat(u, "upgraded", { ...ctx, now: T0 })).toMatchObject({
+      targetPlan: "free",
+    });
     expect(await availableSeats(ctx)).toBe(before + 1);
     expect(await releaseFoundingSeat(u, "upgraded", ctx)).toBeNull();
   });

@@ -3,7 +3,13 @@ import { check, index, integer, jsonb, pgEnum, pgTable, text, uniqueIndex, uuid 
 import { createdAt, pk, tstz } from "./_common";
 import { users } from "./auth";
 
-export const FOUNDING_RELEASE_REASONS = ["renewal_failed", "inactivity", "upgraded", "admin", "account_closed"] as const;
+export const FOUNDING_RELEASE_REASONS = [
+  "renewal_failed",
+  "inactivity",
+  "upgraded",
+  "admin",
+  "account_closed",
+] as const;
 
 /**
  * Exactly 100 rows (seat_no 1..100) are inserted by the migration. A seat is "held" when
@@ -48,11 +54,16 @@ export const foundingNotices = pgTable(
     refAt: tstz("ref_at").notNull(),
     scheduledFor: tstz("scheduled_for").notNull(),
     sentAt: tstz("sent_at"),
-    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    payload: jsonb("payload")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: createdAt(),
   },
   (t) => [
     uniqueIndex("founding_notices_dedupe_uq").on(t.userId, t.kind, t.refAt),
-    index("founding_notices_due_idx").on(t.scheduledFor).where(sql`${t.sentAt} IS NULL`),
+    index("founding_notices_due_idx")
+      .on(t.scheduledFor)
+      .where(sql`${t.sentAt} IS NULL`),
   ],
 );

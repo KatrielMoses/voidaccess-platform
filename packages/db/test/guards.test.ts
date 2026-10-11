@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { ownerPool, appDb } from "./helpers";
 import { sql } from "drizzle-orm";
 
-const ARCHIVE = ["archive_entities", "archive_sources", "archive_observations", "archive_relationships", "archive_aliases"];
+const ARCHIVE = [
+  "archive_entities",
+  "archive_sources",
+  "archive_observations",
+  "archive_relationships",
+  "archive_aliases",
+];
 // tables owned by other lanes may be added here with their lane noted
 const NO_RLS_ALLOWED = new Set<string>([...ARCHIVE, "waitlist" /* P1 SITE: public signup, system-written */]);
 
@@ -14,7 +20,9 @@ describe("schema guards", () => {
     );
     const tables = new Set(rows.map((r) => r.table_name));
     for (const t of ARCHIVE) expect(tables.has(t), `${t} missing`).toBe(true);
-    const bad = rows.filter((r) => /user|query|investigation|session|owner|account|tenant|email|ip_addr/i.test(r.column_name));
+    const bad = rows.filter((r) =>
+      /user|query|investigation|session|owner|account|tenant|email|ip_addr/i.test(r.column_name),
+    );
     expect(bad).toEqual([]);
     // and no foreign key from an archive table to any tenant table
     const fks = await ownerPool().query(
@@ -29,7 +37,9 @@ describe("schema guards", () => {
       `select c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace
        where n.nspname='public' and c.relkind='r'`,
     );
-    const missing = rows.filter((r) => !r.relrowsecurity && !NO_RLS_ALLOWED.has(r.relname)).map((r) => r.relname);
+    const missing = rows
+      .filter((r) => !r.relrowsecurity && !NO_RLS_ALLOWED.has(r.relname))
+      .map((r) => r.relname);
     expect(missing).toEqual([]);
   });
 
@@ -58,7 +68,9 @@ describe("schema guards", () => {
       `select count(*)::int as n from pg_tables where schemaname='public' and tableowner in ('va_app','va_system')`,
     );
     expect(own.rows[0].n).toBe(0);
-    const res = await appDb().db.execute(sql`select current_user as u, pg_has_role(current_user, 'va_system', 'USAGE') as inherits`);
+    const res = await appDb().db.execute(
+      sql`select current_user as u, pg_has_role(current_user, 'va_system', 'USAGE') as inherits`,
+    );
     expect(res.rows[0]).toMatchObject({ u: "va_app", inherits: false });
   });
 });

@@ -15,7 +15,12 @@ async function newInvestigation(userId: string, depth: Depth = "standard") {
   return r!.id;
 }
 async function ledgerRows(userId: string) {
-  return db.withSystem("test.ledger", (tx) => tx.select().from(creditLedger).where(eq(creditLedger.userId, userId)).orderBy(creditLedger.createdAt), { audit: false });
+  return db.withSystem(
+    "test.ledger",
+    (tx) =>
+      tx.select().from(creditLedger).where(eq(creditLedger.userId, userId)).orderBy(creditLedger.createdAt),
+    { audit: false },
+  );
 }
 /** invariant: per-lot remaining equals the sum of its ledger rows; no bucket negative */
 async function assertConsistent(userId: string) {
@@ -25,7 +30,10 @@ async function assertConsistent(userId: string) {
     [userId],
   );
   for (const r of rows) expect(r.remaining).toBe(r.ledger);
-  const b = await ownerPool().query(`select grant_balance, topup_balance from credit_balances where user_id=$1`, [userId]);
+  const b = await ownerPool().query(
+    `select grant_balance, topup_balance from credit_balances where user_id=$1`,
+    [userId],
+  );
   expect(b.rows[0].grant_balance).toBeGreaterThanOrEqual(0);
   expect(b.rows[0].topup_balance).toBeGreaterThanOrEqual(0);
 }
@@ -34,7 +42,11 @@ describe("ledger", () => {
   it("grantMonthly grants config credits, expires the previous remainder, and is idempotent", async () => {
     const u = await makeUser("pro");
     const p1 = new Date("2026-11-01T00:00:00Z");
-    expect(await grantMonthly(u, "pro", p1, ctx)).toMatchObject({ granted: true, expired: 0, credits: PLANS.pro.monthlyCredits });
+    expect(await grantMonthly(u, "pro", p1, ctx)).toMatchObject({
+      granted: true,
+      expired: 0,
+      credits: PLANS.pro.monthlyCredits,
+    });
     const inv = await newInvestigation(u);
     await reserve(u, inv, "standard", ctx);
     expect((await getBalance(u, ctx)).grant).toBe(PLANS.pro.monthlyCredits - depthCredits("standard"));
@@ -50,14 +62,28 @@ describe("ledger", () => {
   it("reserve fails cleanly with a too-low balance and never goes negative", async () => {
     const u = await makeUser("free");
     await grantMonthly(u, "free", new Date(), ctx); // 100 credits
-    for (let i = 0; i < 2; i++) expect((await reserve(u, await newInvestigation(u), "standard", ctx)).ok).toBe(true); // 80
+    for (let i = 0; i < 2; i++)
+      expect((await reserve(u, await newInvestigation(u), "standard", ctx)).ok).toBe(true); // 80
     const res = await reserve(u, await newInvestigation(u), "standard", ctx); // needs 40, has 20
-    expect(res).toMatchObject({ ok: false, reason: "insufficient_credits", needed: depthCredits("standard"), balance: 20 });
+    expect(res).toMatchObject({
+      ok: false,
+      reason: "insufficient_credits",
+      needed: depthCredits("standard"),
+      balance: 20,
+    });
     expect((await getBalance(u, ctx)).total).toBe(20);
     // the DB itself refuses to overdraw, even if app code were wrong
     const err = await pgError(
       db.withSystem("test.overdraw", (tx) =>
-        tx.insert(creditLedger).values({ userId: u, bucket: "grant", amount: -21, reason: "settle", idempotencyKey: "overdraw:" + u }),
+        tx
+          .insert(creditLedger)
+          .values({
+            userId: u,
+            bucket: "grant",
+            amount: -21,
+            reason: "settle",
+            idempotencyKey: "overdraw:" + u,
+          }),
       ),
     );
     expect(err.code).toBe("23514");
@@ -67,7 +93,10 @@ describe("ledger", () => {
   it("deep is unavailable while not launched; reserve is idempotent per investigation", async () => {
     const u = await makeUser("pro");
     await grantMonthly(u, "pro", new Date(), ctx);
-    expect(await reserve(u, await newInvestigation(u, "deep"), "deep", ctx)).toMatchObject({ ok: false, reason: "depth_unavailable" });
+    expect(await reserve(u, await newInvestigation(u, "deep"), "deep", ctx)).toMatchObject({
+      ok: false,
+      reason: "depth_unavailable",
+    });
     const inv = await newInvestigation(u, "quick");
     expect(await reserve(u, inv, "quick", ctx)).toMatchObject({ ok: true, alreadyReserved: false });
     expect(await reserve(u, inv, "quick", ctx)).toMatchObject({ ok: true, alreadyReserved: true });
@@ -79,7 +108,10 @@ describe("ledger", () => {
     await grantMonthly(u, "free", new Date(), ctx);
     await expect(
       db.withUser(u, async (tx) => {
-        const [i] = await tx.insert(investigations).values({ userId: u, query: "q", depth: "quick" }).returning({ id: investigations.id });
+        const [i] = await tx
+          .insert(investigations)
+          .values({ userId: u, query: "q", depth: "quick" })
+          .returning({ id: investigations.id });
         expect((await reserve(u, i!.id, "quick", { tx })).ok).toBe(true);
         throw new Error("boom"); // rollback both
       }),
@@ -98,10 +130,14 @@ describe("ledger", () => {
       return reserve(u, inv, "quick", { ...ctx, now: t0 });
     };
     for (let i = 0; i < 5; i++) await spend(); // drains the grant (5 × 20)
-    let b = await getBalance(u, { ...ctx, now: t0 });
+    const b = await getBalance(u, { ...ctx, now: t0 });
     expect(b.grant).toBe(0);
     await spend(); // must come from the lot expiring soonest
-    const lots = await db.withSystem("t", (tx) => tx.select().from(topupLots).where(eq(topupLots.userId, u)), { audit: false });
+    const lots = await db.withSystem(
+      "t",
+      (tx) => tx.select().from(topupLots).where(eq(topupLots.userId, u)),
+      { audit: false },
+    );
     expect(lots.find((l) => l.id === soon.lotId)!.remaining).toBe(30);
     expect(lots.find((l) => l.id === late.lotId)!.remaining).toBe(50);
 
@@ -139,12 +175,16 @@ describe("ledger", () => {
     await adminGrant(u, 100, u, "r:" + u, {}, ctx);
     const inv1 = await newInvestigation(u, "standard");
     await reserve(u, inv1, "standard", ctx); // 40 from grant
-    expect(await refund(u, inv1, {}, ctx)).toMatchObject({ refunded: 40, charged: 40, alreadyRefunded: false });
+    expect(await refund(u, inv1, {}, ctx)).toMatchObject({
+      refunded: 40,
+      charged: 40,
+      alreadyRefunded: false,
+    });
     expect(await refund(u, inv1, {}, ctx)).toMatchObject({ alreadyRefunded: true });
     expect((await getBalance(u, ctx)).total).toBe(200);
 
     // spans both buckets: drain grant to 10 then a 40 run takes 10 grant + 30 lot
-    for (let i = 0; i < 4; i++) await reserve(u, await newInvestigation(u, "standard"), "standard", ctx); // 100 - 40*2 = 20 grant left… 
+    for (let i = 0; i < 4; i++) await reserve(u, await newInvestigation(u, "standard"), "standard", ctx); // 100 - 40*2 = 20 grant left…
     const b0 = await getBalance(u, ctx);
     const inv2 = await newInvestigation(u, "standard");
     const r = await reserve(u, inv2, "standard", ctx);
@@ -173,7 +213,9 @@ describe("ledger", () => {
     expect(ok).toBe(2);
     expect(results.filter((r) => !r.ok && r.reason === "insufficient_credits")).toHaveLength(18);
     expect((await getBalance(u, ctx)).total).toBe(20);
-    const reserved = (await ledgerRows(u)).filter((r) => r.reason === "reserve").reduce((a, r) => a + r.amount, 0);
+    const reserved = (await ledgerRows(u))
+      .filter((r) => r.reason === "reserve")
+      .reduce((a, r) => a + r.amount, 0);
     expect(reserved).toBe(-80);
     await assertConsistent(u);
   });
@@ -192,9 +234,17 @@ describe("ledger", () => {
   it("idempotency keys are unique and the ledger rejects duplicates at the DB level", async () => {
     const u = await makeUser("pro");
     const key = "dup:" + u;
-    await db.withSystem("t", (tx) => tx.insert(creditLedger).values({ userId: u, bucket: "grant", amount: 5, reason: "grant", idempotencyKey: key }));
+    await db.withSystem("t", (tx) =>
+      tx
+        .insert(creditLedger)
+        .values({ userId: u, bucket: "grant", amount: 5, reason: "grant", idempotencyKey: key }),
+    );
     const err = await pgError(
-      db.withSystem("t", (tx) => tx.insert(creditLedger).values({ userId: u, bucket: "grant", amount: 5, reason: "grant", idempotencyKey: key })),
+      db.withSystem("t", (tx) =>
+        tx
+          .insert(creditLedger)
+          .values({ userId: u, bucket: "grant", amount: 5, reason: "grant", idempotencyKey: key }),
+      ),
     );
     expect(err.code).toBe("23505");
   });
@@ -202,7 +252,11 @@ describe("ledger", () => {
   it("only the system role can add credits; the app role can only insert reserve rows", async () => {
     const u = await makeUser("pro");
     const err = await pgError(
-      db.withUser(u, (tx) => tx.insert(creditLedger).values({ userId: u, bucket: "grant", amount: 500, reason: "grant", idempotencyKey: "self:" + u })),
+      db.withUser(u, (tx) =>
+        tx
+          .insert(creditLedger)
+          .values({ userId: u, bucket: "grant", amount: 500, reason: "grant", idempotencyKey: "self:" + u }),
+      ),
     );
     expect(err.code).toBe("42501");
   });

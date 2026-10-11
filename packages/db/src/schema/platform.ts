@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { bigint, doublePrecision, index, integer, jsonb, pgEnum, pgTable, text, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  doublePrecision,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  uuid,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { createdAt, pk, tstz } from "./_common";
 import { users } from "./auth";
 import { investigations } from "./investigations";
@@ -12,7 +23,10 @@ export const events = pgTable(
     name: text("name").notNull(),
     userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     anonymousId: text("anonymous_id"),
-    props: jsonb("props").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    props: jsonb("props")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     utm: jsonb("utm").$type<Record<string, string>>(),
     ref: text("ref"),
     at: tstz("at").notNull().defaultNow(),
@@ -29,7 +43,10 @@ export const abuseFlags = pgTable(
     userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     investigationId: uuid("investigation_id").references(() => investigations.id, { onDelete: "set null" }),
     kind: text("kind").notNull(), // e.g. blocked_query, rate_limit, manual
-    detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    detail: jsonb("detail")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     status: abuseFlagStatusEnum("status").notNull().default("open"),
     createdAt: createdAt(),
     reviewedAt: tstz("reviewed_at"),
@@ -47,7 +64,10 @@ export const auditLog = pgTable(
     action: text("action").notNull(),
     target: text("target"),
     at: tstz("at").notNull().defaultNow(),
-    meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    meta: jsonb("meta")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
   },
   (t) => [index("audit_log_action_at_idx").on(t.action, t.at)],
 );

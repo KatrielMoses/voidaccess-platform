@@ -1,4 +1,4 @@
-import { healthCheck } from "@voidaccess/db";
+import { healthCheck } from "@voidaccess/db/client";
 import { getEnv } from "../../../env";
 
 export const dynamic = "force-dynamic";
