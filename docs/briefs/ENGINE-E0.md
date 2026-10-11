@@ -37,7 +37,7 @@ There is no local Docker. Build images with `gcloud builds submit`.
    - no media
    - Tor client only: no relay or exit configuration in torrc
 4. **Legitimate queries only.** The query set covers organisations, ransomware and extortion groups, malware families, CVEs, public IOCs (domains, onion services, wallets published in public threat reports) and threat-actor handles already named in public reporting. **No private individuals and no personal names.** Commit the list as `queries.yaml`, with a one-line public-source note per query, before any run.
-5. **Bounded spend.** Hard caps for the whole sub-phase: ≤ 120 job executions, ≤ $15 of OpenRouter usage, ≤ 6 concurrent executions, and a 45-min task timeout. Stop and report if any cap would be exceeded.
+5. **Bounded spend.** Hard caps for the whole sub-phase: ≤ 120 job executions, ≤ $9 of OpenRouter usage (the key itself has a $10 hard limit, so stop before it trips), and a 45-min task timeout. Check `GET /api/v1/key` `limit_remaining` before each run, and stop and report if any cap would be exceeded.
 
 ── DELIVERABLES ────────────────────────────────────────────────────────────────
 **D1. Container image** `us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/engine-baseline:<engine-tree-hash>`
@@ -68,7 +68,7 @@ Document exactly which env vars and flags each preset sets.
 
 **D4. LLM cost per run**
 - **Preferred:** if the `openrouter-provisioning-key` secret has a version, mint a per-run OpenRouter key with a $1 limit, run with it, read its usage after a settle delay (poll until stable), then delete it. This also validates the production approach.
-- **Fallback:** run sequentially and take the delta of `GET https://openrouter.ai/api/v1/key` usage on the shared key.
+- **Fallback (the current state: the provisioning secret has no version):** run measured cells **one at a time** and take the delta of `GET https://openrouter.ai/api/v1/key` usage on the shared key. Expect several hours of wall time for the full matrix. Run the quick depth first, so partial results are useful early. Up to 6 concurrent executions are allowed only for cells that don't need a cost measurement, such as the vCPU comparison reruns, and only if per-run keys are available.
 - Record the model ID actually used. Use the engine's default DeepSeek route through OpenRouter. If a cheaper DeepSeek "flash" variant is listed on OpenRouter, run the standard depth on 10 queries with it as a comparison.
 
 **D5. Compute cost per run**
