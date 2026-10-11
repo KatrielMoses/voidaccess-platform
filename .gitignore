@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.turbo/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.vercel/
+coverage/
+__pycache__/
+*.pyc
+.venv/
+*.tfstate*
+.terraform/

@@ -1,0 +1,101 @@
+# Engine contract: `voidaccess job run` (cloud job mode)
+
+**Status:** draft v0.2, 2026-10-11. Implemented by engine phase E4 (see ROADMAP.md) and mirrored by `packages/engine-mock` so the platform can be built in parallel. The canonical TypeScript types will live in `packages/engine-client/src/types.ts`.
+
+## 1. Invocation
+
+One container runs one investigation. Cloud Run Jobs starts it with:
+
+```
+voidaccess job run --spec-url "$RUN_SPEC_URL"
+```
+
+- `RUN_SPEC_URL` is a short-lived, single-use URL on the platform (`GET /api/engine/runs/{run_id}/spec?t=<token>`) that returns the `RunSpec`.
+- The query is **not** passed as an argument or environment variable. That keeps user queries out of Cloud Run execution metadata.
+- Secrets come from the environment: `OPENROUTER_API_KEY`, enrichment keys and `VA_CLOUD_POLICY=1`.
+
+```ts
+type RunSpec = {
+  run_id: string;
+  query: string;
+  depth: "quick" | "standard" | "deep";
+  callback_url: string;          // POST ProgressEvent / completion here
+  callback_secret: string;       // per-run HMAC key
+  artifact_put_urls: {           // presigned PUT URLs (R2/GCS), one per artifact
+    bundle: string;              // bundle.json
+    exports: Record<"stix" | "misp" | "sigma" | "yara" | "snort" | "suricata", string>;
+  };
+  deadline_at: string;           // ISO. The job must finish and emit `failed` with reason "deadline" by then
+};
+```
+
+## 2. Callbacks (job → platform)
+
+- `POST callback_url`, JSON body `ProgressEvent`
+- Headers: `X-VA-Run: <run_id>`, `X-VA-Seq: <n>`, `X-VA-Signature: sha256=<hex HMAC(callback_secret, raw body)>`
+- Retries use exponential backoff (via `pacing`). The platform deduplicates on `(run_id, seq)`.
+- The pipeline must never block on a slow callback. Use a bounded queue and drop intermediate `counts` events if the buffer fills; `stage` and terminal events are never dropped.
+
+```ts
+type Stage = "refine" | "collect" | "filter" | "fetch" | "enrich" | "extract" | "graph" | "summarize";
+
+type ProgressEvent = {
+  run_id: string; seq: number; at: string;
+  type: "stage" | "counts" | "refined" | "completed" | "failed" | "cancelled";
+  stage?: Stage; stage_index?: number; stage_total: 8;
+  refined_queries?: string[];                       // on type "refined", shown in the UI
+  counts?: { sources_queried: number; results_found: number; pages_fetched: number; entities_found: number; actors_found: number };
+  message?: string;                                 // human label; never raw dark-web text
+  stages_completed?: Stage[];                       // on failed/cancelled → partial refund
+  reason?: "blocked_query" | "no_results" | "deadline" | "error" | "cancelled";
+  metrics?: RunMetrics;                             // on terminal events
+};
+```
+
+**Cancellation:**
+- The platform cancels a run by cancelling the Cloud Run execution, which sends SIGTERM and then SIGKILL after a grace period.
+- The job traps SIGTERM, stops at the next checkpoint, emits `cancelled` with `stages_completed`, and exits.
+- Checkpoints come between every stage and inside the collect, fetch and enrich loops.
+
+## 3. Result bundle (`bundle.json`, uploaded before the `completed` event)
+
+```ts
+type ResultBundle = {
+  schema_version: 1;
+  run_id: string; query: string; refined_queries: string[]; depth: Depth;
+  started_at: string; completed_at: string; engine_version: string;
+  summary: { markdown: string; key_findings: string[]; risk_notes: string[]; confidence: "low" | "medium" | "high"; source_count: number };
+  entities: Array<{ id: string; type: EntityType; value: string; display_value: string; sensitive: boolean;
+                    confidence: number; first_seen?: string; source_ids: string[]; tags: string[] }>;
+  relationships: Array<{ source: string; target: string; type: string; weight: number; evidence_source_ids: string[] }>;
+  actors: Array<{ id: string; handle: string; aliases: string[]; entity_ids: string[]; first_seen?: string; last_seen?: string; summary?: string }>;
+  communities: Array<{ id: number; entity_ids: string[]; label?: string }>;
+  sources: Array<{ id: string; kind: "tor_search" | "onion_page" | "paste" | "code_forge" | "feed" | "enrichment";
+                   name: string; url: string | null; fetched_at: string; excerpt: string /* ≤ 500 chars, sanitized */ }>;
+  metrics: RunMetrics;
+};
+
+type RunMetrics = {
+  duration_ms: number; tor_bootstrap_ms: number;
+  stage_ms: Partial<Record<Stage, number>>;
+  llm_calls: number; llm_tokens_in: number; llm_tokens_out: number; llm_cost_usd: number;  // from OpenRouter `usage`
+  pages_fetched: number; bytes_fetched: number; enrichment_calls: Record<string, number>;
+};
+```
+
+`EntityType` is the engine's existing taxonomy (crypto, network, file, credential, messaging, vulnerability, actor, org, …). It is enumerated in `types.ts` and generated from the engine's list in E4.
+
+## 4. Cloud policy (`VA_CLOUD_POLICY=1`): guarantees the job must enforce
+
+| # | Guarantee |
+|---|---|
+| G1 | Content-safety gates (query, URL, content, entity) are **always on**. No env var or flag can disable them. A URL-gate error **fails closed**. |
+| G2 | The Layer-4 content scan runs **before** any page is written anywhere (SQLite, bundle, excerpts). |
+| G3 | Text content types only. No image or media URLs anywhere in the bundle; the urlscan `screenshot_url` is stripped. |
+| G4 | Entities marked `sensitive` cover credentials, tokens, keys, emails, phones and personal names. Raw passwords and secrets are **never** included. `value` for a secret is `len:N sha256:<8-hex prefix>`. `display_value` is pre-masked (`j***@acme.com`). |
+| G5 | `SAFETY_BYPASS_PROMPT` is not used (pending decision D3). |
+| G6 | `PRIVATE_MODE` is on: no shared-corpus reads or writes, no Meilisearch, no Chroma, no ingest (pending decision D2). |
+| G7 | The run is fully self-contained: a fresh SQLite DB in the container, and no network calls except Tor, the listed clearnet sources, OpenRouter, the callback URL and the artifact URLs. |
+| G8 | Depth presets follow ROADMAP E2. LLM usage and cost are recorded per call. |
+| G9 | A blocked query emits `failed` with reason `blocked_query` **before** any collection starts, so the platform refunds in full and logs it for abuse review. |
+| G10 | Exit code 0 on completed, cancelled or no_results; non-zero only on a crash. The platform treats a crash without a terminal event as `failed` (watchdog). |
