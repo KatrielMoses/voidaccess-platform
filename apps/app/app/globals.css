@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@import "@voidaccess/ui/tokens.css";
+@source "../../../packages/ui/src";
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent-dim);
+}
