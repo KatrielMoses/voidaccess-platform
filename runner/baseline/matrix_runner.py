@@ -21,6 +21,7 @@ import yaml
 from baseline.constants import (
     ARTIFACT_REPO,
     CLOUD_RUN_GIB_PER_S_USD,
+    COMPARE_SUBSET_SIZE,
     CLOUD_RUN_PRICING_URL,
     CLOUD_RUN_VCPU_PER_S_USD,
     FLASH_COMPARE_MODEL,
@@ -129,7 +130,7 @@ def iter_matrix_cells() -> Iterator[Cell]:
                 safety_bypass=False,
             )
 
-    for qid in qids[:10]:
+    for qid in qids[:COMPARE_SUBSET_SIZE]:
         yield Cell(
             query_id=qid,
             depth="standard",
@@ -140,7 +141,7 @@ def iter_matrix_cells() -> Iterator[Cell]:
             safety_bypass=False,
         )
 
-    for qid in qids[:10]:
+    for qid in qids[:COMPARE_SUBSET_SIZE]:
         yield Cell(
             query_id=qid,
             depth="standard",
@@ -152,7 +153,7 @@ def iter_matrix_cells() -> Iterator[Cell]:
         )
 
     flash_model = os.environ.get("BASELINE_FLASH_MODEL", FLASH_COMPARE_MODEL)
-    for qid in qids[:10]:
+    for qid in qids[:COMPARE_SUBSET_SIZE]:
         yield Cell(
             query_id=qid,
             depth="standard",
@@ -238,11 +239,14 @@ def execute_cell(cell: Cell, rates: dict[str, Any]) -> tuple[str, int, str]:
     return run_id, proc.returncode, proc.stderr.strip()[-400:]
 
 
+def _result_fields() -> list[str]:
+    return list(summarize_row({}).keys()) + ["cell_key", "status", "gcloud_rc", "error"]
+
+
 def append_result_row(row: dict[str, Any]) -> None:
     write_header = not _RESULTS_CSV.exists()
-    fields = list(row.keys())
     with _RESULTS_CSV.open("a", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=fields)
+        writer = csv.DictWriter(fh, fieldnames=_result_fields(), restval="", extrasaction="ignore")
         if write_header:
             writer.writeheader()
         writer.writerow(row)
@@ -251,25 +255,59 @@ def append_result_row(row: dict[str, Any]) -> None:
 
 
 def summarize_row(result: dict[str, Any]) -> dict[str, Any]:
+    """Metrics and counts only: no page text, no entity values."""
     m = result.get("metrics") or {}
-    return {
+    stages = m.get("stage_ms") or {}
+    row: dict[str, Any] = {
         "run_id": result.get("run_id"),
         "query_id": result.get("query_id"),
         "depth": result.get("depth"),
         "variant": result.get("variant"),
+        "vcpu": m.get("vcpu"),
+        "memory_gib": m.get("memory_gib"),
+        "model_used": result.get("model_used"),
         "duration_ms": m.get("duration_ms"),
         "tor_bootstrap_ms": m.get("tor_bootstrap_ms"),
         "pages_count": m.get("pages_count"),
+        "bytes_fetched": m.get("bytes_fetched"),
         "entities_total": sum((m.get("entities_by_type") or {}).values()),
         "relationships_total": sum((m.get("relationships_by_type") or {}).values()),
+        "actors_count": m.get("actors_count"),
         "llm_calls": m.get("llm_calls_from_steps"),
         "llm_cost_usd": m.get("llm_cost_usd"),
         "compute_cost_usd": m.get("compute_cost_usd"),
         "total_cost_usd": m.get("total_cost_usd"),
         "refusal_detected": m.get("refusal_detected"),
+        "refusal_flags": ";".join(m.get("refusal_flags") or []),
         "exit_code": m.get("exit_code"),
-        "model_used": result.get("model_used"),
+        "entities_by_type": json.dumps(m.get("entities_by_type") or {}, sort_keys=True),
+        "relationships_by_type": json.dumps(m.get("relationships_by_type") or {}, sort_keys=True),
     }
+    for name in STAGE_COLUMNS:
+        row[f"stage_{name}_ms"] = stages.get(name)
+    return row
+
+
+STAGE_COLUMNS = (
+    "query_refinement", "source_gathering", "scraping", "entity_extraction",
+    "enrichment", "graph_build", "summary_generation", "finalization",
+)
+
+
+def resummarize() -> None:
+    """Rewrite results.csv/jsonl from the result.json of every recorded run."""
+    state = load_state()
+    _RESULTS_CSV.unlink(missing_ok=True)
+    _RESULTS_JSONL.unlink(missing_ok=True)
+    for group in ("completed", "failed"):
+        for key, info in (state.get(group) or {}).items():
+            run_id = info if isinstance(info, str) else info.get("run_id")
+            result = download_result(run_id) if run_id else None
+            if result:
+                row = summarize_row(result)
+                row["cell_key"] = key
+                row["status"] = group
+                append_result_row(row)
 
 
 def _select_cells(args: argparse.Namespace) -> list[Cell]:
@@ -286,7 +324,11 @@ def main() -> None:
     parser.add_argument("--depths", nargs="*", help="quick standard deep")
     parser.add_argument("--queries", nargs="*", help="query ids, e.g. q01 q02")
     parser.add_argument("--max-cells", type=int, default=0, help="stop after N cells this invocation")
+    parser.add_argument("--resummarize", action="store_true", help="rebuild results.* from GCS and exit")
     args = parser.parse_args()
+    if args.resummarize:
+        resummarize()
+        return
 
     engine_sha = os.environ.get("ENGINE_GIT_SHA", "").strip()
     if not engine_sha:
@@ -336,7 +378,7 @@ def main() -> None:
         if result:
             row = summarize_row(result)
             row["cell_key"] = cell.key
-            row["gcloud_rc"] = rc
+            row["status"] = "completed" if rc == 0 and row.get("exit_code") in (0, None) else "failed"
             append_result_row(row)
             if rc == 0 and (row.get("exit_code") in (0, None)):
                 state.setdefault("completed", {})[cell.key] = run_id
@@ -345,7 +387,7 @@ def main() -> None:
             print(f"{'ok' if rc == 0 else 'nonzero'} {cell.key} -> {run_id}")
         else:
             append_result_row({"run_id": run_id, "cell_key": cell.key, "query_id": cell.query_id,
-                               "depth": cell.depth, "variant": cell.variant,
+                               "depth": cell.depth, "variant": cell.variant, "status": "failed",
                                "gcloud_rc": rc, "error": err_tail or "no result.json"})
             state.setdefault("failed", {})[cell.key] = {"run_id": run_id, "rc": rc, "error": err_tail}
             print(f"fail {cell.key}: {err_tail[-200:]}", file=sys.stderr)

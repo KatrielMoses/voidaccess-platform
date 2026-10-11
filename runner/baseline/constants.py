@@ -24,6 +24,10 @@ SECRET_OPENROUTER_KEY = "openrouter-api-key"
 CLOUD_RUN_VCPU_PER_S_USD = 0.000018
 CLOUD_RUN_GIB_PER_S_USD = 0.000002
 
+# Comparison subsets (vcpu / bypass / model) use the first N queries. 8, not 10: three
+# executions were spent debugging the harness and the 120-execution cap has no slack.
+COMPARE_SUBSET_SIZE = 8
+
 # Model comparison: the model the product plans to ship (DeepSeek V4.1 Flash).
 FLASH_COMPARE_MODEL = "openrouter/deepseek/deepseek-v4.1-flash"
 

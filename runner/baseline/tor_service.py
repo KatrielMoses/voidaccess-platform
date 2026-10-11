@@ -16,6 +16,7 @@ TOR_BOOTSTRAPPED_MARKER = "Bootstrapped 100%"
 
 TOR_DATA_DIR = Path("/var/lib/tor-baseline")
 TOR_LOG_PATH = Path("/tmp/voidaccess-baseline-tor.log")
+TOR_CONSOLE_PATH = Path("/tmp/voidaccess-baseline-tor.console")
 TOR_TORRC_PATH = Path("/tmp/voidaccess-baseline.torrc")
 
 # Client only: no ORPort, no ExitRelay, no bridge relay configuration.
@@ -23,6 +24,14 @@ _TORRC_CLIENT = f"""SocksPort 127.0.0.1:9050
 DataDirectory {TOR_DATA_DIR}
 Log notice file {TOR_LOG_PATH}
 """
+
+
+def _log_tail(lines: int = 5) -> str:
+    parts: list[str] = []
+    for path in (TOR_CONSOLE_PATH, TOR_LOG_PATH):
+        if path.exists():
+            parts += path.read_text(encoding="utf-8", errors="replace").splitlines()[-lines:]
+    return " | ".join(parts) or "no tor output"
 
 
 def start_tor() -> tuple[subprocess.Popen[bytes], float]:
@@ -39,13 +48,13 @@ def start_tor() -> tuple[subprocess.Popen[bytes], float]:
     start = time.monotonic()
     proc = subprocess.Popen(
         ["tor", "-f", str(TOR_TORRC_PATH)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=TOR_CONSOLE_PATH.open("wb"),
+        stderr=subprocess.STDOUT,
     )
     deadline = start + TOR_BOOTSTRAP_TIMEOUT_S
     while time.monotonic() < deadline:
         if proc.poll() is not None:
-            raise RuntimeError(f"tor exited early with code {proc.returncode}")
+            raise RuntimeError(f"tor exited early with code {proc.returncode}: {_log_tail()}")
         if TOR_LOG_PATH.exists() and TOR_BOOTSTRAPPED_MARKER in TOR_LOG_PATH.read_text(
             encoding="utf-8", errors="replace"
         ):

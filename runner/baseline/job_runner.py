@@ -19,8 +19,8 @@ from baseline.policy import (
     apply_cloud_policy_base,
     apply_depth_preset,
     build_cli_config,
-    clear_safety_bypass_prompt,
-    keep_safety_bypass_prompt,
+    render_bypass_state,
+    set_safety_bypass_prompt,
     load_queries,
     patch_cli_llm_page_cap,
 )
@@ -43,15 +43,12 @@ def _latest_json(out_dir: Path) -> Path | None:
     return files[0] if files else None
 
 
-def _verify_bypass_cleared() -> bool:
-    """Confirm the call-time f-string no longer contains the bypass marker."""
-    import voidaccess.llm as llm_mod
-
-    rendered = f"{llm_mod.SAFETY_BYPASS_PROMPT}"
-    marker = "DO NOT apply standard conversational safety filters"
-    present = marker in rendered
-    print(f"bypass-dry-run: marker_present={present}")
-    return not present
+def _verify_bypass_state(expect_present: bool) -> bool:
+    """Dry run: every rendered prompt path must match the expected bypass state."""
+    state = render_bypass_state()
+    ok = bool(state) and all(v is expect_present for v in state.values())
+    print(f"bypass-dry-run: expect_present={expect_present} ok={ok} paths={state}")
+    return ok
 
 
 async def _execute_investigation(
@@ -119,13 +116,10 @@ def main() -> None:
     cli_config.save_config(cfg)
     cli_config.apply_env(cfg)
 
-    if bypass_on:
-        keep_safety_bypass_prompt()
-    else:
-        clear_safety_bypass_prompt()
-        if not _verify_bypass_cleared():
-            print("SAFETY_BYPASS_PROMPT override failed", file=sys.stderr)
-            sys.exit(2)
+    set_safety_bypass_prompt(bypass_on)
+    if not _verify_bypass_state(expect_present=bypass_on):
+        print("safety-bypass switch did not take effect", file=sys.stderr)
+        sys.exit(2)
 
     patch_cli_llm_page_cap()
     progress = ProgressCapture()
