@@ -1,0 +1,237 @@
+{
+ "meta": {
+  "source": "E0 baseline run w1791740461-042 (standard depth, query \"Cl0p MOVEit extortion group\"), engine d384b1e",
+  "redaction": "onion addresses and handles replaced with generated fakes; public group, malware and CVE names kept; typed edges that were clearly wrong (e.g. group USES FIN7 as malware) dropped; FIN7 re-typed as actor; no victim organisations included"
+ },
+ "nodes": [
+  {
+   "id": "Cl0p",
+   "type": "actor",
+   "x": -0.328,
+   "y": -0.428,
+   "r": 9.3
+  },
+  {
+   "id": "CVE-2023-34362",
+   "type": "cve",
+   "x": -0.114,
+   "y": -0.734,
+   "r": 3.9
+  },
+  {
+   "id": "CVE-2023-35036",
+   "type": "cve",
+   "x": -0.665,
+   "y": -0.557,
+   "r": 3.9
+  },
+  {
+   "id": "CVE-2023-34363",
+   "type": "cve",
+   "x": -0.38,
+   "y": -0.066,
+   "r": 3.9
+  },
+  {
+   "id": "CVE-2023-35708",
+   "type": "cve",
+   "x": -0.639,
+   "y": -0.247,
+   "r": 3.9
+  },
+  {
+   "id": "CVE-2023-36934",
+   "type": "cve",
+   "x": -0.425,
+   "y": -0.769,
+   "r": 3.9
+  },
+  {
+   "id": "CVE-2023-36932",
+   "type": "cve",
+   "x": 0.026,
+   "y": -0.456,
+   "r": 3.9
+  },
+  {
+   "id": "CVE-2023-36933",
+   "type": "cve",
+   "x": -0.094,
+   "y": -0.166,
+   "r": 3.9
+  },
+  {
+   "id": "Black Basta",
+   "type": "actor",
+   "x": 0.532,
+   "y": 0.594,
+   "r": 3.9
+  },
+  {
+   "id": "AvNeutralizer",
+   "type": "malware",
+   "x": 0.599,
+   "y": 0.271,
+   "r": 7.5
+  },
+  {
+   "id": "BlackCat",
+   "type": "actor",
+   "x": 0.275,
+   "y": 0.31,
+   "r": 3.9
+  },
+  {
+   "id": "LockBit",
+   "type": "actor",
+   "x": 0.875,
+   "y": 0.429,
+   "r": 3.9
+  },
+  {
+   "id": "Trigona",
+   "type": "actor",
+   "x": 0.481,
+   "y": -0.024,
+   "r": 3.9
+  },
+  {
+   "id": "AvosLocker",
+   "type": "actor",
+   "x": 0.844,
+   "y": 0.042,
+   "r": 3.9
+  },
+  {
+   "id": "FIN7",
+   "type": "actor",
+   "x": 0.55,
+   "y": -0.809,
+   "r": 3.9
+  },
+  {
+   "id": "NetSupport RAT",
+   "type": "malware",
+   "x": 0.738,
+   "y": -0.614,
+   "r": 3.9
+  },
+  {
+   "id": "Play",
+   "type": "actor",
+   "x": -0.935,
+   "y": 0.286,
+   "r": 3.9
+  },
+  {
+   "id": "q7w3ztn5ehx2dvbc4rj6lm9ys8ako1pf.onion",
+   "type": "onion",
+   "x": -0.729,
+   "y": 0.473,
+   "r": 4.8
+  },
+  {
+   "id": "RansomEXX",
+   "type": "malware",
+   "x": 0.046,
+   "y": 1.0,
+   "r": 3.9
+  },
+  {
+   "id": "vkq2m7xdr3h4l9tnwe5pbayc6zs8ujf1.onion",
+   "type": "onion",
+   "x": -0.081,
+   "y": 0.765,
+   "r": 3.9
+  },
+  {
+   "id": "night_ledger_41",
+   "type": "handle",
+   "x": -0.575,
+   "y": 0.7,
+   "r": 3.9
+  }
+ ],
+ "edges": [
+  {
+   "a": "AvosLocker",
+   "b": "AvNeutralizer",
+   "rel": "uses"
+  },
+  {
+   "a": "Black Basta",
+   "b": "AvNeutralizer",
+   "rel": "uses"
+  },
+  {
+   "a": "BlackCat",
+   "b": "AvNeutralizer",
+   "rel": "uses"
+  },
+  {
+   "a": "Cl0p",
+   "b": "CVE-2023-34362",
+   "rel": "exploits"
+  },
+  {
+   "a": "Cl0p",
+   "b": "CVE-2023-34363",
+   "rel": "exploits"
+  },
+  {
+   "a": "Cl0p",
+   "b": "CVE-2023-35036",
+   "rel": "exploits"
+  },
+  {
+   "a": "Cl0p",
+   "b": "CVE-2023-35708",
+   "rel": "exploits"
+  },
+  {
+   "a": "Cl0p",
+   "b": "CVE-2023-36932",
+   "rel": "exploits"
+  },
+  {
+   "a": "Cl0p",
+   "b": "CVE-2023-36933",
+   "rel": "exploits"
+  },
+  {
+   "a": "Cl0p",
+   "b": "CVE-2023-36934",
+   "rel": "exploits"
+  },
+  {
+   "a": "FIN7",
+   "b": "NetSupport RAT",
+   "rel": "drops"
+  },
+  {
+   "a": "LockBit",
+   "b": "AvNeutralizer",
+   "rel": "uses"
+  },
+  {
+   "a": "RansomEXX",
+   "b": "vkq2m7xdr3h4l9tnwe5pbayc6zs8ujf1.onion",
+   "rel": "communicates_with"
+  },
+  {
+   "a": "Trigona",
+   "b": "AvNeutralizer",
+   "rel": "uses"
+  },
+  {
+   "a": "night_ledger_41",
+   "b": "q7w3ztn5ehx2dvbc4rj6lm9ys8ako1pf.onion",
+   "rel": "co_appeared"
+  },
+  {
+   "a": "Play",
+   "b": "q7w3ztn5ehx2dvbc4rj6lm9ys8ako1pf.onion",
+   "rel": "controls"
+  }
+ ]
+}
