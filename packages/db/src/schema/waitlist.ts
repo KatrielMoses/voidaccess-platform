@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
  * Emails are stored lower-cased; the unique index is on lower(email) as a second guard.
  * IPs are never stored raw: ip_hash is an HMAC-SHA256 with a server-side salt.
  */
-export interface FirstTouch {
+export interface WaitlistFirstTouch {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
@@ -26,7 +26,10 @@ export const waitlist = pgTable(
     role: text("role"),
     useCase: text("use_case"),
     wantsFounding: boolean("wants_founding").notNull().default(false),
-    firstTouch: jsonb("first_touch").$type<FirstTouch>().notNull().default(sql`'{}'::jsonb`),
+    firstTouch: jsonb("first_touch")
+      .$type<WaitlistFirstTouch>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     refCode: text("ref_code"),
     ipHash: text("ip_hash").notNull(),
     consentMarketing: boolean("consent_marketing").notNull().default(false),

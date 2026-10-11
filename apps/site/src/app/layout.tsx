@@ -12,9 +12,9 @@ import { siteContent } from "@content/site";
 import "./globals.css";
 
 // Self-hosted by next/font with size-adjusted fallbacks, so swapping fonts doesn't shift layout.
-const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", display: "swap" });
-const body = Inter({ subsets: ["latin"], variable: "--font-body", display: "optional" });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "optional", preload: false });
+const display = Space_Grotesk({ subsets: ["latin"], variable: "--nf-display", display: "swap" });
+const body = Inter({ subsets: ["latin"], variable: "--nf-body", display: "optional" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--nf-mono", display: "optional", preload: false });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
