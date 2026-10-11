@@ -129,5 +129,44 @@ Versions: Next.js 16.4, Better Auth 1.7. Read the current Better Auth docs (Driz
 - requests for architect-owned files
 - deviations with reasons
 
-── APPENDIX: PRD sections 3.2, 3.3, 3.5, 3.8 and 5 ─────────────────────────────
-Katriel will paste these PRD sections below this line when sending the brief.
+── APPENDIX: PRD sections 3.2, 3.3, 3.5, 3.8 and 5 ──────────────────────────────────────────────
+
+(Verbatim from PRD v1.0, 2026-10-11. Where the PRD says P1, it means the post-launch fast-follow set. Pricing, credit costs and plan details in the PRD are superseded by docs/PRICING-v1.md and packages/config.)
+
+### 3.2 Account and onboarding (P0)
+- Sign up with **email (magic link or password)** + **GitHub OAuth** (our audience lives on GitHub). Google OAuth is P1.
+- **Email verification required** before the first investigation (abuse control).
+- **Mandatory acceptance of the Acceptable Use Policy** at signup (checkbox + timestamp stored).
+- First-run screen: one search box with **3 example queries as clickable chips** (e.g. a ransomware group, a sample domain, a crypto wallet), plus a short "what credits are" note showing the free balance.
+- Optional 2-question profile (role, main use case) for segmentation. Skippable.
+
+### 3.3 Running an investigation (P0), the heart of the product
+- **Search input:** natural language or keyword (e.g. "LockBit affiliates selling access to healthcare", "@handle", a domain, a wallet). Show a **credit cost estimate before running**.
+- **Depth selector:** Quick / Standard / Deep, each with a clear credit cost *(strawman in §4.3)*.
+- **AI refinement preview:** show the AI-refined queries ("we'll search for: …") so the user understands the AI step (this is our differentiator; make it visible).
+- **Live progress:** show the pipeline stages as they run (collecting → filtering → enriching → extracting → graphing → summarising) with counts ticking up (sources hit, pages fetched, entities found). It must feel alive; runs can take minutes. The user can leave and come back (runs continue server-side; notify by email or in-app when done).
+- **Cancel** a running investigation (refund unused credits for stages not run).
+
+### 3.5 Workspace and history (P0)
+- **Investigations list:** all past runs with title, date, depth, credits used, status; search and filter; rename; delete.
+- **Re-run / refresh** an investigation (costs credits).
+- **Actors library (P1):** persistent actor profiles across investigations (the engine already supports this).
+- **Notes (P1):** add analyst notes to an investigation or actor.
+
+### 3.8 Settings (P0)
+- Profile, email, password/OAuth, delete account (with data deletion), data export.
+- **Bring-your-own API keys (P1, optional):** users can add their own VirusTotal/Shodan/HIBP keys for deeper enrichment. Keys are stored encrypted.
+- Notification preferences.
+
+## 5. Emails (P0 transactional + core lifecycle)
+| Trigger | Email |
+|---|---|
+| Signup | Verify email |
+| Verified | Welcome from Katriel: what it is, 3 example queries, link back to app |
+| No investigation 24h after signup | "Your first investigation takes 2 minutes" + example |
+| First investigation done | Results ready (also for long runs) + "here's what you can do next" |
+| 80% / 100% credits | Usage alert + top-up/upgrade |
+| Payment | Receipt (via Dodo), welcome to Pro |
+| Cancel | Short "what made you leave?" (one-line reply ask; Katriel reads these) |
+| Monitor finding (P1) | New finding alert |
+- Plain, founder-voiced, mostly text. Unsubscribe for non-transactional. Emails feed the marketing list (with consent).

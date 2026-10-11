@@ -133,5 +133,20 @@ export async function ingestBundle(runId: string, deps: IngestDeps): Promise<voi
 - requests for architect-owned files
 - deviations with reasons
 
-── APPENDIX: PRD section 3.4 ───────────────────────────────────────────────────
-Katriel will paste PRD section 3.4 (Investigation results) below this line when sending the brief.
+── APPENDIX: PRD section 3.4 (Investigation results) ──────────────────────────────────────────────
+
+(Verbatim from PRD v1.0, 2026-10-11. Where the PRD says P1, it means the post-launch fast-follow set. Pricing, credit costs and plan details in the PRD are superseded by docs/PRICING-v1.md and packages/config.)
+
+### 3.4 Investigation results (P0)
+Tabs or sections:
+1. **Summary:** AI-written intelligence summary (key findings, actors, risk notes), with confidence and source counts.
+2. **Graph:** interactive relationship graph (entities, actors, infrastructure, communities). Zoom, filter by entity type, click a node to see detail and sources. **Export graph as PNG/SVG** (shareable, the viral asset).
+3. **Entities:** table grouped by type (crypto wallets, IPs/domains/onion addresses, hashes, credentials, messaging handles, CVEs/ATT&CK, actors, orgs…) with search, filter and copy.
+4. **Actors:** actor profiles found (aliases, linked infrastructure, timeline).
+5. **Sources:** list of where findings came from (source type, timestamp, link where safe), with **text excerpts only**.
+6. **Exports:** STIX 2.1, MISP, CSV, JSON, Markdown, IOC package (P0); Sigma, YARA, Snort, Suricata (P1 if not trivial).
+- **Content-safety display rules (P0, non-negotiable):**
+  - **Never fetch or display images or media from dark-web pages.** Text only.
+  - **Credentials and personal data are masked by default** (e.g. `j***@acme.com`, password shown as length/hash only). Unmasking is restricted (P1: only for verified domain owners).
+  - The engine's existing content-safety gates (prohibited queries, URLs, content, entities) must be **on and non-bypassable** in the cloud.
+- **Share (P1):** create a read-only, redacted share link or report PDF. *(Share links are a growth loop; include a subtle "Investigated with VoidAccess" footer.)*
