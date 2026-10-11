@@ -75,15 +75,13 @@ describe("ledger", () => {
     // the DB itself refuses to overdraw, even if app code were wrong
     const err = await pgError(
       db.withSystem("test.overdraw", (tx) =>
-        tx
-          .insert(creditLedger)
-          .values({
-            userId: u,
-            bucket: "grant",
-            amount: -21,
-            reason: "settle",
-            idempotencyKey: "overdraw:" + u,
-          }),
+        tx.insert(creditLedger).values({
+          userId: u,
+          bucket: "grant",
+          amount: -21,
+          reason: "settle",
+          idempotencyKey: "overdraw:" + u,
+        }),
       ),
     );
     expect(err.code).toBe("23514");

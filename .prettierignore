@@ -10,3 +10,8 @@ infra/terraform/.terraform
 .worktrees
 docs
 AGENTS.md
+infra/bootstrap
+package.json
+packages/config
+tsconfig.base.json
+turbo.json

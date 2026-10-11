@@ -54,15 +54,13 @@ beforeAll(async () => {
       .insert(subscriptions)
       .values({ userId: B, providerSubscriptionId: "sub_" + B, plan: "pro", status: "active" })
       .returning({ id: subscriptions.id });
-    await tx
-      .insert(payments)
-      .values({
-        userId: B,
-        providerPaymentId: "pay_" + B,
-        amountCents: 900,
-        kind: "subscription",
-        paidAt: new Date(),
-      });
+    await tx.insert(payments).values({
+      userId: B,
+      providerPaymentId: "pay_" + B,
+      amountCents: 900,
+      kind: "subscription",
+      paidAt: new Date(),
+    });
     await tx
       .insert(foundingNotices)
       .values({ userId: B, seatNo: 1, kind: "release_day", refAt: new Date(), scheduledFor: new Date() });

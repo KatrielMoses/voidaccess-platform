@@ -42,15 +42,13 @@ const subscribe = (userId: string, periodEnd: Date) =>
   db.withSystem(
     "t",
     (tx) =>
-      tx
-        .insert(subscriptions)
-        .values({
-          userId,
-          providerSubscriptionId: "s_" + userId,
-          plan: "pro",
-          status: "active",
-          currentPeriodEnd: periodEnd,
-        }),
+      tx.insert(subscriptions).values({
+        userId,
+        providerSubscriptionId: "s_" + userId,
+        plan: "pro",
+        status: "active",
+        currentPeriodEnd: periodEnd,
+      }),
     { audit: false },
   );
 const noticesOf = (userId: string) =>
