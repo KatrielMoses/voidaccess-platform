@@ -34,7 +34,7 @@ Toolchain: Node 22+ (24 is installed) and pnpm 10.
 
 Versions as of today: Next.js 16.4, Tailwind 4.3, Drizzle ORM 0.45, Better Auth 1.7, Turbo 2.11. Use current stable releases and read each library's current docs, not memory.
 
-Local Postgres 17 is running on the default socket. Create databases `voidaccess_dev` and `voidaccess_test`.
+Local Postgres 17 is running on the default socket. Create databases `voidaccess_dev` and `voidaccess_test`; they're yours. P1 runs in parallel on its own `voidaccess_site_*` databases; don't touch them. Run the app dev server on **port 3000** (the site uses 3100).
 
 GCP: project `voidaccess-cloud`, region `us-central1`, always with `CLOUDSDK_ACTIVE_CONFIG_NAME=voidaccess` (impersonates `va-agent`, which has no project-IAM rights). Existing resources:
 - Artifact Registry `voidaccess`

@@ -25,7 +25,7 @@ Read first:
 
 Versions: Next.js 16.4, Tailwind 4.3. Read the current docs for Next.js, `@opennextjs/cloudflare` and Cloudflare Turnstile; don't rely on memory.
 
-Local Postgres 17 is running. Use database `voidaccess_dev`, which P0 also uses; your table is `waitlist` only.
+Local Postgres 17 is running. **Use your own databases, `voidaccess_site_dev` and `voidaccess_site_test`** (create them). P0 runs in parallel on `voidaccess_dev` / `voidaccess_test` and may reset them, so never touch P0's databases. Your table is `waitlist` only. **Run the site dev server on port 3100** (P0's app uses 3000), and use separate ports for any preview (e.g. `wrangler dev` on 8788).
 
 ── PRODUCT FACTS THE SITE MUST STATE ACCURATELY ────────────────────────────────
 - **What it is:** a hosted VoidAccess with AI-assisted dark-web search, enrichment, an entity and actor graph, and exports (STIX 2.1, MISP, CSV, JSON, Markdown, IOC package; Sigma/YARA/Snort/Suricata where available). The user installs nothing, runs no Tor, holds no keys, and no dark-web traffic touches their machine.
