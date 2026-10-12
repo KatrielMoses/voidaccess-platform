@@ -15,3 +15,7 @@ package.json
 packages/config
 tsconfig.base.json
 turbo.json
+test-results/
+playwright-report/
+**/test-results/
+**/playwright-report/
