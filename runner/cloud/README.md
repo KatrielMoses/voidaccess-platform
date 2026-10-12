@@ -1,7 +1,7 @@
 # runner/cloud: the production runner (lane R0)
 
 One Cloud Run Job execution (`va-runner`) = one investigation. `python -m cloud.run` fetches the single-use RunSpec,
-runs the engine pipeline (public engine commit `bf2213c`, the E1B cloud profile) with Tor as a client only, streams
+runs the engine pipeline (public engine commit `0dd59da`: E1B cloud profile plus E1C clean-ups and the cloud source deny-list) with Tor as a client only, streams
 signed progress events to the app, builds a contract-valid `ResultBundle`, uploads the artifacts and only then sends
 `completed`. Contract: `docs/ENGINE-CONTRACT.md` v0.3.
 
@@ -25,8 +25,8 @@ signed progress events to the app, builds a contract-valid `ResultBundle`, uploa
 ## Tests
 
 ```bash
-# Python 3.11, the engine at bf2213c importable, pytest, jsonschema, pyyaml:
-git -C ../voidaccess archive bf2213c | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
+# Python 3.11, the engine at 0dd59da importable, pytest, jsonschema, pyyaml:
+git -C ../voidaccess archive 0dd59da | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
 pip install /tmp/engine pytest jsonschema==4.23.0 && python -m spacy download en_core_web_sm
 cd runner && PYTHONPATH=/tmp/engine python -m pytest        # 0 skipped expected
 ```

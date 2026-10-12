@@ -10,7 +10,7 @@ ENV_KEYS = [
     "MAX_LLM_PAGES_PER_INV", "MAX_REL_PAGES_PER_INV", "PASTE_MAX_RESULTS", "ENABLE_RELATIONSHIP_EXTRACTION",
     "VOIDACCESS_SEARCH_WORKERS", "VOIDACCESS_SCRAPE_WORKERS", "VOIDACCESS_EXTRACT_CONCURRENCY",
     "VOIDACCESS_SEARCH_DEADLINE", "VOIDACCESS_CONCURRENT_COLLECT", "VOIDACCESS_LLM_CHUNK_TIMEOUT",
-    "VOIDACCESS_ENRICHMENT_TIMEOUT", "VOIDACCESS_ENRICHMENT_SOURCES",
+    "VOIDACCESS_ENRICHMENT_TIMEOUT", "VOIDACCESS_ENRICHMENT_SOURCES", "VOIDACCESS_DISABLED_SOURCES",
 ]
 
 
@@ -56,4 +56,16 @@ def test_verify_policy_passes_when_in_effect_and_fails_closed_otherwise(monkeypa
         policy.apply_cloud_policy_base()
     monkeypatch.setenv("VOIDACCESS_ENRICHMENT_SOURCES", "not_a_source")
     with pytest.raises(Exception):
+        policy.verify_policy()
+
+
+def test_policy_requires_the_full_cloud_deny_list(monkeypatch):
+    policy.apply_cloud_policy_base()
+    policy.apply_cloud_profile()
+    policy.verify_policy()
+    monkeypatch.setenv("VOIDACCESS_DISABLED_SOURCES", "openphish")  # incomplete: other cloud-disabled sources missing
+    with pytest.raises(policy.PolicyError):
+        policy.verify_policy()
+    monkeypatch.delenv("VOIDACCESS_DISABLED_SOURCES")
+    with pytest.raises(policy.PolicyError):
         policy.verify_policy()

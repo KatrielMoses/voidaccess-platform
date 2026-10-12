@@ -74,12 +74,19 @@ def verify_policy() -> None:
     for name in ("MEILI_HOST", "MEILI_MASTER_KEY", "VOIDACCESS_DISABLE_CONTENT_SAFETY"):
         if os.environ.get(name):
             raise PolicyError(f"{name} must not be set")
-    for name in ("VOIDACCESS_ENRICHMENT_SOURCES", "VOIDACCESS_LLM_CHUNK_TIMEOUT"):
+    for name in ("VOIDACCESS_ENRICHMENT_SOURCES", "VOIDACCESS_DISABLED_SOURCES", "VOIDACCESS_LLM_CHUNK_TIMEOUT"):
         if not os.environ.get(name):
             raise PolicyError(f"cloud profile variable {name} is missing")
     from sources.enrichment_allowlist import validate_enrichment_allowlist
+    from sources.source_control import CLOUD_DISABLED_SOURCES, validate_disabled_sources
 
     validate_enrichment_allowlist()
+    # every source the engine itself marks as cloud-disabled must be in effect (unknown ids already raise)
+    cloud = CLOUD_DISABLED_SOURCES
+    required = {x.strip() for x in (cloud.split(",") if isinstance(cloud, str) else cloud) if x.strip()}
+    missing = required - set(validate_disabled_sources())
+    if missing:
+        raise PolicyError(f"cloud deny-list is missing sources: {sorted(missing)}")
     state = render_bypass_state()
     if not state or any(state.values()):
         raise PolicyError("the safety bypass text is present in an engine prompt")

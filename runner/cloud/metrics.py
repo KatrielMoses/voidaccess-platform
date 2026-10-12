@@ -6,16 +6,19 @@ from typing import Any
 
 
 def enrichment_calls(sources_used: Any, allowlist: str | None) -> dict[str, int]:
-    """Enrichment sources that ran, as {source id: 1}. `sources_used` is the engine's per-source status table; it also
-    lists sources the licensed allowlist turned off (they report `ok` with 0 results but make no network call) and the
-    search-stage sources, so only ids on the allowlist count. 1 means "ran at least once": the engine does not report
-    how many requests a source made."""
+    """HTTP requests per enrichment source, as {source id: requests}. Since E1C the engine reports each source's real
+    status and its request count; only allowlisted sources with status `ok` or `error` that made requests count.
+    Older engines (no `requests` field) report 1 for a source that ran."""
     allowed = {x.strip() for x in (allowlist or "").split(",") if x.strip()}
     out: dict[str, int] = {}
     for name, info in (sources_used or {}).items():
-        if not isinstance(info, dict) or not str(info.get("status", "")).startswith(("ok", "ran")):
+        if not isinstance(info, dict) or (allowed and name not in allowed):
             continue
-        if not allowed or name in allowed:
+        if "requests" in info:
+            n = int(info.get("requests") or 0)
+            if n > 0:
+                out[str(name)] = n
+        elif str(info.get("status", "")).startswith(("ok", "ran")):
             out[str(name)] = 1
     return out
 
