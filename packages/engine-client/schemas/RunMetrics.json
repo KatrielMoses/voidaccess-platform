@@ -60,6 +60,30 @@
         "minimum": 0,
         "maximum": 9007199254740991
       }
+    },
+    "peak_rss_mb": {
+      "type": "number",
+      "minimum": 0
+    },
+    "export_errors": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "dropped_entities": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      }
     }
   },
   "required": [
