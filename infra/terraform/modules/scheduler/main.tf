@@ -8,6 +8,7 @@ locals {
     "va-founding"      = { schedule = "0 6 * * *", path = "/api/cron/founding" }
     "va-grants"        = { schedule = "30 6 * * *", path = "/api/cron/grants" }
     "va-credit-alerts" = { schedule = "15 * * * *", path = "/api/cron/credit-alerts" }
+    "va-archive"       = { schedule = "*/5 * * * *", path = "/api/cron/archive" }
   }
 }
 

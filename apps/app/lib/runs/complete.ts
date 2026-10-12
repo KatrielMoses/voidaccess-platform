@@ -4,6 +4,7 @@ import { getDatabase, investigations } from "@voidaccess/db";
 import { trackEvent } from "../analytics";
 import { sendEmail } from "@voidaccess/emails";
 import { users } from "@voidaccess/db/schema";
+import { enqueueArchive } from "@voidaccess/archive";
 import { ingestBundle } from "./ingest";
 import { viewerActive } from "./sse";
 import { lockRun, settleLockedRun } from "./settle";
@@ -41,6 +42,7 @@ export async function finishIngest(runId: string): Promise<void> {
       ms: run.startedAt ? Date.now() - run.startedAt.getTime() : null,
     };
   });
+  if (outcome) await enqueueArchive(runId); // anonymous findings archive; never throws, never affects the run
   if (outcome?.first) {
     await trackEvent("first_investigation_completed", {
       userId: outcome.userId,

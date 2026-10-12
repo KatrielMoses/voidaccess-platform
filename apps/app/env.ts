@@ -22,6 +22,8 @@ export const envSchema = z.object({
   GCP_REGION: z.string().min(1).default("us-central1"),
   RUNNER_JOB_NAME: z.string().min(1).default("va-runner"),
   RUNS_BUCKET: z.string().min(1).default("voidaccess-cloud-runs"),
+  /** Permanent, versioned archive bucket (P4): page snapshots by content hash. */
+  ARCHIVE_BUCKET: z.string().min(1).default("voidaccess-cloud-archive"),
   /** The runner job's size, for the per-run compute cost (must match infra/terraform/modules/runner). */
   RUNNER_VCPU: z.coerce.number().positive().default(1),
   RUNNER_MEMORY_GIB: z.coerce.number().positive().default(2),

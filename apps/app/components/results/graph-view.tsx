@@ -21,7 +21,16 @@ import {
 } from "@/lib/results/graph-model";
 import { loadLayout, saveLayout } from "@/lib/results/layout-cache";
 import type { GraphData } from "@/lib/results/types";
+import { archiveCopy } from "@/lib/archive/copy";
+import { formatDate } from "@/lib/results/format";
 import { GraphControls } from "./graph-controls";
+import {
+  ARCHIVE_EDGE_COLOR,
+  ARCHIVE_NODE_COLOR,
+  useArchiveOverlay,
+  type MinTier,
+} from "./use-archive-overlay";
+import { TierBadge } from "./tier-badge";
 import { NodePanel } from "./node-panel";
 
 const DIM = "rgba(110,118,129,0.12)";
@@ -58,6 +67,10 @@ export function GraphView({ investigationId }: { investigationId: string }) {
   const [laying, setLaying] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [search, setSearch] = useState("");
+  const [archiveOn, setArchiveOn] = useState(false);
+  const [archiveHops, setArchiveHops] = useState<1 | 2>(1);
+  const [archiveMinTier, setArchiveMinTier] = useState<MinTier>("unconfirmed");
+  const [graphVersion, setGraphVersion] = useState(0);
   const [edgeTip, setEdgeTip] = useState<{ x: number; y: number; text: string } | null>(null);
 
   const container = useRef<HTMLDivElement>(null);
@@ -84,6 +97,15 @@ export function GraphView({ investigationId }: { investigationId: string }) {
   const visible = useMemo(() => (data ? computeVisible(data, filters) : null), [data, filters]);
   const types = useMemo(() => (data ? typeCounts(data) : []), [data]);
   const big = data ? isBig(data) : false;
+  const archive = useArchiveOverlay({
+    investigationId,
+    graphRef,
+    sigmaRef,
+    graphVersion,
+    on: archiveOn,
+    hops: archiveHops,
+    minTier: archiveMinTier,
+  });
 
   useEffect(() => {
     visibleRef.current = visible;
@@ -137,7 +159,7 @@ export function GraphView({ investigationId }: { investigationId: string }) {
       hideLabelsOnMove: true,
       nodeReducer: (node, attrs) => {
         const vis = visibleRef.current;
-        if (vis && !vis.nodes.has(node)) return { ...attrs, hidden: true };
+        if (!attrs.archive && vis && !vis.nodes.has(node)) return { ...attrs, hidden: true };
         const out = { ...attrs } as Record<string, unknown>;
         if (communityRef.current) out.color = communityColor(attrs.community as number | null);
         const focus = hovered.current ?? selectedRef.current;
@@ -153,6 +175,14 @@ export function GraphView({ investigationId }: { investigationId: string }) {
       },
       edgeReducer: (edge, attrs) => {
         const vis = visibleRef.current;
+        if (attrs.archiveEdge) {
+          const f = hovered.current ?? selectedRef.current;
+          return {
+            ...attrs,
+            color: f && !graph.hasExtremity(edge, f) ? "rgba(217,164,65,0.06)" : ARCHIVE_EDGE_COLOR,
+            size: 1.2,
+          };
+        }
         if (vis && !vis.edges.has(attrs.idx as number)) return { ...attrs, hidden: true };
         const typed = attrs.rel !== EDGE_COOCCURRENCE;
         const focus = hovered.current ?? selectedRef.current;
@@ -170,6 +200,7 @@ export function GraphView({ investigationId }: { investigationId: string }) {
       },
     });
     sigmaRef.current = sigma;
+    setGraphVersion((v) => v + 1);
     sigma.on("enterNode", ({ node }) => {
       hovered.current = node;
       sigma.refresh({ skipIndexation: true });
@@ -182,6 +213,17 @@ export function GraphView({ investigationId }: { investigationId: string }) {
     sigma.on("clickStage", () => setSelected(null));
     sigma.on("enterEdge", ({ edge, event }) => {
       const rel = graph.getEdgeAttribute(edge, "rel") as string;
+      const ae = graph.getEdgeAttribute(edge, "archiveEdge") as
+        | { evidence: number; independentSources: number; firstSeen: string; lastSeen: string; tier: string }
+        | undefined;
+      if (ae) {
+        setEdgeTip({
+          x: event.x,
+          y: event.y,
+          text: `${edgeTypeLabel(rel)} (${edgeKindLabel(rel)}, a lead) · ${ae.evidence} ${ae.evidence === 1 ? "page" : "pages"} · ${ae.independentSources} independent ${ae.independentSources === 1 ? "site" : "sites"} · ${formatDate(ae.firstSeen)} to ${formatDate(ae.lastSeen)} · ${ae.tier.replace("_", " ")}`,
+        });
+        return;
+      }
       setEdgeTip({ x: event.x, y: event.y, text: `${edgeTypeLabel(rel)}: ${edgeKindLabel(rel)}` });
     });
     sigma.on("leaveEdge", () => setEdgeTip(null));
@@ -285,12 +327,12 @@ export function GraphView({ investigationId }: { investigationId: string }) {
       p.x > -20 && p.y > -20 && p.x < width + 20 && p.y < height + 20;
     const pos = new Map<string, { x: number; y: number }>();
     g.forEachNode((id, a) => {
-      if (!vis.nodes.has(id)) return;
+      if (!a.archive && !vis.nodes.has(id)) return;
       const p = sigma.graphToViewport({ x: a.x as number, y: a.y as number });
       if (inView(p)) pos.set(id, p);
     });
     g.forEachEdge((_e, a, s, t) => {
-      if (!vis.edges.has(a.idx as number)) return;
+      if (!a.archiveEdge && !vis.edges.has(a.idx as number)) return;
       const p1 = pos.get(s);
       const p2 = pos.get(t);
       if (!p1 || !p2) return;
@@ -300,8 +342,8 @@ export function GraphView({ investigationId }: { investigationId: string }) {
         y1: p1.y,
         x2: p2.x,
         y2: p2.y,
-        color: typed ? "#9b9fee" : "#ffffff",
-        width: typed ? 1.4 : 0.4,
+        color: a.archiveEdge ? ARCHIVE_NODE_COLOR : typed ? "#9b9fee" : "#ffffff",
+        width: a.archiveEdge ? 1.2 : typed ? 1.4 : 0.4,
       });
     });
     const top = [...pos.keys()]
@@ -313,17 +355,23 @@ export function GraphView({ investigationId }: { investigationId: string }) {
     const usedTypes = new Set<string>();
     for (const [id, p] of pos) {
       const a = g.getNodeAttributes(id);
-      usedTypes.add(a.etype as string);
+      if (!a.archive) usedTypes.add(a.etype as string);
       const ratio = sigma.getCamera().ratio;
       nodes.push({
         x: p.x,
         y: p.y,
         r: Math.max(2, ((a.size as number) / Math.sqrt(ratio)) * 0.9),
-        color: communityRef.current ? communityColor(a.community as number | null) : (a.color as string),
+        color: a.archive
+          ? ARCHIVE_NODE_COLOR
+          : communityRef.current
+            ? communityColor(a.community as number | null)
+            : (a.color as string),
         label: labelled.has(id) ? (a.label as string) : null,
       });
     }
     const legend = [...usedTypes].slice(0, 8).map((t) => ({ label: typeStyle(t).label, color: cssColor(t) }));
+    if ([...pos.keys()].some((id) => g.getNodeAttribute(id, "archive")))
+      legend.push({ label: archiveCopy.graph.legend, color: ARCHIVE_NODE_COLOR });
     downloadSvg(
       buildSvg(width, height, nodes, edges, legend),
       `voidaccess-${investigationId.slice(0, 8)}-graph.svg`,
@@ -359,6 +407,19 @@ export function GraphView({ investigationId }: { investigationId: string }) {
         exporting={exporting}
         tableHref={`/investigations/${investigationId}/results/entities`}
         cssColor={cssColor}
+        archive={{
+          on: archiveOn,
+          onToggle: setArchiveOn,
+          hops: archiveHops,
+          onHops: setArchiveHops,
+          minTier: archiveMinTier,
+          onMinTier: setArchiveMinTier,
+          loading: archive.loading,
+          nodes: archive.nodes,
+          truncated: archive.truncated,
+          failed: archive.failed,
+          color: ARCHIVE_NODE_COLOR,
+        }}
       />
       <div className="relative">
         <label className="mb-2 flex max-w-sm flex-col gap-1 text-xs text-fg-secondary">
@@ -410,6 +471,7 @@ export function GraphView({ investigationId }: { investigationId: string }) {
             ) : null}
             {edgeTip ? (
               <div
+                data-testid="edge-tip"
                 className="pointer-events-none absolute rounded border border-border-subtle bg-overlay px-2 py-1 text-xs"
                 style={{ left: edgeTip.x + 12, top: edgeTip.y + 12 }}
               >
@@ -418,7 +480,18 @@ export function GraphView({ investigationId }: { investigationId: string }) {
             ) : null}
           </div>
           <div>
-            {selected ? (
+            {selected?.startsWith("arc:") && graphRef.current?.hasNode(selected) ? (
+              <ArchiveNodeCard
+                attrs={
+                  graphRef.current.getNodeAttributes(selected) as {
+                    label: string;
+                    etype: string;
+                    tier: "unconfirmed" | "corroborated" | "feed_validated";
+                  }
+                }
+                onClose={() => setSelected(null)}
+              />
+            ) : selected ? (
               <NodePanel
                 invId={investigationId}
                 data={data}
@@ -436,5 +509,39 @@ export function GraphView({ investigationId }: { investigationId: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ArchiveNodeCard({
+  attrs,
+  onClose,
+}: {
+  attrs: { label: string; etype: string; tier: "unconfirmed" | "corroborated" | "feed_validated" };
+  onClose: () => void;
+}) {
+  return (
+    <aside
+      aria-label="Archive node"
+      data-testid="archive-node-card"
+      className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4 text-sm"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-display text-base font-semibold">{archiveCopy.title}</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="text-fg-secondary hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          ✕
+        </button>
+      </div>
+      <code className="break-all rounded bg-void px-2 py-1.5 font-mono text-xs">{attrs.label}</code>
+      <p className="flex items-center gap-2">
+        <span className="text-fg-secondary">{typeStyle(attrs.etype).label}</span>
+        <TierBadge tier={attrs.tier} />
+      </p>
+      <p className="text-xs text-fg-secondary">{archiveCopy.graph.nodeNote}</p>
+    </aside>
   );
 }

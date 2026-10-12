@@ -1,10 +1,11 @@
 locals {
-  registry    = "${var.region}-docker.pkg.dev/${var.project_id}/voidaccess"
-  app_sa      = "va-app@${var.project_id}.iam.gserviceaccount.com"
-  runner_sa   = "va-runner@${var.project_id}.iam.gserviceaccount.com"
-  runs_bucket = "${var.project_id}-runs"
-  app_url     = "https://${var.app_domain}"
-  site_url    = "https://${var.site_domain}"
+  registry       = "${var.region}-docker.pkg.dev/${var.project_id}/voidaccess"
+  app_sa         = "va-app@${var.project_id}.iam.gserviceaccount.com"
+  runner_sa      = "va-runner@${var.project_id}.iam.gserviceaccount.com"
+  runs_bucket    = "${var.project_id}-runs"
+  archive_bucket = "${var.project_id}-archive"
+  app_url        = "https://${var.app_domain}"
+  site_url       = "https://${var.site_domain}"
   # Secrets the app reads. All exist already except dodo-webhook-secret (container managed below, version added by hand).
   app_secrets = [
     "database-url",
@@ -34,6 +35,11 @@ data "google_service_account" "runner" {
 
 data "google_storage_bucket" "runs" {
   name = local.runs_bucket
+}
+
+# Permanent, versioned archive bucket (P4): page snapshots by content hash.
+data "google_storage_bucket" "archive" {
+  name = local.archive_bucket
 }
 
 data "google_secret_manager_secret" "secrets" {
@@ -97,6 +103,7 @@ module "iam" {
   count          = var.manage_iam ? 1 : 0
   source         = "./modules/iam"
   runs_bucket    = data.google_storage_bucket.runs.name
+  archive_bucket = data.google_storage_bucket.archive.name
   app_member     = "serviceAccount:${data.google_service_account.app.email}"
   run_member     = "serviceAccount:${data.google_service_account.runner.email}"
   secret_ids     = merge({ for k, s in data.google_secret_manager_secret.secrets : k => s.secret_id }, { "dodo-webhook-secret" = google_secret_manager_secret.dodo_webhook.secret_id })

@@ -1,0 +1,25 @@
+{
+  "feed": "cisa_kev",
+  "source": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+  "note": "Seed of widely cited entries from CISA's Known Exploited Vulnerabilities catalogue. Refresh the full list with `pnpm --filter @voidaccess/archive update-feeds` (it downloads the public JSON feed). A CVE missing here is simply not feed-validated yet.",
+  "updated": "2026-10-12",
+  "cves": [
+    "CVE-2017-0144",
+    "CVE-2018-13379",
+    "CVE-2019-0708",
+    "CVE-2019-19781",
+    "CVE-2020-1472",
+    "CVE-2021-26855",
+    "CVE-2021-34473",
+    "CVE-2021-34523",
+    "CVE-2021-44228",
+    "CVE-2022-22965",
+    "CVE-2022-30190",
+    "CVE-2023-20198",
+    "CVE-2023-22515",
+    "CVE-2023-27350",
+    "CVE-2023-34362",
+    "CVE-2023-4966",
+    "CVE-2024-3400"
+  ]
+}

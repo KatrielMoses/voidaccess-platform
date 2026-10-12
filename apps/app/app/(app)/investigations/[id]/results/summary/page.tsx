@@ -6,6 +6,7 @@ import { formatDuration } from "@/lib/results/format";
 import { getInvestigation } from "@/lib/results/queries";
 import { SafeMarkdown } from "@/components/results/markdown";
 import { TypeBadge } from "@/components/results/type-badge";
+import { ArchivePanel } from "@/components/results/archive-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,8 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
         <Stat label="Duration" value={stats ? formatDuration(stats.durationMs) : "n/a"} />
         <Stat label="Confidence" value={summary.confidence} hint={`from ${summary.sourceCount} sources`} />
       </dl>
+
+      <ArchivePanel investigationId={id} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="flex flex-col gap-6">

@@ -16,4 +16,7 @@ def test_runner_schemas_are_the_engine_client_schemas(repo_root):
 def test_presets_are_the_baseline_presets(repo_root):
     here = Path(__file__).resolve().parents[1] / "presets.yaml"
     base = repo_root / "runner" / "baseline" / "presets.yaml"
-    assert yaml.safe_load(here.read_text()) == yaml.safe_load(base.read_text())
+    ours, baseline = yaml.safe_load(here.read_text()), yaml.safe_load(base.read_text())
+    # E1C: the cloud deny-list is a runner-only addition (the baseline harness predates it)
+    assert ours["cloud_profile"]["env"].pop("VOIDACCESS_DISABLED_SOURCES")
+    assert ours == baseline

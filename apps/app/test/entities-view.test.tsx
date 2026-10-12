@@ -88,7 +88,11 @@ describe("EntitiesView", () => {
     search = "q=cve&types=CVE_NUMBER&sensitive=1&min=0.5";
     render(<EntitiesView investigationId="x" typeCounts={{ CVE_NUMBER: 1 }} />);
     await waitFor(() => expect(fetch).toHaveBeenCalled());
-    const url = String((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0]);
+    const url = String(
+      (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls
+        .map((c) => String(c[0]))
+        .find((u) => u.includes("/entities?")),
+    );
     expect(url).toContain("/api/investigations/x/entities?");
     expect(url).toContain("q=cve");
     expect(url).toContain("types=CVE_NUMBER");

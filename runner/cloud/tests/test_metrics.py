@@ -88,3 +88,14 @@ def test_a_normal_llm_summary_is_untouched():
 
     out = build_summary({"summary": "### Key Insights\n- A real finding.\n", "summary_kind": "llm"}, 20, RawSecrets())
     assert out["summary_kind"] == "llm" and out["key_findings"] == ["A real finding."] and out["confidence"] == "high"
+
+
+def test_enrichment_calls_uses_real_request_counts_from_e1c_engines():
+    used = {
+        "nvd": {"status": "ok", "count": 0, "requests": 6},
+        "rdap": {"status": "error", "count": 0, "requests": 2},
+        "crtsh": {"status": "ok", "count": 3, "requests": 0},
+        "openphish": {"status": "disabled", "count": 0, "requests": 0},
+        "shodan": {"status": "ok", "count": 1, "requests": 4},  # not on the allowlist
+    }
+    assert enrichment_calls(used, "nvd,rdap,crtsh") == {"nvd": 6, "rdap": 2}
