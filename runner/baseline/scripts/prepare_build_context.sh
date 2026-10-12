@@ -5,18 +5,20 @@ set -euo pipefail
 ENGINE_REPO="${ENGINE_REPO:-$(cd "$(dirname "$0")/../../../../voidaccess" && pwd)}"
 PLATFORM_REPO="${PLATFORM_REPO:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 OUT="${1:-$(mktemp -d)}"
+# Engine ref to build (default main). E1B builds from the e1b-speed-hook branch.
+ENGINE_REF="${ENGINE_REF:-main}"
 
 echo "Engine repo: $ENGINE_REPO"
 echo "Output dir: $OUT"
 
 if [[ -n "$(git -C "$ENGINE_REPO" status --short)" ]]; then
-  echo "WARNING: voidaccess working tree is not clean — staging committed main only via git archive" >&2
+  echo "WARNING: voidaccess working tree is not clean — staging committed $ENGINE_REF only via git archive" >&2
 fi
 
-ENGINE_SHA="$(git -C "$ENGINE_REPO" rev-parse main)"
+ENGINE_SHA="$(git -C "$ENGINE_REPO" rev-parse "$ENGINE_REF")"
 mkdir -p "$OUT/engine" "$OUT/runner/baseline"
 
-git -C "$ENGINE_REPO" archive main | tar -x -C "$OUT/engine"
+git -C "$ENGINE_REPO" archive "$ENGINE_REF" | tar -x -C "$OUT/engine"
 echo "$ENGINE_SHA" > "$OUT/engine/ENGINE_GIT_SHA.txt"
 
 # The engine's tests/ is not needed at runtime and tests/test_setup.sh contains a

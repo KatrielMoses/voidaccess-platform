@@ -57,6 +57,17 @@ export const investigations = pgTable(
       .$onUpdate(() => new Date()),
     failureReason: text("failure_reason"),
     summaryKind: text("summary_kind"),
+    /** user-editable display title; falls back to the query when null */
+    title: text("title"),
+    /** launcher execution handle (Cloud Run execution name / mock process id) */
+    executionId: text("execution_id"),
+    /** single-use spec URL token: only the sha256 is stored (ENGINE-CONTRACT §1) */
+    specTokenHash: text("spec_token_hash"),
+    specTokenExpiresAt: tstz("spec_token_expires_at"),
+    specTokenUsedAt: tstz("spec_token_used_at"),
+    cancelRequestedAt: tstz("cancel_requested_at"),
+    /** last engine callback received; the watchdog fails runs silent for 10 minutes */
+    lastEventAt: tstz("last_event_at"),
   },
   (t) => [
     index("investigations_user_created_idx").on(t.userId, t.createdAt),

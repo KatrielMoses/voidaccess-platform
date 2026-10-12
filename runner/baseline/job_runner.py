@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import sys
 import time
 import uuid
@@ -28,12 +29,17 @@ from baseline.policy import (
     render_bypass_state,
     set_safety_bypass_prompt,
     load_queries,
-    patch_cli_llm_page_cap,
+    apply_variant_env,
 )
-from baseline.progress_hook import ProgressCapture, install_display_hook
+from baseline.progress_hook import StageCapture
 from baseline.refusal import detect_refusals
 from baseline.storage import upload_result
-from baseline.tor_service import start_tor, stop_tor
+from baseline.tor_service import start_tor_with_retry, stop_tor
+
+
+# Staggered task start: each task sleeps a random 0..STAGGER_MAX_S before it starts the
+# clock or Tor, so a wide wave does not bootstrap 50 Tor clients in the same second.
+STAGGER_MAX_S_DEFAULT = 60.0
 
 
 def _apply_task_cell() -> None:
@@ -59,6 +65,13 @@ def _apply_task_cell() -> None:
         os.environ["MODEL_OVERRIDE"] = FLASH_COMPARE_MODEL
     else:
         os.environ.pop("MODEL_OVERRIDE", None)
+
+
+def _peak_rss_mb() -> float:
+    """Peak resident memory of this process (Linux ru_maxrss is in KiB)."""
+    import resource
+
+    return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 1)
 
 
 def _configured_model(cfg: dict[str, Any]) -> str:
@@ -99,6 +112,7 @@ async def _execute_investigation(
     model: str | None,
     quiet: bool,
     timeout_s: float,
+    sinks: list[Any] | None = None,
 ) -> int:
     from voidaccess_cli.commands.investigate import _run_investigation
 
@@ -112,6 +126,7 @@ async def _execute_investigation(
             depth=cli_depth,
             fmt="json",
             quiet=quiet,
+            sinks=sinks,
         ),
         timeout=timeout_s,
     )
@@ -119,12 +134,17 @@ async def _execute_investigation(
 
 
 def main() -> None:
+    stagger_s = 0.0
+    if os.environ.get("WAVE_ID"):
+        stagger_s = random.uniform(0.0, float(os.environ.get("STAGGER_MAX_S", STAGGER_MAX_S_DEFAULT)))
+        time.sleep(stagger_s)
     t0 = time.monotonic()
     _apply_task_cell()
     exit_code = 0
     status = "ok"
     tor_proc = None
     tor_bootstrap_ms: float | None = None
+    tor_attempts = 0
     run_base = _run_dir()
     run_id = os.environ["RUN_ID"]
 
@@ -147,6 +167,7 @@ def main() -> None:
 
     apply_cloud_policy_base()
     cli_depth = apply_depth_preset(depth_name)
+    variant_env = apply_variant_env(variant)
 
     work = run_base
     db_path = work / "investigations.db"
@@ -170,9 +191,7 @@ def main() -> None:
 
     usage_recorder = UsageRecorder()
     install_usage_recording(usage_recorder)
-    patch_cli_llm_page_cap()
-    progress = ProgressCapture()
-    install_display_hook(progress)
+    progress = StageCapture()
 
     from utils.content_safety import is_blocked_query
 
@@ -190,14 +209,15 @@ def main() -> None:
             sys.exit(3)
 
     try:
-        tor_proc, tor_bootstrap_ms = start_tor()
+        tor_proc, tor_bootstrap_ms, tor_attempts = start_tor_with_retry()
         os.environ["TOR_PROXY_HOST"] = "127.0.0.1"
         os.environ["TOR_PROXY_PORT"] = "9050"
 
         try:
             asyncio.run(
                 _execute_investigation(
-                    query_text, cli_depth, out_dir, model_override, True, _cell_timeout_s(depth_name)
+                    query_text, cli_depth, out_dir, model_override, True, _cell_timeout_s(depth_name),
+                    sinks=[progress.sink()],
                 )
             )
         except asyncio.TimeoutError:
@@ -291,8 +311,16 @@ def main() -> None:
             ),
             "vcpu": vcpu,
             "memory_gib": memory_gib,
-            "progress_steps": [e["step"] for e in progress.events],
+            "stage_ms_events": progress.stage_ms,
+            "progress_counts": progress.last_counts,
+            "progress_terminal": progress.terminal,
             "progress_event_count": len(progress.events),
+            "peak_rss_mb": _peak_rss_mb(),
+            "tor_bootstrap_attempts": tor_attempts,
+            "stagger_s": round(stagger_s, 1),
+            "variant_env": variant_env,
+            "summary_kind": cli_payload.get("summary_kind"),
+            "summary_len": len(cli_payload.get("summary") or ""),
         },
     }
 

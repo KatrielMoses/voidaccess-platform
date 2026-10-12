@@ -1,18 +1,20 @@
 /**
- * DEV-ONLY session shim (lane RESULTS, P3). P2 owns real auth: at merge, replace the body of
- * getSessionUserId() with the real session helper (or delete this file and update the imports).
+ * Session lookup for the results routes (lane RESULTS, P3).
  *
- * Active only when NODE_ENV === "development": the user is the `va_dev_user` cookie if present
- * (used by the Playwright test to switch between a pro and a free user), else DEV_AS_USER.
- * In every other environment it returns null, so results routes answer 404/401.
+ * Production and normal development use P2's real session (Better Auth, httpOnly cookie): the user
+ * must be signed in and active. The cookie/env shim below exists only for the results-lane Playwright
+ * run (playwright.results.config.ts) and needs BOTH NODE_ENV=development AND VA_DEV_AUTH=1.
+ * TODO: move e2e/results.spec.ts to real sign-in like e2e/app.spec.ts, then delete the shim.
  */
 import { cookies } from "next/headers";
+import { getSessionUser } from "@/lib/auth/session";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function getSessionUserId(): Promise<string | null> {
-  if (process.env.NODE_ENV !== "development") return null;
-  const fromCookie = (await cookies()).get("va_dev_user")?.value;
-  const id = fromCookie ?? process.env.DEV_AS_USER;
+  const user = await getSessionUser();
+  if (user) return user.status === "active" ? user.id : null;
+  if (process.env.NODE_ENV !== "development" || process.env.VA_DEV_AUTH !== "1") return null;
+  const id = (await cookies()).get("va_dev_user")?.value ?? process.env.DEV_AS_USER;
   return id && UUID_RE.test(id) ? id : null;
 }

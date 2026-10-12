@@ -1,7 +1,7 @@
 import { unzipSync, strFromU8 } from "fflate";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { fixtureBundle, rawSensitiveList } from "@voidaccess/ingest/test-support";
-import { appDb, makeUser, ownerPool, seedInvestigation } from "./helpers";
+import { appDb, makeUser, ownerPool, seedInvestigation } from "./results-helpers";
 
 // The only thing mocked is the session: routes must take the user from here and nowhere else.
 let current: string | null = null;

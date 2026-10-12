@@ -8,10 +8,11 @@ from pathlib import Path
 
 from pacing import scale_timeout
 
-_TOR_BOOTSTRAP_PROBE_BASE_S = 180.0
+_TOR_BOOTSTRAP_PROBE_BASE_S = 90.0  # per attempt; E1B retries once
 TOR_BOOTSTRAP_TIMEOUT_S = scale_timeout(_TOR_BOOTSTRAP_PROBE_BASE_S)
 TOR_LOG_POLL_INTERVAL_S = 0.25
 TOR_STOP_GRACE_S = 10.0
+TOR_BOOTSTRAP_ATTEMPTS = 2
 TOR_BOOTSTRAPPED_MARKER = "Bootstrapped 100%"
 
 TOR_DATA_DIR = Path("/var/lib/tor-baseline")
@@ -73,3 +74,20 @@ def stop_tor(proc: subprocess.Popen[bytes] | None) -> None:
             proc.wait(timeout=TOR_STOP_GRACE_S)
         except subprocess.TimeoutExpired:
             proc.kill()
+
+
+def start_tor_with_retry() -> tuple[subprocess.Popen[bytes], float, int]:
+    """start_tor() with one retry. Returns (process, bootstrap_ms, attempts_used).
+
+    bootstrap_ms covers every attempt, so a retried bootstrap shows its full cost."""
+    t0 = time.monotonic()
+    last_exc: Exception | None = None
+    for attempt in range(1, TOR_BOOTSTRAP_ATTEMPTS + 1):
+        try:
+            proc, _ = start_tor()
+            return proc, (time.monotonic() - t0) * 1000.0, attempt
+        except (TimeoutError, RuntimeError) as exc:
+            last_exc = exc
+            print(f"tor bootstrap attempt {attempt} failed: {exc}", flush=True)
+    assert last_exc is not None
+    raise last_exc

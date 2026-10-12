@@ -1,0 +1,37 @@
+// Results-lane end-to-end run (dev server on :3200, dev-auth opt-in). TODO: move to real sign-in like e2e/app.spec.ts.
+import { defineConfig } from "@playwright/test";
+import { E2E_DB, appUrl } from "./e2e/results-global-setup";
+
+void E2E_DB;
+export default defineConfig({
+  testDir: "e2e",
+  testMatch: /results\.spec\.ts/,
+  globalSetup: "./e2e/results-global-setup.ts",
+  timeout: 120_000,
+  workers: 1,
+  use: {
+    baseURL: "http://localhost:3200",
+    trace: "retain-on-failure",
+    launchOptions: {
+      args: [
+        "--use-angle=swiftshader",
+        "--enable-unsafe-swiftshader",
+        "--ignore-gpu-blocklist",
+        "--enable-webgl",
+      ],
+    },
+  },
+  webServer: {
+    command: "pnpm exec next dev -p 3200",
+    url: "http://localhost:3200/",
+    reuseExistingServer: false,
+    timeout: 120_000,
+    env: {
+      DATABASE_URL: appUrl(),
+      VA_FINGERPRINT_KEY: "e2e-fp",
+      VA_LOCAL_KEK: Buffer.alloc(32, 5).toString("base64"),
+      DEV_AS_USER: "",
+      VA_DEV_AUTH: "1",
+    },
+  },
+});

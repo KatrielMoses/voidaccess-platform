@@ -1,10 +1,14 @@
-export default function HomePage() {
-  return (
-    <section className="flex flex-col gap-4">
-      <h1 className="font-display text-4xl font-semibold tracking-tight">VoidAccess</h1>
-      <p className="max-w-xl text-fg-secondary">
-        The platform is under construction. Nothing to see here yet.
-      </p>
-    </section>
-  );
+import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/auth/session";
+
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  let user = null;
+  try {
+    user = await getSessionUser();
+  } catch {
+    /* no database configured: fall through to sign-in */
+  }
+  redirect(user?.status === "active" ? "/welcome" : "/sign-in");
 }

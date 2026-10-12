@@ -1,5 +1,5 @@
-// Same convention as packages/db: TEST_DATABASE_URL is a superuser connection; the harness drops and
-// recreates its own database. Suffixed so `turbo run test` can run db, ingest and app tests in parallel.
+// Same approach as packages/db/test: TEST_DATABASE_URL is a superuser connection (any database); the suite
+// DROPs and recreates <VA_TEST_DB>_app, suffixed so turbo can run the db, ingest and app suites in parallel.
 const admin = new URL(process.env.TEST_DATABASE_URL ?? "postgres://localhost:5432/postgres");
 export const TEST_DB = `${process.env.VA_TEST_DB ?? "voidaccess_test"}_app`;
 if (!/^[a-z0-9_]+$/.test(TEST_DB)) throw new Error("VA_TEST_DB must be [a-z0-9_]+");

@@ -1,5 +1,5 @@
 {
-  "id": "ecdbdec0-ae3f-4052-a2fc-d4d45983e9e0",
+  "id": "409800f7-4ff2-4748-8129-1db42f954cea",
   "prevId": "58881be4-eae7-4dda-b474-b365fbd78a6d",
   "version": "7",
   "dialect": "postgresql",
@@ -651,45 +651,9 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{}'::text[]"
-        },
-        "degree": {
-          "name": "degree",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "community": {
-          "name": "community",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "search_text": {
-          "name": "search_text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
         }
       },
       "indexes": {
-        "inv_entities_search_trgm_idx": {
-          "name": "inv_entities_search_trgm_idx",
-          "columns": [
-            {
-              "expression": "search_text",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "gin_trgm_ops"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "gin",
-          "with": {}
-        },
         "inv_entities_inv_bundle_uq": {
           "name": "inv_entities_inv_bundle_uq",
           "columns": [
@@ -835,12 +799,6 @@
         "bytes": {
           "name": "bytes",
           "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "content": {
-          "name": "content",
-          "type": "bytea",
           "primaryKey": false,
           "notNull": false
         },
@@ -1246,19 +1204,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'[]'::jsonb"
-        },
-        "entity_counts": {
-          "name": "entity_counts",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "stats": {
-          "name": "stats",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -1420,6 +1365,48 @@
         "summary_kind": {
           "name": "summary_kind",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "execution_id": {
+          "name": "execution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "spec_token_hash": {
+          "name": "spec_token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "spec_token_expires_at": {
+          "name": "spec_token_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "spec_token_used_at": {
+          "name": "spec_token_used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancel_requested_at": {
+          "name": "cancel_requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_event_at": {
+          "name": "last_event_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         }
@@ -3514,127 +3501,6 @@
           "columns": [
             {
               "expression": "url",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.waitlist": {
-      "name": "waitlist",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "use_case": {
-          "name": "use_case",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "wants_founding": {
-          "name": "wants_founding",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "first_touch": {
-          "name": "first_touch",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "ref_code": {
-          "name": "ref_code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ip_hash": {
-          "name": "ip_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "consent_marketing": {
-          "name": "consent_marketing",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "confirm_token_hash": {
-          "name": "confirm_token_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confirmed_at": {
-          "name": "confirmed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "waitlist_email_lower_uq": {
-          "name": "waitlist_email_lower_uq",
-          "columns": [
-            {
-              "expression": "lower(\"email\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "waitlist_confirm_token_hash_uq": {
-          "name": "waitlist_confirm_token_hash_uq",
-          "columns": [
-            {
-              "expression": "confirm_token_hash",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

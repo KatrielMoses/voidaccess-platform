@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateBundle } from "@voidaccess/ingest/test-support";
-import { appDb, makeUser, ownerPool, seedInvestigation } from "./helpers";
+import { appDb, makeUser, ownerPool, seedInvestigation } from "./results-helpers";
 
 let user: string;
 let inv: string;

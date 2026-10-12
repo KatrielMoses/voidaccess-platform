@@ -1,6 +1,13 @@
-import pg from "pg";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { runMigrations } from "@voidaccess/db/migrate";
-import { TEST_DB, adminUrl, ownerUrl, APP_PASSWORD } from "./urls";
+import { APP_PASSWORD, TEST_DB, adminUrl, ownerUrl } from "./urls";
+
+// `pg` is not a direct dependency of apps/app (pnpm is strict): load the copy @voidaccess/db uses.
+const requireFromDb = createRequire(
+  fileURLToPath(new URL("../../../packages/db/package.json", import.meta.url)),
+);
+const pg = requireFromDb("pg") as typeof import("pg");
 
 export default async function setup() {
   const admin = new pg.Client({ connectionString: adminUrl });
