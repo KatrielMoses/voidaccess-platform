@@ -1,14 +1,16 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { runEvents } from "@voidaccess/db";
 import { setLauncher } from "@/lib/launcher";
-import { resetIngest } from "@/lib/runs/ingest";
+import { resetIngest, useNoopIngest } from "@/lib/runs/ingest";
 import { startInvestigation } from "@/lib/runs/service";
 import { runWatchdog } from "@/lib/runs/watchdog";
 import { StubLauncher, balanceOf, db, ledgerOf, makeUser, patchRun, postEvent, runRow } from "./helpers";
 
 const stub = new StubLauncher();
 setLauncher(stub);
+// lifecycle-only: completions are posted by hand without a bundle, so skip the real ingest
+beforeEach(() => useNoopIngest());
 afterEach(() => resetIngest());
 
 const sum = (rows: { amount: number }[]) => rows.reduce((a, r) => a + r.amount, 0);

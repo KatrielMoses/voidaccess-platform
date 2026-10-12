@@ -1,13 +1,21 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { rawSensitiveList } from "@voidaccess/ingest/test-support";
+import { E2E_PASSWORD } from "./results-global-setup";
 
 const S = JSON.parse(readFileSync(new URL("./.state/state.json", import.meta.url), "utf8")) as Record<
   string,
   string
 >;
-const as = async (page: Page, user: string) =>
-  page.context().addCookies([{ name: "va_dev_user", value: user, url: "http://localhost:3200" }]);
+/** Signs in through Better Auth's real email/password endpoint; the session cookie lands in the page's context. */
+const as = async (page: Page, user: string) => {
+  await page.context().clearCookies();
+  const res = await page.request.post("/api/auth/sign-in/email", {
+    data: { email: `${user}@e2e.local`, password: E2E_PASSWORD },
+    headers: { origin: "http://localhost:3200" },
+  });
+  expect(res.ok(), `sign-in as ${user}`).toBeTruthy();
+};
 const base = (id: string) => `/investigations/${id}/results`;
 
 test("results: tabs, graph filter and node panel, entity search, exports", async ({ page }) => {

@@ -1,4 +1,4 @@
-// Results-lane end-to-end run (dev server on :3200, dev-auth opt-in). TODO: move to real sign-in like e2e/app.spec.ts.
+// Results-lane end-to-end run (dev server on :3200). Users sign in through Better Auth like real users.
 import { defineConfig } from "@playwright/test";
 import { E2E_DB, appUrl } from "./e2e/results-global-setup";
 
@@ -30,8 +30,11 @@ export default defineConfig({
       DATABASE_URL: appUrl(),
       VA_FINGERPRINT_KEY: "e2e-fp",
       VA_LOCAL_KEK: Buffer.alloc(32, 5).toString("base64"),
-      DEV_AS_USER: "",
-      VA_DEV_AUTH: "1",
+      APP_URL: "http://localhost:3200",
+      BETTER_AUTH_SECRET: "e2e-better-auth-secret-0123456789-abcdef",
+      ENGINE_CALLBACK_SECRET: "e2e-engine-callback-secret-0123456789",
+      CRON_SHARED_SECRET: "e2e-cron-shared-secret-0123456789",
+      ENGINE_LAUNCHER: "mock",
     },
   },
 });
