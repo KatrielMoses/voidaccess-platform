@@ -232,6 +232,8 @@ describe("tenant isolation (RLS)", () => {
       "billing_customers",
       "billing_events",
       "billing_alerts",
+      "archive_jobs", // P4: the archive work queue
+      "archive_removed_pages",
     ]) {
       const r = await attempt(A, `select * from ${t}`);
       expect("denied" in r && r.denied, t).toBe("42501");
