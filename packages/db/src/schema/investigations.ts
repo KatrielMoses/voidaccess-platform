@@ -13,9 +13,12 @@ import {
   uuid,
   primaryKey,
   bigint,
+  customType,
 } from "drizzle-orm/pg-core";
 import { createdAt, depthEnum, pk, tstz } from "./_common";
 import { users } from "./auth";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
 export const INVESTIGATION_STATUSES = [
   "reserved",
@@ -127,8 +130,14 @@ export const invEntities = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    /** Written once at ingest (snapshots are immutable): graph degree and bundle community id. */
+    degree: integer("degree").notNull().default(0),
+    community: integer("community"),
+    /** Lower-cased display value + tags, for trigram search. Never contains a raw sensitive value. */
+    searchText: text("search_text").notNull().default(""),
   },
   (t) => [
+    index("inv_entities_search_trgm_idx").using("gin", t.searchText.op("gin_trgm_ops")),
     uniqueIndex("inv_entities_inv_bundle_uq").on(t.investigationId, t.bundleId),
     index("inv_entities_user_idx").on(t.userId),
     index("inv_entities_inv_type_idx").on(t.investigationId, t.type),
@@ -217,6 +226,24 @@ export const invSummary = pgTable(
       .$type<Array<{ id: number; entity_ids: string[]; label?: string }>>()
       .notNull()
       .default(sql`'[]'::jsonb`),
+    /** Pre-computed at ingest: entity counts by type, relationship/actor/source counts, duration, refined queries. */
+    entityCounts: jsonb("entity_counts")
+      .$type<Record<string, number>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    stats: jsonb("stats").$type<{
+      entities: number;
+      relationships: number;
+      typedRelationships: number;
+      actors: number;
+      sources: number;
+      sensitiveEntities: number;
+      durationMs: number;
+      engineVersion: string;
+      refinedQueries: string[];
+      startedAt: string;
+      completedAt: string;
+    } | null>(),
   },
   (t) => [
     uniqueIndex("inv_summary_inv_uq").on(t.investigationId),
@@ -231,6 +258,8 @@ export const invExports = pgTable(
     format: text("format").notNull(),
     objectPath: text("object_path").notNull(),
     bytes: bigint("bytes", { mode: "number" }),
+    /** Artifact bytes copied from the runner's (expiring) object store at ingest. Null only for legacy rows. */
+    content: bytea("content"),
     createdAt: createdAt(),
   },
   (t) => [

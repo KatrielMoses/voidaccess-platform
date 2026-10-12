@@ -12,19 +12,48 @@
  *    with failure_reason `ingest_failure` and the user is refunded in full: P3 owns bundle content, and a run
  *    the user cannot read must not be charged. A run stuck in `ingesting` for WATCHDOG_SILENCE_MINUTES is failed
  *    and refunded by the watchdog.
- *  - The default is a no-op, so the platform works end to end without P3 (the run is marked completed).
+ *  - The default is P3's real ingest (wired at the P2+P3 merge). Tests that only exercise the lifecycle can
+ *    call useNoopIngest().
  */
+import { ingestBundle as runIngest, type IngestDeps } from "@voidaccess/ingest";
+import { launcherKind } from "../launcher";
+import { readMockBundle } from "../launcher/artifacts";
+
 export type IngestFn = (runId: string) => Promise<void>;
 
+/** Where ingest reads artifacts from. Mock launcher: the local artifact store. Cloud Run: R0's GCS readers. */
+function artifactDeps(): IngestDeps {
+  if (launcherKind() === "mock") {
+    return {
+      async readBundle(runId) {
+        const raw = await readMockBundle(runId);
+        if (raw === null) throw new Error("bundle not found in the mock artifact store");
+        return JSON.parse(raw);
+      },
+      async readExport() {
+        return null; // the mock launcher stores no export artifacts
+      },
+    };
+  }
+  throw new Error("GCS artifact readers are not wired yet (R0)");
+}
+
+/** P3's ingest (validate, mask, write the inv_* snapshot) is the default since the P2+P3 merge. */
+const defaultIngest: IngestFn = (runId) => runIngest(runId, artifactDeps());
 const noop: IngestFn = async () => {};
-let impl: IngestFn = noop;
+let impl: IngestFn = defaultIngest;
 
 export function registerIngest(fn: IngestFn): void {
   impl = fn;
 }
 
-/** Test helper: back to the default no-op. */
+/** Test helper: back to the default (P3's real ingest). */
 export function resetIngest(): void {
+  impl = defaultIngest;
+}
+
+/** Test helper: skip ingest entirely (lifecycle-only tests). */
+export function useNoopIngest(): void {
   impl = noop;
 }
 

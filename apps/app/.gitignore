@@ -1,2 +1,4 @@
+e2e/.state/
 test-results/
 playwright-report/
+.env.local

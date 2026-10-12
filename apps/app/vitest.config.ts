@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 
 // Same derivation as test/urls.ts (inlined: a native config loader cannot import extensionless paths).
 const admin = new URL(process.env.TEST_DATABASE_URL ?? "postgres://localhost:5432/postgres");
-const testDb = process.env.VA_TEST_DB ?? "voidaccess_p2_test";
+const testDb = `${process.env.VA_TEST_DB ?? "voidaccess_test"}_app`;
 const appUrl = (() => {
   const c = new URL(admin.toString());
   c.pathname = `/${testDb}`;
@@ -17,7 +17,7 @@ const appUrl = (() => {
 export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./", import.meta.url)) } },
   test: {
-    include: ["env.test.ts", "test/**/*.test.ts", "lib/**/*.test.ts"],
+    include: ["env.test.ts", "test/**/*.test.ts", "test/**/*.test.tsx", "lib/**/*.test.ts"],
     globalSetup: ["test/global-setup.ts"],
     setupFiles: ["test/setup.ts"],
     fileParallelism: false, // tests share one database
@@ -31,6 +31,8 @@ export default defineConfig({
       ENGINE_LAUNCHER: "mock",
       CRON_SHARED_SECRET: "test-cron-shared-secret-0123456789",
       MOCK_ARTIFACT_DIR: join(tmpdir(), "va-p2-test-artifacts"),
+      VA_FINGERPRINT_KEY: "test-fingerprint-key",
+      VA_LOCAL_KEK: Buffer.alloc(32, 7).toString("base64"),
     },
   },
 });

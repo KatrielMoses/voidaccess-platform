@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { invSummary, creditLedger } from "@voidaccess/db";
 import * as collection from "@/app/api/investigations/route";
 import * as item from "@/app/api/investigations/[id]/route";
@@ -7,6 +7,7 @@ import * as cancelRoute from "@/app/api/investigations/[id]/cancel/route";
 import * as sseRoute from "@/app/api/investigations/[id]/events/route";
 import { CloudRunLauncher, getLauncher, launcherKind, setLauncher } from "@/lib/launcher";
 import { startInvestigation } from "@/lib/runs/service";
+import { resetIngest, useNoopIngest } from "@/lib/runs/ingest";
 import { runWatchdog } from "@/lib/runs/watchdog";
 import {
   APP,
@@ -51,6 +52,9 @@ async function readFrames(res: Response, stopAfterMs = 8000): Promise<string> {
   return out;
 }
 
+// lifecycle-only: completions are posted by hand without a bundle, so skip the real ingest
+beforeEach(() => useNoopIngest());
+afterEach(() => resetIngest());
 describe("history: list, search, filter, paginate, rename, delete", () => {
   it("works end to end for the owner", async () => {
     const u = await makeUser({ credits: 2000 });

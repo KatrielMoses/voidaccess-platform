@@ -29,6 +29,7 @@ export const e2eEnv = {
 export default defineConfig({
   testDir: "./e2e",
   testMatch: /.*\.spec\.ts/,
+  testIgnore: /results\.spec\.ts/, // runs via playwright.results.config.ts
   timeout: 180_000,
   expect: { timeout: 20_000 },
   fullyParallel: false,
