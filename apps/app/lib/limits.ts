@@ -1,21 +1,15 @@
 /**
- * Run-lifecycle limits: the single constants module for P2.
- *
- * REQUEST TO THE ARCHITECT: these values should move into @voidaccess/config
- * (next to DEPTHS / PLANS) so growth can tune them in one place. Until then this
- * file is the only place they live; nothing else in apps/app may hard-code them.
+ * Run-lifecycle limits. The product-tunable ones (concurrency, daily cap per plan) live in
+ * @voidaccess/config RUN_LIMITS; the operational timeouts below stay here. Nothing else in
+ * apps/app may hard-code any of them.
  */
-import type { PlanId } from "@voidaccess/config";
+import { RUN_LIMITS } from "@voidaccess/config";
 
 /** Max runs in a non-terminal state (reserved, launching, running, ingesting) per account. */
-export const MAX_CONCURRENT_RUNS = 3;
+export const MAX_CONCURRENT_RUNS = RUN_LIMITS.maxConcurrentRuns;
 
 /** Runs an account may create in any rolling 24 hours, by plan. Credits are the real limiter. */
-export const DAILY_RUN_CAP: Record<PlanId, number> = {
-  free: 5,
-  pro: 40,
-  pro_plus: 100,
-};
+export const DAILY_RUN_CAP = RUN_LIMITS.dailyRunCap;
 
 /** A spec URL token is single-use and dies after this long (ENGINE-CONTRACT: 10 minutes at most). */
 export const SPEC_TOKEN_TTL_MINUTES = 10;

@@ -1,5 +1,5 @@
 // Auth rate limits (per IP, in-memory store: per-instance on Cloud Run; move to a shared store when scaling out).
-// Keys are Better Auth paths. Run-creation limits live in lib/limits.ts. Request: move both into @voidaccess/config.
+// Keys are Better Auth paths. These are security settings, so they stay in the app (not config).
 export const AUTH_RATE_LIMITS = {
   "/sign-in/email": { window: 60, max: 10 },
   "/sign-up/email": { window: 60, max: 5 },
