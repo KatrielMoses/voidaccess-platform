@@ -33,18 +33,16 @@ export async function seedInvestigation(
 ) {
   const id = randomUUID();
   await appDb().withSystem("test.seed", (tx) =>
-    tx
-      .insert(investigations)
-      .values({
-        id,
-        userId,
-        query: bundle.query,
-        depth: bundle.depth,
-        status: "completed",
-        engineRunId: `run-${id}`,
-        creditsCharged: 40,
-        refinedQueries: bundle.refined_queries,
-      }),
+    tx.insert(investigations).values({
+      id,
+      userId,
+      query: bundle.query,
+      depth: bundle.depth,
+      status: "completed",
+      engineRunId: `run-${id}`,
+      creditsCharged: 40,
+      refinedQueries: bundle.refined_queries,
+    }),
   );
   await ingestBundle(`run-${id}`, bundleDeps(bundle, artifacts), { database: appDb() });
   return id;

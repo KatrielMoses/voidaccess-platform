@@ -4,11 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3200",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "screenshots:results": "node scripts/results-screenshots.mjs"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.15",

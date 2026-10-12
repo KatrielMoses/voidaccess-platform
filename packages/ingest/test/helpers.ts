@@ -23,17 +23,15 @@ export async function makeInvestigation(
 ) {
   const id = randomUUID();
   await appDb().withSystem("test.makeInvestigation", (tx) =>
-    tx
-      .insert(investigations)
-      .values({
-        id,
-        userId,
-        query: "test query",
-        depth: "standard",
-        status: "ingesting",
-        engineRunId: `run-${id}`,
-        ...over,
-      }),
+    tx.insert(investigations).values({
+      id,
+      userId,
+      query: "test query",
+      depth: "standard",
+      status: "ingesting",
+      engineRunId: `run-${id}`,
+      ...over,
+    }),
   );
   return { id, runId: `run-${id}` };
 }

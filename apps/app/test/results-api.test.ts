@@ -36,9 +36,10 @@ afterAll(async () => {
 });
 
 const req = (path = "") => new Request(`http://localhost/x${path}`);
-const idp = (id: string, extra: Record<string, string> = {}) => ({
-  params: Promise.resolve({ id, ...extra }),
-});
+const idp = (id: string, extra: { format?: string; bundleId?: string } = {}) =>
+  ({ params: Promise.resolve({ id, format: "", bundleId: "", ...extra }) }) as {
+    params: Promise<{ id: string; format: string; bundleId: string }>;
+  };
 const asUser = (u: string | null) => void (current = u);
 
 async function bodyText(res: Response): Promise<string> {
