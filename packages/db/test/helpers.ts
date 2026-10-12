@@ -1,8 +1,9 @@
 import pg from "pg";
 import { randomUUID } from "node:crypto";
-import { createDatabase, type Database } from "../src/client";
+import type { Database } from "../src/client";
 import { users } from "../src/schema";
 import type { PlanId } from "@voidaccess/config";
+import { createLocalDatabase } from "../src/local";
 import { appUrl, ownerUrl } from "./urls";
 
 let app: Database | undefined;
@@ -10,7 +11,7 @@ let owner: pg.Pool | undefined;
 
 /** Database connected as va_app (RLS applies). */
 export function appDb(): Database {
-  return (app ??= createDatabase(appUrl, { max: 30 }));
+  return (app ??= createLocalDatabase(appUrl, { max: 30 }));
 }
 /** Superuser pool on the test database, for inspection only. */
 export function ownerPool(): pg.Pool {

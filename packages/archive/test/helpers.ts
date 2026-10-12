@@ -1,10 +1,11 @@
 import pg from "pg";
-import { createDatabase, type Database } from "@voidaccess/db";
+import type { Database } from "@voidaccess/db";
+import { createLocalDatabase } from "@voidaccess/db/local";
 import { appUrl, ownerUrl } from "./urls";
 
 let app: Database | undefined;
 let owner: pg.Pool | undefined;
-export const appDb = () => (app ??= createDatabase(appUrl, { max: 10 }));
+export const appDb = () => (app ??= createLocalDatabase(appUrl, { max: 10 }));
 export const ownerPool = () => (owner ??= new pg.Pool({ connectionString: ownerUrl, max: 3 }));
 
 /** Wipes the archive between tests (owner connection; the archive is shared state). */

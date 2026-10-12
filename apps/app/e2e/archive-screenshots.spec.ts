@@ -1,7 +1,7 @@
 // Screenshots of the archive UI at 1440 px and 375 px -> docs/screenshots/archive/<name>-<width>.png
 // The viewer runs the mock engine; the archive is seeded (fictional names) from other "runs", one of whose sources has gone offline.
 import { expect, test, type Page } from "@playwright/test";
-import { createDatabase } from "@voidaccess/db";
+import { createLocalDatabase } from "@voidaccess/db/local";
 import { archiveRun, LocalFsObjectStore } from "@voidaccess/archive";
 import { makeBundle, memoryDeps, onion } from "@voidaccess/archive/test-support";
 import { ARCHIVE_STORE } from "../playwright.archive.config";
@@ -37,7 +37,7 @@ test("archive screenshots: panel, graph toggle, a source that is no longer onlin
     .slice(0, 6);
   expect(rows.length).toBeGreaterThanOrEqual(3);
 
-  const database = createDatabase(appUrl(), { max: 2 });
+  const database = createLocalDatabase(appUrl(), { max: 2 });
   const store = new LocalFsObjectStore(ARCHIVE_STORE);
   const leak = onion("northwind", "/posts/fictional-1");
   const ents = rows.map((r, i) => ({

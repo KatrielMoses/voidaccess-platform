@@ -1,6 +1,6 @@
 import pg from "pg";
 import { runMigrations } from "@voidaccess/db/migrate";
-import { createDatabase } from "@voidaccess/db";
+import { createLocalDatabase, prepareLocalRolesAt } from "@voidaccess/db/local";
 import { FakeProvider } from "../lib/billing/provider";
 import { syncCatalog } from "../lib/billing/sync";
 
@@ -24,9 +24,9 @@ export default async function setup() {
   await a.query(`DROP DATABASE IF EXISTS ${BILLING_DB} WITH (FORCE)`);
   await a.query(`CREATE DATABASE ${BILLING_DB}`);
   await runMigrations(ownerUrl());
-  await a.query(`ALTER ROLE va_app LOGIN PASSWORD '${process.env.VA_APP_LOCAL_PASSWORD ?? "va_app_local"}'`);
+  await prepareLocalRolesAt(ownerUrl());
   await a.end();
-  const db = createDatabase(appUrl());
+  const db = createLocalDatabase(appUrl());
   await syncCatalog(new FakeProvider(), db);
   await db.close();
 }

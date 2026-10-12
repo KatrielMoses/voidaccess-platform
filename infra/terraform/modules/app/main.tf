@@ -49,7 +49,9 @@ locals {
   # env var name => secret id
   secret_env = merge(
     {
-      DATABASE_URL           = "database-url" # va_app (RLS-bound), direct host. Never the owner.
+      DATABASE_URL           = "database-url"        # va_app (RLS-bound), direct host. Never the owner.
+      DATABASE_URL_SYSTEM    = "database-url-system" # va_worker: system work + Better Auth (H1). Never used for user queries.
+      RLS_CONTEXT_KEY        = "rls-context-key"     # signs app.user_id so a SQL-injected set_config cannot impersonate (H1)
       BETTER_AUTH_SECRET     = "better-auth-secret"
       ENGINE_CALLBACK_SECRET = "engine-callback-secret"
       CRON_SHARED_SECRET     = "cron-shared-secret"

@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
     "./client": "./src/client.ts",
-    "./migrate": "./src/migrate.ts"
+    "./migrate": "./src/migrate.ts",
+    "./local": "./src/local.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

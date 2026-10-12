@@ -1,6 +1,8 @@
 // Results-lane end-to-end run (dev server on :3200). Users sign in through Better Auth like real users.
 import { defineConfig } from "@playwright/test";
 import { E2E_DB, appUrl } from "./e2e/results-global-setup";
+import { DEV_CONTEXT_KEY } from "@voidaccess/db/client";
+import { localSystemUrl } from "@voidaccess/db/local";
 
 void E2E_DB;
 export default defineConfig({
@@ -30,6 +32,8 @@ export default defineConfig({
     env: {
       NEXT_DIST_DIR: ".next-e2e-results",
       DATABASE_URL: appUrl(),
+      DATABASE_URL_SYSTEM: localSystemUrl(appUrl()),
+      RLS_CONTEXT_KEY: DEV_CONTEXT_KEY,
       VA_FINGERPRINT_KEY: "e2e-fp",
       VA_LOCAL_KEK: Buffer.alloc(32, 5).toString("base64"),
       APP_URL: "http://localhost:3200",

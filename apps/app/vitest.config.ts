@@ -13,6 +13,12 @@ const appUrl = (() => {
   c.password = process.env.VA_APP_LOCAL_PASSWORD ?? "va_app_local";
   return c.toString();
 })();
+const systemUrl = (() => {
+  const c = new URL(appUrl);
+  c.username = "va_worker";
+  c.password = process.env.VA_WORKER_LOCAL_PASSWORD ?? "va_worker_local";
+  return c.toString();
+})();
 
 export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./", import.meta.url)) } },
@@ -26,6 +32,7 @@ export default defineConfig({
     env: {
       // the app connects as va_app (RLS applies), exactly like production
       DATABASE_URL: appUrl,
+      DATABASE_URL_SYSTEM: systemUrl,
       APP_URL: "http://localhost:3000",
       ENGINE_CALLBACK_SECRET: "test-engine-callback-secret-0123456789",
       ENGINE_LAUNCHER: "mock",

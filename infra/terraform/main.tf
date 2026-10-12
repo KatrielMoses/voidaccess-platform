@@ -9,6 +9,8 @@ locals {
   # Secrets the app reads. All exist already except dodo-webhook-secret (container managed below, version added by hand).
   app_secrets = [
     "database-url",
+    "database-url-system", # va_worker (H1): withSystem + Better Auth. Created by packages/db/scripts/neon-provision.ts
+    "rls-context-key",     # H1: signs the tenant context; the same value is installed in the database (app_ctx_key)
     "better-auth-secret",
     "engine-callback-secret",
     "cron-shared-secret",

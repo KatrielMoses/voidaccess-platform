@@ -1,7 +1,8 @@
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { prepareLocalRolesAt } from "@voidaccess/db/local";
 import { runMigrations } from "@voidaccess/db/migrate";
-import { APP_PASSWORD, TEST_DB, adminUrl, ownerUrl } from "./urls";
+import { TEST_DB, adminUrl, ownerUrl } from "./urls";
 
 // `pg` is not a direct dependency of apps/app (pnpm is strict): load the copy @voidaccess/db uses.
 const requireFromDb = createRequire(
@@ -15,6 +16,7 @@ export default async function setup() {
   await admin.query(`DROP DATABASE IF EXISTS ${TEST_DB} WITH (FORCE)`);
   await admin.query(`CREATE DATABASE ${TEST_DB}`);
   await runMigrations(ownerUrl);
-  await admin.query(`ALTER ROLE va_app LOGIN PASSWORD '${APP_PASSWORD}'`);
+  // roles are created NOLOGIN by the migration; the harness gives them logins and installs the context key
+  await prepareLocalRolesAt(ownerUrl);
   await admin.end();
 }
