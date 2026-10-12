@@ -60,3 +60,31 @@ def test_fallback_and_empty_summaries_give_no_points():
 
 def test_the_committed_vectors_file_is_valid_json():
     assert json.loads((Path(__file__).parent / "vectors" / "engine-client.json").read_text())
+
+
+def test_an_engine_summary_failure_string_becomes_the_engines_fallback_summary():
+    from cloud.bundle import RawSecrets, build_summary
+
+    cli = {
+        "query": "akira",
+        "refined_query": "akira ransomware",
+        "summary": "Summary unavailable — LLM error: LLM token budget spent",
+        "summary_kind": "llm",
+        "entities": [
+            {"entity_type": "RANSOMWARE_GROUP", "value": "Akira", "confidence": 0.9},
+            {"entity_type": "EMAIL_ADDRESS", "value": "boss@victim.example", "confidence": 0.9},
+        ],
+    }
+    out = build_summary(cli, 2, RawSecrets(), ["https://a.example/x", "https://b.example/y"])
+    assert out["summary_kind"] == "fallback" and out["confidence"] == "low"
+    assert out["markdown"].startswith("Automated summary for 'akira ransomware'")
+    assert "Akira" in out["markdown"] and "boss@victim" not in out["markdown"]  # sensitive types are never echoed
+    assert "https://a.example/x" in out["markdown"]
+    assert out["risk_notes"] and "Summary unavailable" not in out["markdown"]
+
+
+def test_a_normal_llm_summary_is_untouched():
+    from cloud.bundle import RawSecrets, build_summary
+
+    out = build_summary({"summary": "### Key Insights\n- A real finding.\n", "summary_kind": "llm"}, 20, RawSecrets())
+    assert out["summary_kind"] == "llm" and out["key_findings"] == ["A real finding."] and out["confidence"] == "high"

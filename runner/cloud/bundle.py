@@ -300,9 +300,32 @@ def summary_confidence(kind: str, source_count: int) -> str:
     return "medium" if source_count >= 5 else "low"
 
 
-def build_summary(cli: dict[str, Any], source_count: int, raw: RawSecrets) -> dict[str, Any]:
+# The engine's `generate_summary` swallows an LLM failure (including the runner's token budget being spent) and returns
+# this text instead of raising, so its own fallback summary never runs. The runner recognises it and substitutes the
+# engine's deterministic fallback (voidaccess.summary_fallback), which only echoes non-sensitive entity types.
+ENGINE_SUMMARY_FAILURE_PREFIX = "Summary unavailable"
+
+
+def _fallback_markdown(refined: str, cli: dict[str, Any], page_urls: list[str]) -> str:
+    try:
+        from voidaccess.summary_fallback import build_fallback_summary
+
+        return build_fallback_summary(
+            refined, cli.get("entities") or [], [{"url": u} for u in page_urls]
+        )
+    except Exception:
+        return "The AI summary was unavailable for this run."
+
+
+def build_summary(
+    cli: dict[str, Any], source_count: int, raw: RawSecrets, page_urls: list[str] | None = None
+) -> dict[str, Any]:
     kind = str(cli.get("summary_kind") or "none")
-    markdown = raw.scrub(str(cli.get("summary") or ""))
+    markdown = str(cli.get("summary") or "")
+    if markdown.lstrip().startswith(ENGINE_SUMMARY_FAILURE_PREFIX):
+        kind = "fallback"
+        markdown = _fallback_markdown(str(cli.get("refined_query") or cli.get("query") or ""), cli, page_urls or [])
+    markdown = raw.scrub(markdown)
     found, risk = summary_points(markdown)
     findings = [raw.scrub(x) for x in found]
     risks = [raw.scrub(x) for x in risk]
@@ -537,7 +560,7 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
         "started_at": inp.started_at,
         "completed_at": inp.completed_at,
         "engine_version": inp.engine_version,
-        "summary": build_summary(cli, len(sources), raw),
+        "summary": build_summary(cli, len(sources), raw, [x["url"] for x in sources]),
         "entities": order,
         "relationships": relationships,
         "actors": list(actors.values()),
