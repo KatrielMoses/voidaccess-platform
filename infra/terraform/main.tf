@@ -1,9 +1,10 @@
 locals {
-  registry     = "${var.region}-docker.pkg.dev/${var.project_id}/voidaccess"
-  app_sa       = "va-app@${var.project_id}.iam.gserviceaccount.com"
-  runner_sa    = "va-runner@${var.project_id}.iam.gserviceaccount.com"
-  runs_bucket  = "${var.project_id}-runs"
-  secret_names = ["database-url", "engine-callback-secret", "openrouter-api-key"]
+  registry       = "${var.region}-docker.pkg.dev/${var.project_id}/voidaccess"
+  app_sa         = "va-app@${var.project_id}.iam.gserviceaccount.com"
+  runner_sa      = "va-runner@${var.project_id}.iam.gserviceaccount.com"
+  runs_bucket    = "${var.project_id}-runs"
+  archive_bucket = "${var.project_id}-archive"
+  secret_names   = ["database-url", "engine-callback-secret", "openrouter-api-key"]
 }
 
 # Existing resources, referenced not recreated.
@@ -17,6 +18,11 @@ data "google_service_account" "runner" {
 
 data "google_storage_bucket" "runs" {
   name = local.runs_bucket
+}
+
+# Permanent, versioned archive bucket (P4): page snapshots by content hash.
+data "google_storage_bucket" "archive" {
+  name = local.archive_bucket
 }
 
 data "google_secret_manager_secret" "secrets" {
@@ -51,10 +57,11 @@ module "scheduler" {
 }
 
 module "iam" {
-  count       = var.manage_iam ? 1 : 0
-  source      = "./modules/iam"
-  runs_bucket = data.google_storage_bucket.runs.name
-  app_member  = "serviceAccount:${data.google_service_account.app.email}"
-  run_member  = "serviceAccount:${data.google_service_account.runner.email}"
-  secret_ids  = { for k, s in data.google_secret_manager_secret.secrets : k => s.secret_id }
+  count          = var.manage_iam ? 1 : 0
+  source         = "./modules/iam"
+  runs_bucket    = data.google_storage_bucket.runs.name
+  archive_bucket = data.google_storage_bucket.archive.name
+  app_member     = "serviceAccount:${data.google_service_account.app.email}"
+  run_member     = "serviceAccount:${data.google_service_account.runner.email}"
+  secret_ids     = { for k, s in data.google_secret_manager_secret.secrets : k => s.secret_id }
 }
