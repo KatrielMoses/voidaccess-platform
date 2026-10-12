@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import functools
 import os
 from pathlib import Path
 from typing import Any
@@ -89,27 +88,21 @@ def render_bypass_state() -> dict[str, bool]:
     return seen
 
 
-def patch_cli_llm_page_cap() -> None:
-    """CLI ignores MAX_LLM_PAGES_PER_INV; inject env-driven cap without touching engine tree."""
-    import extractor.pipeline as pipeline
+def load_variants() -> dict[str, Any]:
+    with (_PKG_DIR / "variants.yaml").open(encoding="utf-8") as fh:
+        return yaml.safe_load(fh)
 
-    if getattr(pipeline, "_baseline_llm_cap_patched", False):
-        return
 
-    original = pipeline.extract_entities_from_pages
+def apply_variant_env(variant: str) -> dict[str, str]:
+    """Apply the env of an E1B variant (A/B/C) on top of the depth preset.
 
-    @functools.wraps(original)
-    async def _wrapped(*args: Any, **kwargs: Any):
-        if "max_llm_pages" not in kwargs:
-            raw = os.environ.get("MAX_LLM_PAGES_PER_INV", "10") or "10"
-            try:
-                kwargs["max_llm_pages"] = int(raw)
-            except ValueError:
-                kwargs["max_llm_pages"] = 10
-        return await original(*args, **kwargs)
-
-    pipeline.extract_entities_from_pages = _wrapped
-    pipeline._baseline_llm_cap_patched = True
+    Returns the env that was set (names and values are non-secret config)."""
+    variants = load_variants()
+    if variant not in variants:
+        return {}
+    applied = {str(k): str(v) for k, v in (variants[variant].get("env") or {}).items()}
+    os.environ.update(applied)
+    return applied
 
 
 def build_cli_config(api_key: str, model: str | None = None) -> dict[str, Any]:

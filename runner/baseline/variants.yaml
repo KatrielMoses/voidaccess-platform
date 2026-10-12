@@ -1,0 +1,42 @@
+# E1B variants. Applied by policy.apply_variant_env() after the depth preset.
+# A = speed profile, full sources (isolates the speed effect)
+# B = speed profile + cloud enrichment allowlist (the launch configuration)
+# C = B at 1 vCPU / 1 GiB (memory check; the vCPU/memory come from the execution)
+# Values below are the profile under test; the recommended final values are
+# settled by the measurement and written to docs/baseline/E1B-REPORT.md.
+speed_profile: &speed
+  VOIDACCESS_SEARCH_WORKERS: "16"
+  VOIDACCESS_SCRAPE_WORKERS: "12"
+  VOIDACCESS_EXTRACT_CONCURRENCY: "8"
+  VOIDACCESS_SEARCH_DEADLINE: "15"
+  VOIDACCESS_CONCURRENT_COLLECT: "1"
+  VOIDACCESS_ENRICHMENT_TIMEOUT: "20"
+
+A:
+  env: *speed
+B:
+  env:
+    <<: *speed
+    VOIDACCESS_ENRICHMENT_SOURCES: "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack"
+C:
+  env:
+    <<: *speed
+    VOIDACCESS_ENRICHMENT_SOURCES: "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack"
+
+# Confirmation wave: relaxed search deadline / enrichment cap (the first wave's A missed
+# the quality floor), plus a per-chunk LLM timeout for the extraction stalls.
+speed_profile_2: &speed2
+  VOIDACCESS_SEARCH_WORKERS: "16"
+  VOIDACCESS_SCRAPE_WORKERS: "12"
+  VOIDACCESS_EXTRACT_CONCURRENCY: "8"
+  VOIDACCESS_SEARCH_DEADLINE: "25"
+  VOIDACCESS_CONCURRENT_COLLECT: "1"
+  VOIDACCESS_LLM_CHUNK_TIMEOUT: "60"
+  VOIDACCESS_ENRICHMENT_TIMEOUT: "40"
+
+A2:
+  env: *speed2
+B2:
+  env:
+    <<: *speed2
+    VOIDACCESS_ENRICHMENT_SOURCES: "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack"
