@@ -12,7 +12,7 @@ On the app side, R0 replaces P2's `CloudRunLauncher` stub with the real launcher
 
 Build only R0.
 
-In parallel: RESULTS (P3) in `.worktrees/p3` (bundle ingest and the results UI). Never touch `packages/ingest/`, `apps/app/features/results/**`, the results routes, `apps/app/lib/runs/ingest.ts` (P3's hook gets wired by the architect), `apps/site/`, `runner/baseline/` (the measurement harness stays as it is; copy from it, don't edit it), or `../voidaccess` (the engine is published at `bf2213c`; propose any engine change in the handoff instead of making it).
+In parallel: BILLING (P5) in `.worktrees/p5` (Dodo billing, founding seats, usage). P3 (results and ingest) is already merged. Never touch `packages/ingest/`, the results routes, billing code (`lib/billing/**`, `app/(app)/billing/**`, `app/(app)/usage/**`, `app/api/billing/**`, `app/api/webhooks/**`), `apps/site/`, `runner/baseline/` (the measurement harness stays as it is; copy from it, don't edit it), or `../voidaccess` (the engine is published at `bf2213c`; propose any engine change in the handoff instead of making it).
 
 ── CONTEXT ─────────────────────────────────────────────────────────────────────
 Work ONLY in `/Users/delzyn/Brand/companies/voidaccess/platform/.worktrees/r0` (git worktree, branch `r0-runner`, created from `main`). Run `pnpm install` first. First push: `git push -u origin r0-runner`. **Never push to `main`.**
@@ -95,7 +95,7 @@ GCP: project `voidaccess-cloud`, region `us-central1`, always `CLOUDSDK_ACTIVE_C
   - authenticate with the metadata server token on Cloud Run, or ADC locally, using plain `fetch`. P2 found `google-auth-library` doesn't resolve under pnpm from `apps/app`; if you want a library, justify it.
   - map API errors so that a launch failure is a clean failure, which P2's service turns into a full refund
 - **`lib/runs/spec.ts`:** when `launcherKind()` is `cloudrun`, `artifact_put_urls` become the `gs://voidaccess-cloud-runs/runs/<run_id>/…` paths (bundle, every export format, `pages`). The mock path is unchanged.
-- **`lib/launcher/artifacts-gcs.ts`:** production readers with exactly P3's `IngestDeps` shape: `readBundle(runId): Promise<unknown>` and `readExport(runId, format): Promise<Uint8Array | null>`, reading the runs bucket as `va-app` via the JSON API with `fetch`. **Don't wire them into the ingest hook.** The architect does that when P3 merges.
+- **`lib/launcher/artifacts-gcs.ts`:** production readers with exactly P3's `IngestDeps` shape: `readBundle(runId): Promise<unknown>` and `readExport(runId, format): Promise<Uint8Array | null>`, reading the runs bucket as `va-app` via the JSON API with `fetch`. **Wire them in:** `apps/app/lib/runs/ingest.ts` → `artifactDeps()` currently throws "GCS artifact readers are not wired yet (R0)" for the Cloud Run launcher. Replace that branch with your readers; change nothing else in that file.
 - **Run cost:** when a terminal event carries `metrics`, write a `run_costs` row (`withSystem("runs.cost")`): compute cost from duration × the configured vCPU and GiB × the Cloud Run rates (constants in one module, with the source URL and date), plus the LLM estimate.
 - **Tests:** the launcher against a mocked Admin API (request shape, no query in the overrides, error mapping), the spec URL switch, the GCS readers against a mocked API, and the `run_costs` write.
 
