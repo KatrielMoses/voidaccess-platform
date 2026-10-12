@@ -173,9 +173,17 @@ def credits_table(rows: list[dict[str, Any]], title: str) -> str:
 
 
 def main() -> None:
+    import sys
+
     e0 = e0_rows()
-    all_rows = load(PKG / "results_e1b.jsonl")
-    by_v = {v: [r for r in all_rows if r.get("variant") == v] for v in "ABC"}
+    fname = sys.argv[1] if len(sys.argv) > 1 else "results_e1b.jsonl"
+    vs = sys.argv[2].split(",") if len(sys.argv) > 2 else ["A", "B", "C"]
+    all_rows = load(PKG / fname)
+    if "confirm" in fname:  # A2/B2 are A/B re-run with the relaxed profile
+        for r in all_rows:
+            r["variant"] = str(r.get("variant", "")).rstrip("2")
+        vs = ["A", "B", "C"]
+    by_v = {v: [r for r in all_rows if r.get("variant") == v] for v in vs}
     good = {v: ok(rs) for v, rs in by_v.items()}
     e0_list = list(e0.values())
     print("## E0 reference (default, 1 vCPU / 2 GiB)\n")

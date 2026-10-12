@@ -83,3 +83,15 @@ See `presets.yaml`; applied by `policy.apply_depth_preset()` before the engine i
 ## R0 handoff
 
 Reuse the image, the entrypoint `python -m baseline.run_one`, the env contract above and `presets.yaml`.
+
+
+## E1B additions
+
+Results: [docs/baseline/E1B-REPORT.md](../../docs/baseline/E1B-REPORT.md).
+
+- **Build from a branch:** `ENGINE_REF=e1b-speed-hook bash runner/baseline/scripts/prepare_build_context.sh "$CTX"` (default `main`). The image tag is the ref's commit sha.
+- **Variants:** `variants.yaml` (A speed profile, B + cloud allowlist, C = B at 1 vCPU / 1 GiB, A2/B2 the relaxed confirmation profile). Variant env is applied by `policy.apply_variant_env()` **at image build time**: editing the file requires a rebuild.
+- **Wave driver:** `ENGINE_GIT_SHA=<sha> python -m baseline.wave_e1b [--variants A B C] [--pilot N]`. Spend cap `E1B_MAX_USD` (default 5), start guard `E1B_MIN_REMAINING_USD`. Tasks start after a random 0-60 s stagger (`STAGGER_MAX_S`) and Tor bootstraps with one retry. The driver's status poll can go stale after the execution completes; if so, stop it and collect with `baseline.e1b_collect_dir` from downloaded `result.json` files (a threaded client downloads 160 files in minutes; per-file `gcloud` calls are far slower).
+- **Probe:** `baseline.probe_job` runs the engine health probe over Tor in a Cloud Run Job (`--command=python --args=-m,baseline.probe_job`).
+- **Progress:** per-stage timings come from the engine's `CallbackSink` (`progress_hook.StageCapture`), not from wrapping the Rich display. The page-cap wrapper is gone (the CLI honours `MAX_LLM_PAGES_PER_INV`).
+- **Report tables:** `python -m baseline.e1b_report [results_file]`.

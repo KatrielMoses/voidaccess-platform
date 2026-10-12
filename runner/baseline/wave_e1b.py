@@ -33,10 +33,11 @@ from baseline.policy import load_queries
 from baseline.storage import download_result
 from baseline.wave import DEPTH_ORDER, _execution_status, _gcloud, _launch
 
-E1B_MAX_OPENROUTER_USD = 5.0
-E1B_MIN_LIMIT_REMAINING_USD = 5.5
+E1B_MAX_OPENROUTER_USD = float(os.environ.get("E1B_MAX_USD", "5.0"))
+E1B_MIN_LIMIT_REMAINING_USD = float(os.environ.get("E1B_MIN_REMAINING_USD", "5.5"))
 C_QUERY_COUNT = 10
 RESULTS_E1B = Path(__file__).resolve().parent / "results_e1b.jsonl"
+RESULTS_E1B_2 = Path(__file__).resolve().parent / "results_e1b_confirm.jsonl"
 
 
 def build_cells(variants: list[str], pilot: int = 0) -> list[tuple[Cell, str]]:
@@ -47,6 +48,8 @@ def build_cells(variants: list[str], pilot: int = 0) -> list[tuple[Cell, str]]:
         "A": (["quick", "standard"], qids, "1", "2"),
         "B": (["quick", "standard", "deep"], qids, "1", "2"),
         "C": (["standard"], qids[:C_QUERY_COUNT], "1", "1"),
+        "A2": (["quick", "standard"], qids, "1", "2"),
+        "B2": (["quick", "standard"], qids, "1", "2"),
     }
     out: list[tuple[Cell, str]] = []
     for v in variants:
@@ -118,7 +121,8 @@ def main() -> None:
     delta = last - before.usage_usd
 
     counts: dict[str, int] = {}
-    with RESULTS_E1B.open("a", encoding="utf-8") as fh:
+    results_path = RESULTS_E1B.with_name("results_e1b_pilot.jsonl") if args.pilot else (RESULTS_E1B_2 if any(v.endswith("2") for v in args.variants) else RESULTS_E1B)
+    with results_path.open("a", encoding="utf-8") as fh:
         for w, (_, group) in executions.items():
             for idx, cell in enumerate(group):
                 run_id = f"{w}-{idx:03d}"

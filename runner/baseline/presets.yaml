@@ -30,3 +30,22 @@ deep:
   notes: >
     Raised caps and deep concurrency (top_n=40). The CLI investigate path does
     not run the recursive .onion crawler (crawler/spider.py is API-only today).
+
+# E1B recommended CLOUD profile (applied on top of the depth presets above by the
+# production runner; NOT applied by apply_depth_preset). Measured in
+# docs/baseline/E1B-REPORT.md (variants A2/B2). Engine defaults are unchanged: every
+# value below is an opt-in env var.
+cloud_profile:
+  env:
+    VOIDACCESS_SEARCH_WORKERS: "16"          # all active Tor engines at once (default 3/5/8 by depth)
+    VOIDACCESS_SCRAPE_WORKERS: "12"          # default 3/5/8 by depth
+    VOIDACCESS_EXTRACT_CONCURRENCY: "8"      # default 3/5/6 by depth
+    VOIDACCESS_SEARCH_DEADLINE: "25"         # return what has arrived after 25 s
+    VOIDACCESS_CONCURRENT_COLLECT: "1"       # side sources overlap the Tor fan-out
+    VOIDACCESS_LLM_CHUNK_TIMEOUT: "60"       # a stalled extraction call cannot hold a run
+    VOIDACCESS_ENRICHMENT_TIMEOUT: "40"      # cap the enrichment cluster, keep partial results
+    VOIDACCESS_ENRICHMENT_SOURCES: "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack"
+  # Not recommended: VOIDACCESS_PACE=aggressive (pilot 1: page ratio 0.44 in standard),
+  # search deadline 15 s + enrichment cap 20 s (wave 1 variant A: pages ratio 0.75),
+  # VOIDACCESS_LLM_CHUNK_CONCURRENCY=4 (no measurable gain under shared-key load).
+  container: { vcpu: 1, memory_gib: 1 }       # variant C: peak RSS 625 MB, 10/10 ok (standard only); needs the allowlist (full sources peak 1.27 GB)
