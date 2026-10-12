@@ -68,7 +68,7 @@ export function getLogTransport(): LogTransport | undefined {
 const fill = (tpl: string, vars: Record<string, string>) =>
   tpl.replace(/\{\{(\w+)\}\}/g, (_, k: string) => vars[k] ?? "");
 const compose = (t: { subject: string; body: string }, vars: Record<string, string>) => ({
-  subject: t.subject,
+  subject: fill(t.subject, vars),
   text: `${fill(t.body, vars)}\n\n${EMAIL_CONTENT.signature}\n`,
 });
 
@@ -80,6 +80,34 @@ export const templates = {
   changeEmail: (p: { name: string; url: string }) => compose(EMAIL_CONTENT.changeEmail, p),
   resultsReady: (p: { name: string; query: string; resultsUrl: string }) =>
     compose(EMAIL_CONTENT.resultsReady, p),
+  // ---- billing (P5) ----
+  welcomePro: (p: { name: string; plan: string; credits: string; url: string; billingUrl: string }) =>
+    compose(EMAIL_CONTENT.welcomePro, p),
+  creditAlert80: (p: {
+    name: string;
+    pct: string;
+    balance: string;
+    billingUrl: string;
+    expiryMonths: string;
+  }) => compose(EMAIL_CONTENT.creditAlert80, p),
+  creditAlert100: (p: { name: string; resetDate: string; billingUrl: string; expiryMonths: string }) =>
+    compose(EMAIL_CONTENT.creditAlert100, p),
+  foundingReleaseWarning: (p: {
+    name: string;
+    date: string;
+    reason: string;
+    nextPlan: string;
+    howToKeep: string;
+    foundingPrice: string;
+    termMonths: string;
+    renewalMonths: string;
+    inactivityMonths: string;
+    billingUrl: string;
+  }) => compose(EMAIL_CONTENT.foundingReleaseWarning, p),
+  foundingReleased: (p: { name: string; reason: string; whatHappensNext: string; billingUrl: string }) =>
+    compose(EMAIL_CONTENT.foundingReleased, p),
+  cancellationSurvey: (p: { name: string; date: string }) => compose(EMAIL_CONTENT.cancellationSurvey, p),
+  paymentFailed: (p: { name: string; portalUrl: string }) => compose(EMAIL_CONTENT.paymentFailed, p),
 };
 
 export type TemplateName = keyof typeof templates;

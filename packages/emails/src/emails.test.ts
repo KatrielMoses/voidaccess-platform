@@ -9,6 +9,33 @@ describe("emails", () => {
     expect(t.subject).toMatch(/Confirm/);
     expect(templates.magicLink({ url: "u", minutes: 5 }).text).toContain("5 minutes");
   });
+  it("renders the billing templates with every placeholder filled", () => {
+    const out = [
+      templates.welcomePro({ name: "A", plan: "Pro", credits: "N", url: "u", billingUrl: "b" }),
+      templates.creditAlert80({ name: "A", pct: "80", balance: "5", billingUrl: "b", expiryMonths: "12" }),
+      templates.creditAlert100({ name: "A", resetDate: "d", billingUrl: "b", expiryMonths: "12" }),
+      templates.foundingReleaseWarning({
+        name: "A",
+        date: "d",
+        reason: "r",
+        nextPlan: "Pro",
+        howToKeep: "h",
+        foundingPrice: "p",
+        termMonths: "t",
+        renewalMonths: "r",
+        inactivityMonths: "i",
+        billingUrl: "b",
+      }),
+      templates.foundingReleased({ name: "A", reason: "r", whatHappensNext: "w", billingUrl: "b" }),
+      templates.cancellationSurvey({ name: "A", date: "d" }),
+      templates.paymentFailed({ name: "A", portalUrl: "p" }),
+    ];
+    for (const t of out) {
+      expect(t.text).not.toMatch(/\{\{/);
+      expect(t.subject).not.toMatch(/\{\{/);
+    }
+    expect(out[5]!.subject).toBe("What made you leave?");
+  });
   it("sends through the log transport", async () => {
     const log = new LogTransport(undefined);
     setTransport(log);

@@ -1,4 +1,5 @@
 "use client";
+import { OutOfCredits } from "@/components/billing/out-of-credits";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -208,18 +209,7 @@ export function QueryForm({
 function ErrorBlock({ error }: { error: ApiError | null }) {
   if (!error) return null;
   if (error.error === "insufficient_credits") {
-    return (
-      <p
-        role="alert"
-        className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning"
-      >
-        {error.message}{" "}
-        <Link href="/billing" className="underline underline-offset-2">
-          Top up or upgrade
-        </Link>
-        .
-      </p>
-    );
+    return <OutOfCredits balance={error.balance ?? 0} needed={error.needed ?? 0} />;
   }
   if (error.error === "unverified_email") {
     return <FormError message="Confirm your email first. Check your inbox for the link." />;
