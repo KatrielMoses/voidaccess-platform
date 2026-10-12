@@ -55,6 +55,8 @@ export interface EntityQuery {
   minConfidence?: number;
   maxConfidence?: number;
   sensitiveOnly?: boolean;
+  /** restrict by bundle id (the archive "seen before" filter); an empty include list matches nothing */
+  bundleIds?: { include?: string[]; exclude?: string[] };
   sort?: EntitySort;
   dir?: "asc" | "desc";
   offset?: number;

@@ -1,0 +1,30 @@
+{
+  "name": "@voidaccess/archive",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./test-support": "./src/test-support.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "remove": "tsx scripts/remove.ts",
+    "update-feeds": "tsx scripts/update-feeds.ts"
+  },
+  "dependencies": {
+    "@voidaccess/db": "workspace:*",
+    "@voidaccess/engine-client": "workspace:*",
+    "@voidaccess/ingest": "workspace:*",
+    "drizzle-orm": "^0.45.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.0",
+    "pg": "^8.23.0",
+    "tsx": "^4.23.0",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.0"
+  }
+}

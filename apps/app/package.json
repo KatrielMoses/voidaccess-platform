@@ -15,10 +15,12 @@
     "screenshots:results": "node scripts/results-screenshots.mjs",
     "dodo:sync": "tsx scripts/dodo-sync.ts",
     "billing:checkout-smoke": "tsx scripts/dodo-checkout-smoke.ts",
-    "test:e2e:billing": "playwright test -c playwright.billing.config.ts"
+    "test:e2e:billing": "playwright test -c playwright.billing.config.ts",
+    "test:e2e:archive": "playwright test -c playwright.archive.config.ts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.15",
+    "@voidaccess/archive": "workspace:*",
     "@voidaccess/config": "workspace:*",
     "@voidaccess/db": "workspace:*",
     "@voidaccess/emails": "workspace:*",

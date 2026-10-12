@@ -11,7 +11,9 @@ import {
   toggleType,
   type EntityFilters,
 } from "@/lib/results/entity-filters";
+import { archiveCopy } from "@/lib/archive/copy";
 import { typeLabel } from "@/lib/results/entity-style";
+import { TierBadge } from "./tier-badge";
 import { formatDate } from "@/lib/results/format";
 import type { EntityPage, EntityRowView, EntitySort } from "@/lib/results/types";
 import { CopyButton } from "./copy-text";
@@ -22,7 +24,7 @@ import { TypeBadge } from "./type-badge";
 const PAGE = 100;
 const ROW_H = 44;
 const GRID =
-  "grid grid-cols-[2.25rem_minmax(14rem,2.4fr)_9rem_6rem_7.5rem_5rem_minmax(8rem,1fr)] items-center gap-x-3 px-3";
+  "grid grid-cols-[2.25rem_minmax(14rem,2.4fr)_9rem_6rem_7.5rem_5rem_11rem_minmax(8rem,1fr)] items-center gap-x-3 px-3";
 
 const COLS: { key: EntitySort | null; label: string }[] = [
   { key: "value", label: "Value" },
@@ -30,6 +32,7 @@ const COLS: { key: EntitySort | null; label: string }[] = [
   { key: "confidence", label: "Confidence" },
   { key: "firstSeen", label: "First seen" },
   { key: "sources", label: "Sources" },
+  { key: null, label: archiveCopy.entities.column },
   { key: null, label: "Tags" },
 ];
 
@@ -51,6 +54,29 @@ export function EntitiesView({
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [seenMap, setSeenMap] = useState<Record<
+    string,
+    { firstSeen: string; tier: "unconfirmed" | "corroborated" | "feed_validated" }
+  > | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/investigations/${investigationId}/archive?lite=1`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (
+          c: {
+            seen: Record<
+              string,
+              { firstSeen: string; tier: "unconfirmed" | "corroborated" | "feed_validated" }
+            >;
+          } | null,
+        ) => !cancelled && setSeenMap(c?.seen ?? {}),
+      )
+      .catch(() => !cancelled && setSeenMap({}));
+    return () => {
+      cancelled = true;
+    };
+  }, [investigationId]);
   const [active, setActive] = useState(0);
   const [search, setSearch] = useState(filters.q);
   const inFlight = useRef(false);
@@ -173,7 +199,12 @@ export function EntitiesView({
   const arrow = (k: EntitySort | null) =>
     k && filters.sort === k ? (filters.dir === "asc" ? " ▲" : " ▼") : "";
   const anyFilter =
-    filters.q || filters.types.length || filters.min !== null || filters.max !== null || filters.sensitive;
+    filters.q ||
+    filters.types.length ||
+    filters.min !== null ||
+    filters.max !== null ||
+    filters.sensitive ||
+    filters.archive !== "all";
 
   return (
     <div className="flex flex-col gap-4">
@@ -231,12 +262,33 @@ export function EntitiesView({
           />
           Sensitive only
         </label>
+        <label className="flex flex-col gap-1 text-xs text-fg-secondary">
+          {archiveCopy.entities.filterLabel}
+          <select
+            value={filters.archive}
+            onChange={(e) => setFilters({ ...filters, archive: e.target.value as "all" | "new" | "seen" })}
+            data-testid="archive-filter"
+            className="h-10 rounded-md border border-border-subtle bg-surface px-3 text-sm text-fg"
+          >
+            <option value="all">{archiveCopy.entities.all}</option>
+            <option value="new">{archiveCopy.entities.onlyNew}</option>
+            <option value="seen">{archiveCopy.entities.onlySeen}</option>
+          </select>
+        </label>
         {anyFilter ? (
           <button
             type="button"
             onClick={() => (
               setSearch(""),
-              setFilters({ ...filters, q: "", types: [], min: null, max: null, sensitive: false })
+              setFilters({
+                ...filters,
+                q: "",
+                types: [],
+                min: null,
+                max: null,
+                sensitive: false,
+                archive: "all",
+              })
             )}
             className="pb-2 text-sm text-accent hover:underline"
           >
@@ -289,7 +341,7 @@ export function EntitiesView({
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border-subtle">
-        <div role="grid" aria-label="Entities" aria-rowcount={total ?? undefined} className="min-w-[56rem]">
+        <div role="grid" aria-label="Entities" aria-rowcount={total ?? undefined} className="min-w-[68rem]">
           <div
             role="row"
             className={`${GRID} h-10 border-b border-border-subtle bg-surface text-xs font-medium tracking-wide text-fg-secondary uppercase`}
@@ -400,6 +452,22 @@ export function EntitiesView({
                     </div>
                     <div role="gridcell" className="font-mono">
                       {r.sourceCount}
+                    </div>
+                    <div
+                      role="gridcell"
+                      className="flex flex-wrap items-center gap-1.5 text-xs"
+                      data-testid="seen-before-cell"
+                    >
+                      {seenMap?.[r.bundleId] ? (
+                        <>
+                          <span className="text-fg-secondary">
+                            {formatDate(seenMap[r.bundleId]!.firstSeen)}
+                          </span>
+                          <TierBadge tier={seenMap[r.bundleId]!.tier} />
+                        </>
+                      ) : (
+                        <span className="text-fg-muted">{seenMap ? archiveCopy.entities.never : "…"}</span>
+                      )}
                     </div>
                     <div
                       role="gridcell"

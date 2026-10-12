@@ -19,12 +19,11 @@ export interface GcsReaderOptions {
   bucket?: string;
 }
 
-export function gcsArtifactDeps(opts: GcsReaderOptions = {}): IngestDeps {
+/** Reads one run artifact from the runs bucket: its bytes, or null when it does not exist. Any other failure throws. */
+export function gcsRunObjectReader(opts: GcsReaderOptions = {}) {
   const doFetch = opts.fetchImpl ?? fetch;
   const token = opts.tokenProvider ?? defaultTokenProvider;
-
-  /** The object's bytes, or null when it does not exist. Any other failure throws. */
-  async function read(runId: string, name: string): Promise<Uint8Array | null> {
+  return async function read(runId: string, name: string): Promise<Uint8Array | null> {
     const bucket = opts.bucket ?? runsBucket();
     const url = `${GCS_API}/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(objectName(runId, name))}?alt=media`;
     const res = await doFetch(url, {
@@ -38,8 +37,11 @@ export function gcsArtifactDeps(opts: GcsReaderOptions = {}): IngestDeps {
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (bytes.length > MAX_ARTIFACT_BYTES) throw new Error(`GCS object ${name} is too large`);
     return bytes;
-  }
+  };
+}
 
+export function gcsArtifactDeps(opts: GcsReaderOptions = {}): IngestDeps {
+  const read = gcsRunObjectReader(opts);
   return {
     async readBundle(runId: string): Promise<unknown> {
       const bytes = await read(runId, BUNDLE_NAME);

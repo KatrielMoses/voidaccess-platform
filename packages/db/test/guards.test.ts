@@ -8,7 +8,10 @@ const ARCHIVE = [
   "archive_observations",
   "archive_relationships",
   "archive_aliases",
+  "archive_relationship_sources",
 ];
+/** archive_* tables that are NOT part of the shared corpus: the transient queue and the removal list (system-only, RLS on). */
+const ARCHIVE_SYSTEM_ONLY = ["archive_jobs", "archive_removed_pages"];
 // tables owned by other lanes may be added here with their lane noted
 const NO_RLS_ALLOWED = new Set<string>([...ARCHIVE, "waitlist" /* P1 SITE: public signup, system-written */]);
 
@@ -30,6 +33,43 @@ describe("schema guards", () => {
        where contype='f' and conrelid::regclass::text like 'archive\\_%'`,
     );
     for (const r of fks.rows) expect(r.ref.startsWith("archive_"), `${r.t} -> ${r.ref}`).toBe(true);
+  });
+
+  it("every archive_* table is classified; only the transient queue holds a run id, and system-only ones have no app access", async () => {
+    const { rows } = await ownerPool().query(
+      `select table_name, column_name from information_schema.columns
+       where table_schema='public' and table_name like 'archive\\_%'`,
+    );
+    const tables = new Set<string>(rows.map((r) => r.table_name));
+    for (const t of tables)
+      expect([...ARCHIVE, ...ARCHIVE_SYSTEM_ONLY], `unclassified archive table ${t}`).toContain(t);
+    // anonymity: no run, job, device, address or free-text-of-the-searcher column anywhere in the shared corpus
+    const corpusBad = rows.filter(
+      (r) =>
+        ARCHIVE.includes(r.table_name) &&
+        /run_id|(^|_)job|device|(^|_)ip(_|$)|searcher|prompt|created_by|actor_id/i.test(r.column_name),
+    );
+    expect(corpusBad).toEqual([]);
+    const jobCols = rows
+      .filter((r) => r.table_name === "archive_jobs")
+      .map((r) => r.column_name)
+      .sort();
+    expect(jobCols).toEqual([
+      "attempts",
+      "enqueued_at",
+      "id",
+      "last_error",
+      "locked_at",
+      "next_attempt_at",
+      "run_id",
+    ]);
+    for (const t of ARCHIVE_SYSTEM_ONLY) {
+      const g = await ownerPool().query(
+        `select has_table_privilege('va_app', 'public.' || $1, 'select') as ok`,
+        [t],
+      );
+      expect(g.rows[0].ok, t).toBe(false);
+    }
   });
 
   it("every public table has RLS enabled unless explicitly allowed", async () => {

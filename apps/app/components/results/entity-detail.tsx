@@ -5,6 +5,7 @@ import { Badge, Skeleton, Tooltip } from "@voidaccess/ui";
 import { EDGE_DISCLAIMER, edgeKindLabel, edgeTypeLabel } from "@/lib/results/entity-style";
 import { formatDate } from "@/lib/results/format";
 import type { EntityDetail, RelationshipView } from "@/lib/results/types";
+import { ArchivePanel } from "./archive-panel";
 import { CopyButton, CopyOnlyUrl } from "./copy-text";
 import { TypeBadge } from "./type-badge";
 
@@ -182,6 +183,8 @@ export function EntityDetailView({
           </div>
         )}
       </section>
+
+      <ArchivePanel investigationId={invId} entityKey={bundleId} compact />
 
       <section>
         <h3 className="mb-1.5 font-medium">Sources ({detail.sources.length})</h3>

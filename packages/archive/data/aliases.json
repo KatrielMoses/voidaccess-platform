@@ -1,0 +1,108 @@
+{
+  "reviewed": "2026-10-12",
+  "note": "Reviewed seed of well-known public aliases. Only aliases a public source states as the same group or tool belong here; a rebrand is listed only when the source treats it as the same operation. Add entries by pull request with a source URL.",
+  "groups": [
+    {
+      "name": "ALPHV",
+      "type": "RANSOMWARE_GROUP",
+      "aliases": ["BlackCat", "ALPHV BlackCat", "Noberus"],
+      "source": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-353a"
+    },
+    {
+      "name": "LockBit",
+      "type": "RANSOMWARE_GROUP",
+      "aliases": ["LockBit 2.0", "LockBit 3.0", "LockBit Black", "LockBit Green"],
+      "source": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a"
+    },
+    {
+      "name": "Cl0p",
+      "type": "RANSOMWARE_GROUP",
+      "aliases": ["Clop", "CL0P"],
+      "source": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-158a"
+    },
+    {
+      "name": "REvil",
+      "type": "RANSOMWARE_GROUP",
+      "aliases": ["Sodinokibi", "Sodin"],
+      "source": "https://attack.mitre.org/software/S0496/"
+    },
+    {
+      "name": "Royal",
+      "type": "RANSOMWARE_GROUP",
+      "aliases": ["BlackSuit", "Royal ransomware"],
+      "source": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-061a"
+    },
+    {
+      "name": "Play",
+      "type": "RANSOMWARE_GROUP",
+      "aliases": ["PlayCrypt", "Play ransomware"],
+      "source": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-352a"
+    },
+    {
+      "name": "Black Basta",
+      "type": "RANSOMWARE_GROUP",
+      "aliases": ["BlackBasta"],
+      "source": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-131a"
+    },
+    {
+      "name": "Scattered Spider",
+      "type": "THREAT_ACTOR",
+      "aliases": ["UNC3944", "Octo Tempest", "Oktapus", "Scatter Swine", "Muddled Libra"],
+      "source": "https://attack.mitre.org/groups/G1015/"
+    },
+    {
+      "name": "Lazarus Group",
+      "type": "THREAT_ACTOR",
+      "aliases": ["HIDDEN COBRA", "ZINC", "Labyrinth Chollima", "Guardians of Peace", "Diamond Sleet"],
+      "source": "https://attack.mitre.org/groups/G0032/"
+    },
+    {
+      "name": "APT28",
+      "type": "THREAT_ACTOR",
+      "aliases": ["Fancy Bear", "Sofacy", "Sednit", "STRONTIUM", "Forest Blizzard", "Pawn Storm"],
+      "source": "https://attack.mitre.org/groups/G0007/"
+    },
+    {
+      "name": "APT29",
+      "type": "THREAT_ACTOR",
+      "aliases": ["Cozy Bear", "The Dukes", "NOBELIUM", "Midnight Blizzard", "Dark Halo"],
+      "source": "https://attack.mitre.org/groups/G0016/"
+    },
+    {
+      "name": "Sandworm Team",
+      "type": "THREAT_ACTOR",
+      "aliases": ["Sandworm", "Voodoo Bear", "IRIDIUM", "Seashell Blizzard", "Telebots"],
+      "source": "https://attack.mitre.org/groups/G0034/"
+    },
+    {
+      "name": "FIN7",
+      "type": "THREAT_ACTOR",
+      "aliases": ["Carbon Spider", "GOLD NIAGARA", "ITG14", "Navigator Group"],
+      "source": "https://attack.mitre.org/groups/G0046/"
+    },
+    {
+      "name": "Kimsuky",
+      "type": "THREAT_ACTOR",
+      "aliases": ["Velvet Chollima", "THALLIUM", "Black Banshee", "APT43"],
+      "source": "https://attack.mitre.org/groups/G0094/"
+    },
+    {
+      "name": "APT41",
+      "type": "THREAT_ACTOR",
+      "aliases": ["Wicked Panda", "Brass Typhoon", "BARIUM"],
+      "source": "https://attack.mitre.org/groups/G0096/"
+    },
+    {
+      "name": "LAPSUS$",
+      "type": "THREAT_ACTOR",
+      "aliases": ["DEV-0537", "Strawberry Tempest"],
+      "source": "https://attack.mitre.org/groups/G1004/"
+    },
+    {
+      "name": "Volt Typhoon",
+      "type": "THREAT_ACTOR",
+      "aliases": ["BRONZE SILHOUETTE", "Vanguard Panda", "UNC3236", "Insidious Taurus"],
+      "source": "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-038a"
+    }
+  ]
+}

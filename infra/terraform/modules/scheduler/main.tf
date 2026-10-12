@@ -4,9 +4,11 @@ variable "service_account_email" { type = string }
 
 locals {
   jobs = {
-    "va-watchdog" = { schedule = "*/5 * * * *", path = "/api/cron/watchdog" }
-    "va-founding" = { schedule = "0 6 * * *", path = "/api/cron/founding" }
-    "va-grants"   = { schedule = "30 6 * * *", path = "/api/cron/grants" }
+    "va-watchdog"      = { schedule = "*/5 * * * *", path = "/api/cron/watchdog" }
+    "va-founding"      = { schedule = "0 6 * * *", path = "/api/cron/founding" }
+    "va-grants"        = { schedule = "30 6 * * *", path = "/api/cron/grants" }
+    "va-credit-alerts" = { schedule = "15 * * * *", path = "/api/cron/credit-alerts" }
+    "va-archive"       = { schedule = "*/5 * * * *", path = "/api/cron/archive" }
   }
 }
 
