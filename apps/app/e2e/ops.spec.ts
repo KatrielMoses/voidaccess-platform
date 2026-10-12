@@ -81,7 +81,7 @@ test.describe.serial("ops console", () => {
     const ctx = await browser.newContext({ viewport: { width: 375, height: 812 } });
     const p = await ctx.newPage();
     await signUpAndVerify(p, userEmail, "Ordinary User", OPS_EMAIL_LOG);
-    [{ id: userId }] = await q<{ id: string }>("select id from users where email = $1", [userEmail]);
+    userId = (await q<{ id: string }>("select id from users where email = $1", [userEmail]))[0]!.id;
 
     for (const route of ADMIN_PAGES) {
       const res = await p.request.get(route.replace("[id]", ID), { maxRedirects: 0 });
@@ -179,7 +179,7 @@ test.describe.serial("ops console", () => {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await ctx.newPage();
     await signUpAndVerify(page, adminEmail, "Ops Admin", OPS_EMAIL_LOG);
-    [{ id: adminId }] = await q<{ id: string }>("select id from users where email = $1", [adminEmail]);
+    adminId = (await q<{ id: string }>("select id from users where email = $1", [adminEmail]))[0]!.id;
     // not an admin until the ops script says so
     expect((await page.request.get("/admin", { maxRedirects: 0 })).status()).toBe(404);
     const r = await setUserRole(ownerUrl(), {
