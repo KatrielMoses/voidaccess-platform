@@ -20,3 +20,4 @@ runner/baseline/matrix_state.json
 next-env.d.ts
 *.tsbuildinfo
 out/
+.next-*/

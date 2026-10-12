@@ -30,6 +30,7 @@ export const e2eEnv = {
 };
 
 export default defineConfig({
+  outputDir: "test-results/app", // per suite, so suites can run side by side
   testDir: "./e2e",
   testMatch: /.*\.spec\.ts/,
   testIgnore: /results\.spec\.ts/, // runs via playwright.results.config.ts

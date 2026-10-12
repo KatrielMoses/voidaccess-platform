@@ -8,6 +8,7 @@ export const BILLING_EMAIL_LOG = join(tmpdir(), "va-p5-e2e-emails.jsonl");
 const PORT = 3400;
 
 export default defineConfig({
+  outputDir: "test-results/billing", // per suite, so suites can run side by side
   testDir: "e2e",
   testMatch: /billing(-screenshots)?\.spec\.ts/,
   globalSetup: "./e2e/billing-global-setup.ts",
@@ -21,6 +22,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 300_000,
     env: {
+      NEXT_DIST_DIR: ".next-e2e-billing",
       DATABASE_URL: appUrl(),
       APP_URL: `http://localhost:${PORT}`,
       VA_FINGERPRINT_KEY: "e2e-fp",

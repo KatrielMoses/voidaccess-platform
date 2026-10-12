@@ -31,6 +31,8 @@ export function findEmail(
 export async function signUpAndVerify(page: Page, email: string, name = "E2E Tester", emailLog = EMAIL_LOG) {
   const res = await page.request.post("/api/auth/sign-up/email", {
     data: { name, email, password: PASSWORD, aupAccepted: true, callbackURL: "/welcome" },
+    // Cloudflare's documented test token: accepted by the always-pass test secret, ignored when Turnstile is off.
+    headers: { "x-captcha-response": "XXXX.DUMMY.TOKEN.XXXX" },
   });
   expect(res.ok(), "sign-up").toBeTruthy();
 
