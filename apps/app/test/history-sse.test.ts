@@ -271,13 +271,11 @@ describe("SSE", () => {
 });
 
 describe("launcher selection", () => {
-  it("ENGINE_LAUNCHER=mock selects the mock, and the cloud launcher is a stub that throws", async () => {
+  it("ENGINE_LAUNCHER=mock selects the mock launcher", async () => {
     setLauncher(null);
     expect(launcherKind()).toBe("mock");
     expect(getLauncher().constructor.name).toBe("MockLauncher");
-    await expect(
-      new CloudRunLauncher().launch({ runId: "r", specUrl: "u", deadlineAt: "d" }),
-    ).rejects.toThrow(/not implemented \(R0\)/);
+    expect(new CloudRunLauncher()).toBeInstanceOf(CloudRunLauncher); // the real launcher: see cloudrun-launcher.test.ts
     setLauncher(stub);
   });
 });

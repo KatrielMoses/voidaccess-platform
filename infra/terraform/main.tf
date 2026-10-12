@@ -32,6 +32,7 @@ module "app" {
   image                 = "${local.registry}/va-app:${var.app_image_tag}"
   enable_database_url   = var.enable_database_url
   allow_unauthenticated = var.allow_unauthenticated && var.manage_iam
+  runner_member         = var.manage_iam ? "serviceAccount:${data.google_service_account.runner.email}" : ""
 }
 
 module "runner" {

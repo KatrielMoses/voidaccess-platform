@@ -1,0 +1,59 @@
+# Build, scan and push the production runner image.
+# Substitutions: _ENGINE_GIT_SHA (short engine commit), _RUNNER_GIT_SHA (short platform commit), _TAG.
+# The image is pushed only if the context check and the image scan both pass.
+steps:
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        echo "Engine snapshot: $(cat engine/ENGINE_GIT_SHA.txt)"
+        if find engine runner \( -name '.env' -o \( -name '.env.*' ! -name '.env.example' \) -o -name '*.db' \) | grep -q .; then
+          echo 'FATAL: .env or *.db in the build context' >&2
+          exit 1
+        fi
+        if grep -rIlE 'sk-or-v1-[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{32,}|AIza[0-9A-Za-z_-]{30,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}' engine runner | grep .; then
+          echo 'FATAL: key-shaped string in the build context (files listed above)' >&2
+          exit 1
+        fi
+        echo 'Build context check: OK (no .env, *.db or key-shaped strings)'
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - runner/cloud/Dockerfile
+      - --build-arg
+      - ENGINE_GIT_SHA=$_ENGINE_GIT_SHA
+      - --build-arg
+      - RUNNER_GIT_SHA=$_RUNNER_GIT_SHA
+      - -t
+      - us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:$_TAG
+      - .
+
+  # Key-pattern scan of the BUILT image: the application tree and every place a credential could be baked in.
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        docker run --rm --entrypoint bash us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:$_TAG -c '
+          set -e
+          if find /app /home /root /var/lib/tor-cloud /tmp /etc \( -name ".env" -o -name "*.db" -o -name "config.json" \) -not -path "*/site-packages/*" 2>/dev/null | grep -q .; then
+            echo "FATAL: .env, *.db or config.json inside the image" >&2; exit 1; fi
+          if grep -rIlE "sk-or-v1-[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{32,}|AIza[0-9A-Za-z_-]{30,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}" /app /home /root /var/lib/tor-cloud /tmp /etc 2>/dev/null | grep .; then
+            echo "FATAL: key-shaped string inside the image (files listed above)" >&2; exit 1; fi
+          echo "Image scan: OK"'
+
+images:
+  - us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:$_TAG
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _ENGINE_GIT_SHA: unknown
+  _RUNNER_GIT_SHA: unknown
+  _TAG: unknown

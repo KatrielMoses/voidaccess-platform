@@ -15,9 +15,8 @@ variable "app_image_tag" {
 }
 
 variable "runner_image" {
-  description = "Placeholder until the runner image exists (R0). Ignored after creation."
+  description = "Full runner image reference, e.g. us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:bf2213c-7cfd4b1."
   type        = string
-  default     = "us-docker.pkg.dev/cloudrun/container/job"
 }
 
 variable "enable_database_url" {

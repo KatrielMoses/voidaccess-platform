@@ -3,6 +3,8 @@ import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import type { RunSpec } from "@voidaccess/engine-client";
 import { auditLog, getDatabase, investigations } from "@voidaccess/db";
 import { getEnv } from "../../env";
+import { launcherKind } from "../launcher";
+import { gcsArtifactUrls } from "../launcher/artifact-paths";
 import { RUN_DEADLINE_MINUTES } from "../limits";
 import { deriveArtifactToken, deriveCallbackSecret, hashSpecToken } from "./secrets";
 
@@ -45,11 +47,15 @@ export async function consumeSpecToken(runId: string, token: string): Promise<Ru
     depth: row.depth,
     callback_url: `${base}/api/engine/runs/${runId}/events`,
     callback_secret: deriveCallbackSecret(runId),
-    artifact_put_urls: {
-      // Mock artifact route (dev/test only). R0 replaces this with GCS signed URLs.
-      bundle: `${base}/api/engine/runs/${runId}/artifacts/bundle?t=${deriveArtifactToken(runId)}`,
-      exports: {},
-    },
+    artifact_put_urls:
+      launcherKind() === "cloudrun"
+        ? // Production: the runner uploads to the runs bucket with its own identity (no presigned URLs).
+          gcsArtifactUrls(runId)
+        : {
+            // Mock artifact route (dev/test only).
+            bundle: `${base}/api/engine/runs/${runId}/artifacts/bundle?t=${deriveArtifactToken(runId)}`,
+            exports: {},
+          },
     deadline_at: new Date(Date.now() + RUN_DEADLINE_MINUTES * 60_000).toISOString(),
   };
 }

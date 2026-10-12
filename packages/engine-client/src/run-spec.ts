@@ -15,6 +15,8 @@ export const RunSpec = z.object({
   artifact_put_urls: z.object({
     bundle: z.url(),
     exports: z.partialRecord(ExportKind, z.url()),
+    /** pages.jsonl.gz: the sanitized page archive input (lane P4). Optional so older specs stay valid. */
+    pages: z.url().optional(),
   }),
   /** ISO. The job must finish and emit `failed` reason "deadline" by then. */
   deadline_at: z.iso.datetime({ offset: true }),

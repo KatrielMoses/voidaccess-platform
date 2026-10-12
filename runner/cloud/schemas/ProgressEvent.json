@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["stage", "counts", "refined", "completed", "failed", "cancelled"]
+    },
+    "stage": {
+      "type": "string",
+      "enum": ["refine", "collect", "filter", "fetch", "extract", "enrich", "graph", "summarize"]
+    },
+    "stage_index": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8
+    },
+    "stage_total": {
+      "type": "number",
+      "const": 8
+    },
+    "refined_queries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "counts": {
+      "type": "object",
+      "properties": {
+        "sources_queried": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "results_found": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pages_fetched": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "entities_found": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "actors_found": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": ["sources_queried", "results_found", "pages_fetched", "entities_found", "actors_found"],
+      "additionalProperties": false
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "stages_completed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["refine", "collect", "filter", "fetch", "extract", "enrich", "graph", "summarize"]
+      }
+    },
+    "reason": {
+      "type": "string",
+      "enum": ["blocked_query", "no_results", "deadline", "error", "cancelled"]
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "duration_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tor_bootstrap_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "stage_ms": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "enum": ["refine", "collect", "filter", "fetch", "extract", "enrich", "graph", "summarize"]
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "llm_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "llm_tokens_in": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "llm_tokens_out": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "llm_cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pages_fetched": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "bytes_fetched": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "enrichment_calls": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "peak_rss_mb": {
+          "type": "number",
+          "minimum": 0
+        },
+        "export_errors": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "dropped_entities": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "required": [
+        "duration_ms",
+        "tor_bootstrap_ms",
+        "stage_ms",
+        "llm_calls",
+        "llm_tokens_in",
+        "llm_tokens_out",
+        "llm_cost_usd",
+        "pages_fetched",
+        "bytes_fetched",
+        "enrichment_calls"
+      ],
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "string",
+      "enum": ["start", "end", "skipped", "failed"]
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  },
+  "required": ["run_id", "seq", "at", "type", "stage_total"],
+  "additionalProperties": false,
+  "$id": "https://voidaccess.dev/schemas/ProgressEvent.json",
+  "title": "ProgressEvent"
+}
