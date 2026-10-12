@@ -13,10 +13,12 @@
     "test:e2e:results": "playwright test -c playwright.results.config.ts",
     "test:screenshots": "playwright test e2e/screenshots.spec.ts",
     "screenshots:results": "node scripts/results-screenshots.mjs",
+    "admin:grant-role": "tsx scripts/admin-grant-role.ts",
     "dodo:sync": "tsx scripts/dodo-sync.ts",
     "billing:checkout-smoke": "tsx scripts/dodo-checkout-smoke.ts",
     "test:e2e:billing": "playwright test -c playwright.billing.config.ts",
-    "test:e2e:archive": "playwright test -c playwright.archive.config.ts"
+    "test:e2e:archive": "playwright test -c playwright.archive.config.ts",
+    "test:e2e:ops": "playwright test -c playwright.ops.config.ts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.15",

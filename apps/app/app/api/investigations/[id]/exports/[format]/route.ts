@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { hasFeature } from "@voidaccess/config";
 import { json401, json404, sessionUser } from "@/lib/results/http";
+import { trackEvent } from "@/lib/analytics";
 import { getArtifact, getPlanId, loadSnapshot, UUID_RE } from "@/lib/results/queries";
 import {
   FORMAT_META,
@@ -46,11 +47,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     "X-Generated-At": now.toISOString(),
   };
 
+  const exported = () => trackEvent("export_used", { userId, props: { investigationId: id, format } });
   if (isArtifact(format)) {
     const a = await getArtifact(userId, id, format);
     if (!a) return json404();
+    await exported();
     return new Response(new Uint8Array(a.bytes), { headers });
   }
+  await exported();
   switch (format) {
     case "csv":
       return new Response(buildCsvZip(snapshot, now), { headers });
