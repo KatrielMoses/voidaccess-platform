@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "query": {
+      "type": "string",
+      "minLength": 1
+    },
+    "depth": {
+      "type": "string",
+      "enum": ["quick", "standard", "deep"]
+    },
+    "callback_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "callback_secret": {
+      "type": "string",
+      "minLength": 16
+    },
+    "artifact_put_urls": {
+      "type": "object",
+      "properties": {
+        "bundle": {
+          "type": "string",
+          "format": "uri"
+        },
+        "exports": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "enum": ["stix", "misp", "sigma", "yara", "snort", "suricata"]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "pages": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["bundle", "exports"],
+      "additionalProperties": false
+    },
+    "deadline_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    }
+  },
+  "required": [
+    "run_id",
+    "query",
+    "depth",
+    "callback_url",
+    "callback_secret",
+    "artifact_put_urls",
+    "deadline_at"
+  ],
+  "additionalProperties": false,
+  "$id": "https://voidaccess.dev/schemas/RunSpec.json",
+  "title": "RunSpec"
+}

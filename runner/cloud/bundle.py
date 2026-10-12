@@ -1,0 +1,546 @@
+"""Turns the engine's CLI JSON plus the run's local SQLite into a ResultBundle (schema_version 1).
+
+Guarantee 5: no sensitive raw value leaves the container.
+  - entities of secret types (API keys, tokens, passwords, seed phrases...) carry `value` =
+    `len:N sha256:<8-hex>` and `display_value` = `len:N`;
+  - emails, phones and personal names carry only the masked form (`j***@acme.com`) in both fields, plus an
+    `fp:<8-hex>` tag so the same value can be recognised without being recoverable;
+  - source excerpts are at most 500 characters and come from the engine's own `sanitizer.sanitize_page`
+    (content-safety drop, credentials to presence-only, PII and names removed); a page the gate drops is
+    not a source at all;
+  - the summary text and actor aliases are scrubbed of every raw sensitive value, credential patterns and
+    email/phone patterns before they are written.
+The mapping rules are in the module docstrings below and in the R0 handoff.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import re
+import sqlite3
+import uuid
+from collections import Counter
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlsplit, urlunsplit
+
+from . import constants as C
+from .masking import fingerprint_prefix, mask_entity_value, secret_value_token
+from .taxonomy import ACTOR_TYPES, is_secret_type, is_sensitive_type, normalize_type
+
+MEDIA_EXTENSIONS = (
+    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".ico", ".tif", ".tiff",
+    ".mp4", ".webm", ".mov", ".avi", ".mkv", ".mp3", ".wav", ".ogg", ".flac", ".pdf",
+)  # fmt: skip
+PASTE_HOSTS = ("pastebin.", "paste.ee", "dpaste.", "rentry.", "ghostbin.", "justpaste.", "paste.")
+CODE_FORGE_HOSTS = ("github.com", "gitlab.com", "raw.githubusercontent.com", "gist.github.com")
+# Source labels the engine puts on pages (investigate.py: page["source"]) that decide the bundle kind.
+_LABEL_KIND = (
+    ("tor_search", "onion_page"),
+    ("onion", "onion_page"),
+    ("telegram", "feed"),
+    ("paste", "paste"),
+    ("github", "code_forge"),
+    ("gitlab", "code_forge"),
+    ("rss", "feed"),
+    ("feed", "feed"),
+    ("enrichment", "enrichment"),
+    ("shared_corpus", "feed"),
+)
+_ACTOR_ALIAS_SKIP_TYPES = frozenset({"email", "wallet", "pgp_fingerprint", "phone"})
+_BULLET_RE = re.compile(r"^\s*(?:[-*\u2022]|\d+[.)])\s+(.*\S)\s*$")
+_PLAIN_BULLET_RE = re.compile(r"^\s*[-*\u2022]\s+")
+# Section titles of the engine's summary prompts (voidaccess/llm.py PRESET_PROMPTS output formats).
+_SECTION_TITLES = (
+    "input query", "source link", "investigation artifact", "key insight", "key finding", "next step",
+    "malware", "threat actor profile", "risk", "caveat", "limitation",
+)  # fmt: skip
+_MIN_RAW_REPLACE_LEN = 4
+# Entities whose value is several secrets joined together; each part is registered for scrubbing too.
+COMPOUND_SECRET_TYPES = frozenset({"COMBO_LIST_ENTRY", "STEALER_LOG_ENTRY"})
+
+
+def dash_uuid(value: Any) -> str:
+    """Canonical dashed form of an id (the engine's SQLite stores hex, its CLI JSON stores dashes)."""
+    try:
+        return str(uuid.UUID(str(value)))
+    except ValueError:
+        return str(value)
+
+
+def iso_utc(value: Any) -> str | None:
+    """An ISO-8601 timestamp with an explicit offset (naive SQLite datetimes are UTC), or None."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        text = str(value).strip().replace(" ", "T").replace("Z", "+00:00")
+        try:
+            dt = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat()
+
+
+def clamp01(x: Any, default: float = 0.0) -> float:
+    try:
+        return max(0.0, min(1.0, float(x)))
+    except (TypeError, ValueError):
+        return default
+
+
+def clean_url(url: str) -> str | None:
+    """Text URLs only: http(s), no userinfo, no credential-looking parts, and not a media file."""
+    try:
+        parts = urlsplit(url.strip())
+    except ValueError:
+        return None
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return None
+    if parts.path.lower().endswith(MEDIA_EXTENSIONS):
+        return None
+    host = parts.hostname + (f":{parts.port}" if parts.port else "")
+    from sanitizer.detectors import redact_credentials
+
+    cleaned = urlunsplit((parts.scheme, host, parts.path, parts.query, ""))
+    return redact_credentials(cleaned)
+
+
+def source_kind(url: str, label: str) -> str:
+    host = (urlsplit(url).hostname or "").lower()
+    lab = (label or "").lower()
+    if host.endswith(".onion"):
+        return "onion_page"
+    for needle, kind in _LABEL_KIND:
+        if needle in lab:
+            return kind
+    if any(host == h or host.endswith("." + h) for h in CODE_FORGE_HOSTS):
+        return "code_forge"
+    if any(h in host for h in PASTE_HOSTS):
+        return "paste"
+    return "feed"
+
+
+@dataclass
+class RawSecrets:
+    """Raw sensitive values found in this run, each with its safe replacement. Lives in memory only: it is
+    used to scrub free text and the export artifacts, and is never serialized."""
+
+    pairs: dict[str, str] = field(default_factory=dict)
+
+    def add(self, raw: str, replacement: str) -> None:
+        raw = (raw or "").strip()
+        if len(raw) >= _MIN_RAW_REPLACE_LEN and raw not in self.pairs:
+            self.pairs[raw] = replacement
+
+    def replace_pairs(self, text: str) -> str:
+        """Replace every raw sensitive value found in this run by its masked form."""
+        for raw in sorted(self.pairs, key=len, reverse=True):
+            if raw in text:
+                text = text.replace(raw, self.pairs[raw])
+        return text
+
+    def scrub(self, text: str) -> str:
+        """Replace every raw sensitive value, then redact credential patterns and email/phone patterns."""
+        if not text:
+            return text
+        text = self.replace_pairs(text)
+        from hygiene import strip_pii
+        from sanitizer.detectors import redact_credentials
+
+        return strip_pii(redact_credentials(text))
+
+
+@dataclass
+class BundleInputs:
+    run_id: str
+    query: str
+    depth: str
+    started_at: str
+    completed_at: str
+    engine_version: str
+    metrics: dict[str, Any]
+    cli_payload: dict[str, Any]
+    db_path: Path
+
+
+@dataclass
+class BuiltBundle:
+    bundle: dict[str, Any]
+    raw: RawSecrets
+    sanitized_pages: dict[str, str]  # dashed page id -> sanitized text (reused by the archive)
+    page_rows: dict[str, dict[str, Any]]  # dashed page id -> {url, fetched_at, content_hash}
+    dropped_entities: dict[str, int]
+
+
+def _connect(db_path: Path) -> sqlite3.Connection:
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def load_pages(db_path: Path) -> list[dict[str, Any]]:
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, url, cleaned_text, scrape_timestamp, raw_content_hash, byte_size FROM pages"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def sanitize_pages(pages: list[dict[str, Any]]) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
+    """Run each page through the engine's own sanitizer gate. Returns (sanitized text, page info) for the pages
+    that survive; a page the gate drops (content-safety, or NER unavailable: it fails closed), or whose URL is
+    not a text URL, is absent from both."""
+    from sanitizer.gate import sanitize_page
+
+    texts: dict[str, str] = {}
+    info: dict[str, dict[str, Any]] = {}
+    for p in pages:
+        url = clean_url(p.get("url") or "")
+        if url is None:
+            continue
+        raw_text = p.get("cleaned_text") or ""
+        sanitized = sanitize_page(raw_text) if raw_text else None
+        if sanitized is None:
+            continue
+        pid = dash_uuid(p["id"])
+        texts[pid] = sanitized
+        info[pid] = {
+            "url": url,
+            "fetched_at": iso_utc(p.get("scrape_timestamp")) or iso_utc(datetime.now(timezone.utc)),
+            "content_hash": p.get("raw_content_hash") or hashlib.sha256(raw_text.encode("utf-8")).hexdigest(),
+        }
+    return texts, info
+
+
+def _excerpt(text: str) -> str:
+    return " ".join(text.split())[: C.EXCERPT_MAX_CHARS]
+
+
+def _heading_title(line: str) -> str | None:
+    """The lowercased title when `line` is a section heading of the summary, else None. A plain bullet is
+    never a heading; a numbered line is one only when it is short and starts with a known section title."""
+    s = line.strip()
+    if _PLAIN_BULLET_RE.match(s):
+        return None
+    title = re.sub(r"^[#>\d.)\s]+", "", s).strip("*:# ").lower()
+    if len(title) < 90 and any(title.startswith(t) for t in _SECTION_TITLES) and not title.endswith("."):
+        return title
+    return None
+
+
+def _section_items(markdown: str, wanted: tuple[str, ...]) -> list[str]:
+    """Bullet or numbered items under the heading(s) whose title starts with one of `wanted`."""
+    items: list[str] = []
+    active = False
+    for line in markdown.splitlines():
+        if not line.strip():
+            continue
+        title = _heading_title(line)
+        if title is not None:
+            active = any(title.startswith(w) for w in wanted)
+            continue
+        if not active:
+            continue
+        bullet = _BULLET_RE.match(line)
+        if bullet:
+            items.append(bullet.group(1).strip()[:500])
+        elif items:
+            items[-1] = (items[-1] + " " + line.strip())[:500]
+    return items[:10]
+
+
+def summary_confidence(kind: str, source_count: int) -> str:
+    if kind != "llm":
+        return "low"
+    if source_count >= 15:
+        return "high"
+    return "medium" if source_count >= 5 else "low"
+
+
+def build_summary(cli: dict[str, Any], source_count: int, raw: RawSecrets) -> dict[str, Any]:
+    kind = str(cli.get("summary_kind") or "none")
+    markdown = raw.scrub(str(cli.get("summary") or ""))
+    findings = [raw.scrub(x) for x in _section_items(markdown, ("key insight", "key finding", "findings"))]
+    risks = [raw.scrub(x) for x in _section_items(markdown, ("risk", "caveat", "limitation"))]
+    if kind != "llm":
+        risks.append("The AI summary was unavailable for this run; this summary was built from extracted entities only.")
+    return {
+        "markdown": markdown,
+        "key_findings": findings,
+        "risk_notes": risks,
+        "confidence": summary_confidence(kind, source_count),
+        "source_count": source_count,
+        "summary_kind": kind,
+    }
+
+
+def _entity_rows_from_db(db_path: Path) -> dict[str, dict[str, Any]]:
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, page_id, extraction_method, first_seen FROM entities"
+        ).fetchall()
+    return {dash_uuid(r["id"]): dict(r) for r in rows}
+
+
+def _relationship_pages_from_db(db_path: Path) -> dict[str, str | None]:
+    with _connect(db_path) as conn:
+        rows = conn.execute("SELECT id, source_page_id FROM entity_relationships").fetchall()
+    return {dash_uuid(r["id"]): (dash_uuid(r["source_page_id"]) if r["source_page_id"] else None) for r in rows}
+
+
+def _actor_profiles_from_db(db_path: Path) -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    try:
+        with _connect(db_path) as conn:
+            for r in conn.execute(
+                "SELECT canonical_handle, first_seen_at, last_seen_at, id FROM actor_profiles"
+            ).fetchall():
+                aliases = conn.execute(
+                    "SELECT alias_value, alias_type FROM actor_aliases WHERE actor_id = ?", (r["id"],)
+                ).fetchall()
+                out[str(r["canonical_handle"]).lower()] = {
+                    "first_seen": iso_utc(r["first_seen_at"]),
+                    "last_seen": iso_utc(r["last_seen_at"]),
+                    "aliases": [
+                        (a["alias_value"], (a["alias_type"] or "").lower()) for a in aliases
+                    ],
+                }
+    except sqlite3.Error:
+        return {}
+    return out
+
+
+def _norm_key(etype: str, value: str) -> tuple[str, str]:
+    v = " ".join(value.split())
+    return etype, v if etype in {"API_KEY", "JWT_TOKEN"} else v.lower()
+
+
+def build_bundle(inp: BundleInputs) -> BuiltBundle:
+    cli = inp.cli_payload
+    raw = RawSecrets()
+    pages = load_pages(inp.db_path)
+    sanitized, page_info = sanitize_pages(pages)
+    page_label = {
+        p.get("url"): str(p.get("source") or "") for p in (cli.get("pages_scraped") or []) if p.get("url")
+    }
+
+    # ---- sources -------------------------------------------------------------------------------------
+    sources: list[dict[str, Any]] = []
+    for pid, info in page_info.items():
+        orig_url = next((p["url"] for p in pages if dash_uuid(p["id"]) == pid), info["url"])
+        label = page_label.get(orig_url, "")
+        sources.append(
+            {
+                "id": pid,
+                "kind": source_kind(info["url"], label),
+                "name": (label or urlsplit(info["url"]).hostname or "page")[:200],
+                "url": info["url"],
+                "fetched_at": info["fetched_at"],
+                "excerpt": _excerpt(sanitized[pid]),
+            }
+        )
+    kept_sources = set(page_info)
+    dropped_pages = {dash_uuid(p["id"]) for p in pages} - kept_sources
+
+    # ---- entities (merge duplicates, mask sensitive values) ------------------------------------------------
+    db_entities = _entity_rows_from_db(inp.db_path)
+    dropped: Counter[str] = Counter()
+    canonical: dict[str, str] = {}
+    by_key: dict[tuple[str, str], dict[str, Any]] = {}
+    order: list[dict[str, Any]] = []
+    for e in cli.get("entities") or []:
+        etype = normalize_type(e.get("entity_type"))
+        eid = dash_uuid(e.get("id"))
+        value = str(e.get("canonical_value") or e.get("value") or "").strip()
+        if etype is None:
+            dropped[str(e.get("entity_type") or "UNKNOWN").upper()] += 1
+            continue
+        if not value:
+            continue
+        row = db_entities.get(eid, {})
+        page_id = dash_uuid(row["page_id"]) if row.get("page_id") else None
+        src_ids = [page_id] if page_id and page_id in kept_sources else []
+        if page_id and page_id in dropped_pages:
+            continue  # extracted from a page the gate dropped: it must not leave the container
+        key = _norm_key(etype, value)
+        existing = by_key.get(key)
+        if existing is not None:
+            canonical[eid] = existing["id"]
+            existing["source_ids"] = sorted(set(existing["source_ids"]) | set(src_ids))
+            existing["confidence"] = max(existing["confidence"], clamp01(e.get("confidence")))
+            continue
+        tags: list[str] = []
+        for t in (row.get("extraction_method"), e.get("extraction_method"), e.get("freshness_tag")):
+            if t and str(t) not in tags:
+                tags.append(str(t))
+        if e.get("suppressed"):
+            tags.append("suppressed")
+        sensitive = is_sensitive_type(etype)
+        if sensitive and is_secret_type(etype):
+            token = secret_value_token(value)
+            out_value, display = token, token.split(" ")[0]
+            raw.add(value, display)
+            if etype in COMPOUND_SECRET_TYPES:
+                for part in re.split(r"[:|;]", value):  # `user@host:password` leaks through either half
+                    part = part.strip()
+                    raw.add(part, mask_entity_value("EMAIL_ADDRESS", part) if "@" in part else "[redacted]")
+        elif sensitive:
+            display = mask_entity_value(etype, value)
+            out_value = display
+            tags.append(f"fp:{fingerprint_prefix(etype, value)}")
+            raw.add(value, display)
+        else:
+            out_value, display = value, mask_entity_value(etype, value)
+        item = {
+            "id": eid,
+            "type": etype,
+            "value": out_value,
+            "display_value": display,
+            "sensitive": sensitive,
+            "confidence": clamp01(e.get("confidence")),
+            "source_ids": src_ids,
+            "tags": tags,
+        }
+        first_seen = iso_utc(e.get("first_seen") or row.get("first_seen"))
+        if first_seen:
+            item["first_seen"] = first_seen
+        canonical[eid] = eid
+        by_key[key] = item
+        order.append(item)
+    order.sort(key=lambda x: -x["confidence"])
+    if len(order) > C.MAX_BUNDLE_ENTITIES:
+        for gone in order[C.MAX_BUNDLE_ENTITIES :]:
+            canonical = {k: v for k, v in canonical.items() if v != gone["id"]}
+        order = order[: C.MAX_BUNDLE_ENTITIES]
+    entity_ids = {e["id"] for e in order}
+    src_of = {e["id"]: set(e["source_ids"]) for e in order}
+
+    # ---- relationships ---------------------------------------------------------------------------------
+    rel_pages = _relationship_pages_from_db(inp.db_path)
+    relationships: list[dict[str, Any]] = []
+    seen_rel: set[tuple[str, str, str]] = set()
+    for r in cli.get("relationships") or []:
+        a = canonical.get(dash_uuid(r.get("entity_a_id")))
+        b = canonical.get(dash_uuid(r.get("entity_b_id")))
+        rtype = str(r.get("relationship_type") or "").strip()
+        if not a or not b or a == b or a not in entity_ids or b not in entity_ids or not rtype:
+            continue
+        key = (a, b, rtype)
+        if key in seen_rel:
+            continue
+        seen_rel.add(key)
+        evidence = rel_pages.get(dash_uuid(r.get("id")))
+        ev = [evidence] if evidence and evidence in kept_sources else sorted(src_of[a] & src_of[b])
+        relationships.append(
+            {
+                "source": a,
+                "target": b,
+                "type": rtype,
+                "weight": clamp01(r.get("confidence"), 1.0),
+                "evidence_source_ids": ev,
+            }
+        )
+
+    # ---- actors ----------------------------------------------------------------------------------------
+    profiles = _actor_profiles_from_db(inp.db_path)
+    actors: dict[str, dict[str, Any]] = {}
+    for e in order:
+        if e["type"] not in ACTOR_TYPES:
+            continue
+        handle = e["value"].strip()
+        key = handle.lstrip("@").lower()
+        actor = actors.get(key)
+        if actor is None:
+            prof = profiles.get(key, {})
+            aliases = []
+            for value, atype in prof.get("aliases", []):
+                if atype in _ACTOR_ALIAS_SKIP_TYPES or not value or value.lower() == key:
+                    continue
+                cleaned = raw.scrub(str(value))[:200]
+                if cleaned and cleaned != "[redacted-phone]" and cleaned not in aliases:
+                    aliases.append(cleaned)
+            actor = {
+                "id": "actor_" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12],
+                "handle": handle,
+                "aliases": aliases,
+                "entity_ids": [],
+            }
+            if prof.get("first_seen"):
+                actor["first_seen"] = prof["first_seen"]
+            if prof.get("last_seen"):
+                actor["last_seen"] = prof["last_seen"]
+            actors[key] = actor
+        actor["entity_ids"].append(e["id"])
+
+    # ---- communities -----------------------------------------------------------------------------------
+    groups: dict[int, list[str]] = {}
+    comm = cli.get("communities") or {}
+    if isinstance(comm, dict):
+        for ent, cid in comm.items():
+            eid = canonical.get(dash_uuid(ent))
+            if eid in entity_ids and isinstance(cid, int) and cid >= 0:
+                groups.setdefault(cid, [])
+                if eid not in groups[cid]:
+                    groups[cid].append(eid)
+    communities = [{"id": cid, "entity_ids": ids} for cid, ids in sorted(groups.items())]
+
+    bundle = {
+        "schema_version": 1,
+        "run_id": inp.run_id,
+        "query": inp.query,
+        "refined_queries": [q for q in [cli.get("refined_query")] if q],
+        "depth": inp.depth,
+        "started_at": inp.started_at,
+        "completed_at": inp.completed_at,
+        "engine_version": inp.engine_version,
+        "summary": build_summary(cli, len(sources), raw),
+        "entities": order,
+        "relationships": relationships,
+        "actors": list(actors.values()),
+        "communities": communities,
+        "sources": sources,
+        "metrics": inp.metrics,
+    }
+    if dropped:
+        bundle["metrics"]["dropped_entities"] = dict(dropped)
+    return BuiltBundle(bundle, raw, sanitized, page_info, dict(dropped))
+
+
+def deep_scrub(obj: Any, raw: RawSecrets, skip: tuple[str, ...] = ("query", "refined_queries")) -> Any:
+    """Replace every raw sensitive value found in any string of `obj` (the user's own query and its refinements are
+    left alone: they are the user's input, not page content)."""
+    if isinstance(obj, str):
+        return raw.replace_pairs(obj)
+    if isinstance(obj, list):
+        return [deep_scrub(x, raw, skip) for x in obj]
+    if isinstance(obj, dict):
+        return {k: (v if k in skip else deep_scrub(v, raw, skip)) for k, v in obj.items()}
+    return obj
+
+
+def integrity_problems(b: dict[str, Any]) -> list[str]:
+    """Referential integrity the JSON Schema cannot express (port of checkBundleIntegrity in engine-client)."""
+    problems: list[str] = []
+    entity_ids = {e["id"] for e in b["entities"]}
+    source_ids = {s["id"] for s in b["sources"]}
+    if len(entity_ids) != len(b["entities"]):
+        problems.append("duplicate entity ids")
+    if len(source_ids) != len(b["sources"]):
+        problems.append("duplicate source ids")
+    for e in b["entities"]:
+        problems += [f"entity {e['id']}: unknown source" for s in e["source_ids"] if s not in source_ids]
+    for r in b["relationships"]:
+        if r["source"] not in entity_ids or r["target"] not in entity_ids:
+            problems.append("relationship: unknown entity")
+        problems += ["relationship: unknown source" for s in r["evidence_source_ids"] if s not in source_ids]
+    for a in b["actors"]:
+        problems += [f"actor {a['id']}: unknown entity" for i in a["entity_ids"] if i not in entity_ids]
+    for c in b["communities"]:
+        problems += [f"community {c['id']}: unknown entity" for i in c["entity_ids"] if i not in entity_ids]
+    return problems

@@ -1,0 +1,6 @@
+# Runner-only dependencies on top of the engine's own (httpx, pyyaml, langchain-core and the rest come from the
+# engine's pyproject, pinned at the engine commit). Nothing here is installed for tests beyond `pytest`.
+#
+# jsonschema validates the RunSpec and the ResultBundle against the canonical JSON Schemas from
+# packages/engine-client (the brief requires it; a hand-written validator would drift from them).
+jsonschema==4.23.0
