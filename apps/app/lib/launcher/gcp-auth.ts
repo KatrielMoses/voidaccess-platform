@@ -48,7 +48,7 @@ export function createTokenProvider(
       join(homedir(), ".config", "gcloud", "application_default_credentials.json");
     let creds: { type?: string; client_id?: string; client_secret?: string; refresh_token?: string };
     try {
-      creds = JSON.parse(await readFile(path, "utf8"));
+      creds = JSON.parse(await readFile(/*turbopackIgnore: true*/ path, "utf8")); // dev-only ADC file, chosen at runtime
     } catch {
       throw new GcpAuthError(
         "no Google credentials: not on Cloud Run and no application default credentials",
