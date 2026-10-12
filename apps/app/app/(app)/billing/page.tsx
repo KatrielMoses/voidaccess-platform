@@ -1,0 +1,33 @@
+import { pageUser } from "@/lib/page-user";
+import { trackEvent } from "@/lib/analytics";
+import { loadBillingView } from "@/lib/billing/view";
+import { BillingClient } from "@/components/billing/billing-client";
+import { billingCopy as copy, fill } from "@/content/billing";
+import { TOPUP_EXPIRY_MONTHS } from "@voidaccess/config";
+
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Billing" };
+
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string; from?: string }>;
+}) {
+  const user = await pageUser();
+  const sp = await searchParams;
+  const view = await loadBillingView(user.id, user.plan);
+  if (user.plan !== "pro_plus" && !sp.checkout)
+    await trackEvent("upgrade_viewed", {
+      userId: user.id,
+      props: { from: sp.from ?? null, plan: user.plan },
+    });
+  return (
+    <div className="flex flex-col gap-6">
+      <header>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">{copy.title}</h1>
+        <p className="mt-1 text-fg-secondary">{fill(copy.intro, { expiryMonths: TOPUP_EXPIRY_MONTHS })}</p>
+      </header>
+      <BillingClient view={view} checkout={sp.checkout} />
+    </div>
+  );
+}

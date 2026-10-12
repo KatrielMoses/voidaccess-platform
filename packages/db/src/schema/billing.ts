@@ -1,4 +1,14 @@
-import { index, integer, jsonb, pgEnum, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { createdAt, pk, planEnum, tstz } from "./_common";
 import { users } from "./auth";
 
@@ -28,6 +38,18 @@ export const subscriptions = pgTable(
     currentPeriodStart: tstz("current_period_start"),
     currentPeriodEnd: tstz("current_period_end"),
     cancelAt: tstz("cancel_at"),
+    /** catalogue key of the product the subscription is on (billing_catalog.key), e.g. "pro_month" */
+    productKey: text("product_key"),
+    /** timestamp of the newest provider event applied to this row (older, out-of-order events don't regress it) */
+    providerEventAt: tstz("provider_event_at"),
+    /** start of the newest period a credit grant was written for; guards against granting an older period late */
+    lastGrantPeriodStart: tstz("last_grant_period_start"),
+    /** a downgrade (or founding release) waiting for the period end */
+    pendingProductKey: text("pending_product_key"),
+    pendingEffectiveAt: tstz("pending_effective_at"),
+    /** when the provider was asked to apply the pending change (set once, so cron doesn't repeat the call) */
+    pendingRequestedAt: tstz("pending_requested_at"),
+    isFounding: boolean("is_founding").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: tstz("updated_at")
       .notNull()

@@ -31,6 +31,17 @@ export const envSchema = z.object({
   CRON_SHARED_SECRET: z.string().min(16).optional(),
   /** Service-account email expected in the Cloud Scheduler OIDC token. */
   CRON_OIDC_EMAIL: z.string().min(1).optional(),
+  // ---- billing (P5) ----
+  /** Dodo Payments API key. Test-mode key in dev/CI; the live key arrives in the deploy phase. */
+  DODO_PAYMENTS_API_KEY: z.string().min(1).optional(),
+  /** Which Dodo environment the key belongs to. Defaults to test mode; live is set at deploy. */
+  DODO_ENV: z.enum(["test_mode", "live_mode"]).default("test_mode"),
+  /** Dodo webhook signing secret (whsec_...). Required to accept webhooks. */
+  DODO_WEBHOOK_SECRET: z.string().min(8).optional(),
+  /** "fake" swaps in an in-memory provider (tests, e2e). Never used in production. */
+  BILLING_PROVIDER: z.enum(["dodo", "fake"]).optional(),
+  /** Marketing-site origin allowed to read GET /api/founding/seats. */
+  SITE_ORIGIN: z.url().default("https://voidaccess.pro"),
 });
 
 export type Env = z.infer<typeof envSchema>;

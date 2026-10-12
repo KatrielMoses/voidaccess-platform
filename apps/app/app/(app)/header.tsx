@@ -126,6 +126,20 @@ export function AppHeader({
                 >
                   Settings
                 </Link>
+                {[
+                  { href: "/billing", label: "Billing" },
+                  { href: "/usage", label: "Usage" },
+                ].map((m) => (
+                  <Link
+                    key={m.href}
+                    role="menuitem"
+                    href={m.href}
+                    onClick={() => setOpen(false)}
+                    className="block px-3 py-2 text-sm text-fg hover:bg-raised focus-visible:bg-raised focus-visible:outline-none"
+                  >
+                    {m.label}
+                  </Link>
+                ))}
                 <button
                   type="button"
                   role="menuitem"
