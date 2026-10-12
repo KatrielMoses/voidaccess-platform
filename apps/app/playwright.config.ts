@@ -24,6 +24,9 @@ export const e2eEnv = {
   ENGINE_CALLBACK_SECRET: "e2e-engine-callback-secret-0123456789",
   BETTER_AUTH_SECRET: "e2e-better-auth-secret-0123456789-abcdef",
   CRON_SHARED_SECRET: "e2e-cron-shared-secret-0123456789",
+  // ingest (P3) masks and fingerprints sensitive values; local key instead of Cloud KMS
+  VA_FINGERPRINT_KEY: "e2e-fingerprint-key",
+  VA_LOCAL_KEK: Buffer.alloc(32, 5).toString("base64"),
 };
 
 export default defineConfig({
