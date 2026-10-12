@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@import "@voidaccess/ui/tokens.css";
+
+@layer base {
+  html {
+    background: var(--color-void);
+    color: var(--color-fg);
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: var(--color-accent-dim);
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+/* Hero graph: draw-in animation. Final state is the natural state, so no JS and
+   prefers-reduced-motion both show the complete static frame. */
+@keyframes va-edge {
+  from { stroke-dashoffset: 1; opacity: 0; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+@keyframes va-node {
+  from { opacity: 0; transform: scale(0.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes va-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0; transform: scale(2.4); }
+}
+.va-edge {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: va-edge 0.7s ease-out var(--d, 0s) backwards;
+}
+.va-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: va-node 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) var(--d, 0s) backwards;
+}
+.va-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: va-pulse 3.2s ease-out 2.6s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .va-edge, .va-node, .va-pulse { animation: none; }
+  .va-pulse { opacity: 0; }
+  html { scroll-behavior: auto; }
+}
