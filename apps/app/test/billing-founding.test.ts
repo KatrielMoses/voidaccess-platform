@@ -22,7 +22,6 @@ import {
   grantBalance,
   makeBillingUser,
   outbox,
-  paymentData,
   planOf,
   productId,
   provider,

@@ -8,6 +8,7 @@ import {
   creditLedger,
   getBalance,
   getDatabase,
+  grantMonthly,
   payments,
   topupLots,
 } from "@voidaccess/db";
@@ -130,6 +131,24 @@ describe("subscription activation and idempotency", () => {
       { audit: false },
     );
     expect(ev).toHaveLength(1);
+  });
+
+  it("a user who got the Free signup grant today still gets the Pro grant when they subscribe today", async () => {
+    const u = await makeBillingUser();
+    const now = new Date();
+    await grantMonthly(u.id, "free", now); // what account bootstrap does at sign-up: key grant:<user>:<today>
+    await deliver(
+      "subscription.active",
+      await subSnapshot({
+        user: u,
+        subId: sid(),
+        key: "pro_month",
+        periodStart: now,
+        periodEnd: addDays(now, 30),
+      }),
+      { at: now },
+    );
+    expect(await grantBalance(u.id)).toBe(PLANS.pro.monthlyCredits); // the Free remainder expired, the Pro grant landed
   });
 
   it("concurrent deliveries of the same event id apply exactly once", async () => {

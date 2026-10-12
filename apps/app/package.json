@@ -14,7 +14,8 @@
     "test:screenshots": "playwright test e2e/screenshots.spec.ts",
     "screenshots:results": "node scripts/results-screenshots.mjs",
     "dodo:sync": "tsx scripts/dodo-sync.ts",
-    "billing:checkout-smoke": "tsx scripts/dodo-checkout-smoke.ts"
+    "billing:checkout-smoke": "tsx scripts/dodo-checkout-smoke.ts",
+    "test:e2e:billing": "playwright test -c playwright.billing.config.ts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.15",

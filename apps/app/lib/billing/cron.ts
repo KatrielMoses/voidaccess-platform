@@ -10,7 +10,6 @@ import {
   expireLots,
   foundingNotices,
   getDatabase,
-  grantMonthly,
   runFoundingChecks,
   subscriptions,
   users,
@@ -20,6 +19,7 @@ import {
 import { sendEmail } from "@voidaccess/emails";
 import { billingCopy as copy, fill } from "../../content/billing";
 import { sendDueAlerts } from "./alerts";
+import { grantPlanPeriod } from "./ledger-ext";
 import { activeCatalogEntry } from "./catalog";
 import { dateFmt, usd } from "./format";
 import { billingUrl, userContact } from "./post-effects";
@@ -68,8 +68,24 @@ export async function runGrants(now: Date, deps: Deps = {}) {
     { audit: false },
   );
   let granted = 0;
-  for (const u of due.free) if ((await grantMonthly(u.id, "free", now, { database })).granted) granted++;
-  for (const u of due.annual) if ((await grantMonthly(u.id, u.plan, now, { database })).granted) granted++;
+  for (const u of due.free)
+    if (
+      (
+        await database.withSystem("cron.grants.free", (tx) => grantPlanPeriod(tx, u.id, "free", now), {
+          audit: false,
+        })
+      ).granted
+    )
+      granted++;
+  for (const u of due.annual)
+    if (
+      (
+        await database.withSystem("cron.grants.annual", (tx) => grantPlanPeriod(tx, u.id, u.plan, now), {
+          audit: false,
+        })
+      ).granted
+    )
+      granted++;
 
   const ended = await endCancelledSubscriptions(now, database);
   const expired = await expireLots(now, { database });
@@ -107,7 +123,7 @@ export async function endCancelledSubscriptions(now: Date, database: Database): 
         .for("update");
       if (live.length > 0 || !u || u.plan === "free") return false;
       await tx.update(users).set({ plan: "free" }).where(eq(users.id, r.userId));
-      await grantMonthly(r.userId, "free", now, { tx });
+      await grantPlanPeriod(tx, r.userId, "free", now);
       return true;
     });
     if (moved) n++;

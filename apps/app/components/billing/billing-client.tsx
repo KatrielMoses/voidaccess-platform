@@ -353,7 +353,7 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
                       {isCurrent ? <Badge variant="accent">{copy.currentPlan}</Badge> : null}
                     </div>
                   </CardHeader>
-                  <CardContent className="flex h-full flex-col gap-3">
+                  <CardContent className="flex flex-1 flex-col gap-3">
                     <p>
                       <span className="font-display text-3xl font-semibold">{usd(price(p))}</span>
                       <span className="text-sm text-fg-secondary">

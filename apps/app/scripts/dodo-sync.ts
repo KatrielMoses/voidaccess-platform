@@ -14,8 +14,13 @@ if (!key) throw new Error("DODO_PAYMENTS_API_KEY is not set");
 const provider = new DodoProvider(key, live ? "live" : "test");
 const report = await syncCatalog(provider);
 console.log(`mode: ${provider.mode}`);
-for (const k of ["created", "repriced", "unchanged"] as const) console.log(`${k}: ${report[k].join(", ") || "-"}`);
-const rows = await getDatabase().withSystem("billing.sync.report", (tx) => tx.select().from(billingCatalog).where(eq(billingCatalog.mode, provider.mode)), { audit: false });
+for (const k of ["created", "repriced", "unchanged"] as const)
+  console.log(`${k}: ${report[k].join(", ") || "-"}`);
+const rows = await getDatabase().withSystem(
+  "billing.sync.report",
+  (tx) => tx.select().from(billingCatalog).where(eq(billingCatalog.mode, provider.mode)),
+  { audit: false },
+);
 for (const r of rows.filter((r) => r.active).sort((a, b) => a.key.localeCompare(b.key)))
   console.log(`  ${r.key.padEnd(20)} ${(r.amountCents / 100).toFixed(2).padStart(7)} USD  ${r.name}`);
 process.exit(0);

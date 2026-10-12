@@ -18,7 +18,6 @@ import {
   billingEvents,
   claimFoundingSeat,
   getDatabase,
-  grantMonthly,
   payments,
   releaseFoundingSeat,
   subscriptions,
@@ -29,7 +28,7 @@ import {
 } from "@voidaccess/db";
 import { getEnv } from "../../env";
 import { catalogByProductId, FOUNDING_KEY, productRank, planRank, type Interval } from "./catalog";
-import { grantPlanDifference } from "./ledger-ext";
+import { grantPlanDifference, grantPlanPeriod } from "./ledger-ext";
 import { billingMode } from "./provider";
 import { verifyWebhook } from "./webhook-verify";
 
@@ -404,7 +403,7 @@ async function applySubscription(tx: Tx, ev: DodoEvent, mode: string, post: Post
         .where(and(eq(subscriptions.userId, userId), eq(subscriptions.status, "active")));
       if (others.length === 0 && oldPlan !== "free") {
         await tx.update(users).set({ plan: "free" }).where(eq(users.id, userId));
-        await grantMonthly(userId, "free", eventAt, { tx });
+        await grantPlanPeriod(tx, userId, "free", eventAt);
         detail.plan = "free";
       }
     }
@@ -424,7 +423,7 @@ async function applySubscription(tx: Tx, ev: DodoEvent, mode: string, post: Post
   if (status === "active" && periodStart) {
     const last = existing?.lastGrantPeriodStart ?? null;
     if (!last || periodStart > last) {
-      const g = await grantMonthly(userId, effPlan, periodStart, { tx });
+      const g = await grantPlanPeriod(tx, userId, effPlan, periodStart);
       await tx
         .update(subscriptions)
         .set({ lastGrantPeriodStart: periodStart })
