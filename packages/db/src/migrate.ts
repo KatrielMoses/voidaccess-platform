@@ -9,7 +9,20 @@ export const MIGRATIONS_FOLDER = fileURLToPath(new URL("../drizzle", import.meta
 export async function runMigrations(url: string): Promise<void> {
   const pool = new pg.Pool({ connectionString: url, max: 1 });
   try {
-    await migrate(drizzle(pool), { migrationsFolder: MIGRATIONS_FOLDER });
+    // Roles are cluster-wide, so parallel test suites migrating their own databases can race on CREATE/GRANT of
+    // va_app and va_system. Migrations run in one transaction, so a retry after such a collision is safe.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await migrate(drizzle(pool), { migrationsFolder: MIGRATIONS_FOLDER });
+        return;
+      } catch (e) {
+        const code =
+          (e as { code?: string; cause?: { code?: string } }).code ??
+          (e as { cause?: { code?: string } }).cause?.code;
+        if (attempt >= 5 || (code !== "23505" && code !== "XX000" && code !== "40001")) throw e;
+        await new Promise((r) => setTimeout(r, 200 * attempt));
+      }
+    }
   } finally {
     await pool.end();
   }
