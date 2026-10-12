@@ -16,7 +16,8 @@ gcloud storage buckets update gs://voidaccess-cloud-tfstate --versioning
 ```bash
 export CLOUDSDK_ACTIVE_CONFIG_NAME=voidaccess
 cd infra/terraform
-terraform init && terraform validate && terraform plan
+terraform init && terraform validate
+terraform plan -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:<engine-sha>-<runner-sha>
 ```
 
 ## Deploy the app shell
