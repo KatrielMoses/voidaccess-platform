@@ -34,7 +34,8 @@ export const githubEnabled = Boolean(process.env.GITHUB_CLIENT_ID && process.env
 const SIGN_UP_PATH = "/sign-up/email";
 
 function build() {
-  if (isProd && !cookieDomain) throw new Error("COOKIE_DOMAIN is required in production (shared session cookie)");
+  if (isProd && !cookieDomain)
+    throw new Error("COOKIE_DOMAIN is required in production (shared session cookie)");
   if (isProd && !turnstileSecret) throw new Error("TURNSTILE_SECRET_KEY is required in production");
   if (cookieDomain && !cookieDomainCovers(cookieDomain, [appUrl, siteUrl]))
     throw new Error("COOKIE_DOMAIN must cover both APP_URL and SITE_URL");
@@ -161,9 +162,10 @@ interface SignUpBody {
 /** Email sign-up: store the AUP timestamp and the first-touch the visitor consented to (sent in the body). */
 async function stampSignUp(userId: string, body: SignUpBody | undefined): Promise<void> {
   if (body?.aupAccepted === true) await acceptAup(userId);
-  const ft = body?.firstTouch && typeof body.firstTouch === "object"
-    ? parseAttribution({ cookie: JSON.stringify(body.firstTouch) })
-    : null;
+  const ft =
+    body?.firstTouch && typeof body.firstTouch === "object"
+      ? parseAttribution({ cookie: JSON.stringify(body.firstTouch) })
+      : null;
   if (ft) await saveFirstTouch(userId, ft);
   await trackEvent("signup_completed", { userId, props: { method: "password" } });
 }

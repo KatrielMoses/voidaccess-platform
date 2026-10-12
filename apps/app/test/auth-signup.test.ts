@@ -33,7 +33,12 @@ async function signUp(body: Record<string, unknown>, origin = SITE_ORIGIN, cooki
   const res = await getAuth().handler(
     new Request("http://localhost:3000/api/auth/sign-up/email", {
       method: "POST",
-      headers: { "content-type": "application/json", origin, "x-forwarded-for": ip(), ...(cookie ? { cookie } : {}) }, // fresh IP: the rate limiter is per IP
+      headers: {
+        "content-type": "application/json",
+        origin,
+        "x-forwarded-for": ip(),
+        ...(cookie ? { cookie } : {}),
+      }, // fresh IP: the rate limiter is per IP
       body: JSON.stringify(body),
     }),
   );
@@ -55,20 +60,39 @@ describe("sign-up", () => {
 
   it("rejects a credentialed sign-up from an untrusted origin", async () => {
     const email = `evil-${Date.now()}@test.local`;
-    const r = await signUp({ name: "Evil", email, password: "a long password", aupAccepted: true }, "https://evil.example", "better-auth.session_token=x");
+    const r = await signUp(
+      { name: "Evil", email, password: "a long password", aupAccepted: true },
+      "https://evil.example",
+      "better-auth.session_token=x",
+    );
     expect(r.status).toBe(403); // origin checks guard requests that carry ambient credentials
     expect(await userByEmail(email)).toHaveLength(0);
   });
 
   it("stores the consented first-touch with the sign-up, and ignores junk", async () => {
     const email = `ft-${Date.now()}@test.local`;
-    const firstTouch = { utm: { utm_source: "hn" }, ref: "news.ycombinator.com", landing: "/", at: "2026-10-12T00:00:00Z" };
+    const firstTouch = {
+      utm: { utm_source: "hn" },
+      ref: "news.ycombinator.com",
+      landing: "/",
+      at: "2026-10-12T00:00:00Z",
+    };
     const r = await signUp({ name: "Ft", email, password: "a long password", aupAccepted: true, firstTouch });
     expect(r.status).toBe(200);
     const [u] = await userByEmail(email);
     expect(u?.firstTouch).toMatchObject({ utm: { utm_source: "hn" }, ref: "news.ycombinator.com" });
     const email2 = `ft2-${Date.now()}@test.local`;
-    expect((await signUp({ name: "Ft", email: email2, password: "a long password", aupAccepted: true, firstTouch: "x" })).status).toBe(200);
+    expect(
+      (
+        await signUp({
+          name: "Ft",
+          email: email2,
+          password: "a long password",
+          aupAccepted: true,
+          firstTouch: "x",
+        })
+      ).status,
+    ).toBe(200);
     expect((await userByEmail(email2))[0]?.firstTouch).toBeNull();
   });
 

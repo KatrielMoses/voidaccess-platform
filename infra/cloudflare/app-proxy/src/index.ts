@@ -20,7 +20,9 @@ export default {
     headers.set("x-forwarded-host", env.PUBLIC_HOST);
     headers.set("x-forwarded-proto", "https");
 
-    const res = await fetch(new Request(upstream, { method: req.method, headers, body: req.body, redirect: "manual" }));
+    const res = await fetch(
+      new Request(upstream, { method: req.method, headers, body: req.body, redirect: "manual" }),
+    );
     // Redirects that point at the upstream host would leak it; rewrite to the public host.
     const loc = res.headers.get("location");
     if (loc?.startsWith(env.UPSTREAM)) {

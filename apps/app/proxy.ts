@@ -21,6 +21,7 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Static assets are public; everything else, including unknown paths, goes through the guard.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Build output under /_next (static chunks, images) and the dev server's own endpoints (/__nextjs_*: fonts,
+  // HMR helpers; absent in production) are public; everything else, including unknown paths, goes through the guard.
+  matcher: ["/((?!_next/|__nextjs|favicon.ico).*)"],
 };

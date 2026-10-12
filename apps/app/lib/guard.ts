@@ -10,12 +10,21 @@ const MACHINE_PREFIXES = ["/api/auth", "/api/engine/", "/api/cron/"];
 const MACHINE_EXACT = new Set(["/api/webhooks/dodo", "/api/health", "/api/founding/seats"]);
 
 /** Auth pages that now live on the site. The app keeps only /accept-terms. */
-export const MOVED_PAGES = ["/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/check-email"] as const;
+export const MOVED_PAGES = [
+  "/sign-in",
+  "/sign-up",
+  "/forgot-password",
+  "/reset-password",
+  "/check-email",
+] as const;
 
 export function classifyPath(pathname: string): RouteClass {
   const p = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
   if (MACHINE_EXACT.has(p)) return "machine";
-  if (p === "/api/auth" || MACHINE_PREFIXES.some((x) => (x.endsWith("/") ? p.startsWith(x) : p.startsWith(`${x}/`))))
+  if (
+    p === "/api/auth" ||
+    MACHINE_PREFIXES.some((x) => (x.endsWith("/") ? p.startsWith(x) : p.startsWith(`${x}/`)))
+  )
     return "machine";
   if ((MOVED_PAGES as readonly string[]).includes(p)) return "moved";
   if (p === "/api" || p.startsWith("/api/")) return "api";

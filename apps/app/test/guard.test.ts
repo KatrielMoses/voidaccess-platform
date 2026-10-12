@@ -20,7 +20,9 @@ function enumerateRoutes(): { kind: "page" | "route"; url: string }[] {
         const segs = relative(root, dir)
           .split(sep)
           .filter((s) => s && !/^\(.*\)$/.test(s))
-          .map((s) => (s === "[...all]" ? "x" : s.replace(/\[(\w+)\]/g, "00000000-0000-0000-0000-000000000000")));
+          .map((s) =>
+            s === "[...all]" ? "x" : s.replace(/\[(\w+)\]/g, "00000000-0000-0000-0000-000000000000"),
+          );
         out.push({ kind: name.startsWith("page") ? "page" : "route", url: "/" + segs.join("/") });
       }
     }
@@ -45,7 +47,9 @@ describe("signed-out guard (guarantee 1)", () => {
 
   it("finds the routes (sanity)", () => {
     expect(routes.length).toBeGreaterThan(30);
-    expect(routes.some((r) => r.url === "/investigations/00000000-0000-0000-0000-000000000000/results/graph")).toBe(true);
+    expect(
+      routes.some((r) => r.url === "/investigations/00000000-0000-0000-0000-000000000000/results/graph"),
+    ).toBe(true);
   });
 
   it("every page redirects signed-out visitors to the site's sign-in with an app-origin next", () => {
@@ -109,10 +113,23 @@ describe("signed-out guard (guarantee 1)", () => {
   });
 
   it("classifyPath does not let look-alike paths through", () => {
-    for (const p of ["/api/authx", "/api/health/x", "/api/cronjobs", "/api/engine", "/api/webhooks/dodo/x", "/api/founding/seats/x"]) {
+    for (const p of [
+      "/api/authx",
+      "/api/health/x",
+      "/api/cronjobs",
+      "/api/engine",
+      "/api/webhooks/dodo/x",
+      "/api/founding/seats/x",
+    ]) {
       expect(classifyPath(p), p).not.toBe("machine");
     }
-    for (const p of ["/api/auth", "/api/auth/sign-in/email", "/api/health", "/api/cron/watchdog", "/api/engine/runs/x/spec"]) {
+    for (const p of [
+      "/api/auth",
+      "/api/auth/sign-in/email",
+      "/api/health",
+      "/api/cron/watchdog",
+      "/api/engine/runs/x/spec",
+    ]) {
       expect(classifyPath(p), p).toBe("machine");
     }
   });

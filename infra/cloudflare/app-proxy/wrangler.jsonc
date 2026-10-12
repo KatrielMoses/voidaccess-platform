@@ -8,6 +8,6 @@
   "routes": [{ "pattern": "app.voidaccess.pro", "custom_domain": true }],
   "vars": {
     "UPSTREAM": "https://va-app-801065098085.us-central1.run.app",
-    "PUBLIC_HOST": "app.voidaccess.pro"
-  }
+    "PUBLIC_HOST": "app.voidaccess.pro",
+  },
 }
