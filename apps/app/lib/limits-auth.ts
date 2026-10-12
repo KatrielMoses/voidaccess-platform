@@ -1,4 +1,4 @@
-// Auth rate limits (per IP, in-memory store: per-instance on Cloud Run; move to a shared store when scaling out).
+// Auth rate limits (per IP). The counters are shared across instances in Postgres (lib/rate-limit.ts).
 // Keys are Better Auth paths. These are security settings, so they stay in the app (not config).
 export const AUTH_RATE_LIMITS = {
   "/sign-in/email": { window: 60, max: 10 },
