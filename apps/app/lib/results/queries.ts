@@ -3,7 +3,7 @@
  * user's investigation id simply returns nothing (callers answer 404). No function accepts a user id from
  * the client; routes take it from the session.
  */
-import { and, asc, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, notInArray, sql, type SQL } from "drizzle-orm";
 import {
   getDatabase,
   invActors,
@@ -156,6 +156,11 @@ export async function searchEntities(
     if (q.minConfidence !== undefined) where.push(gte(invEntities.confidence, q.minConfidence));
     if (q.maxConfidence !== undefined) where.push(lte(invEntities.confidence, q.maxConfidence));
     if (q.sensitiveOnly) where.push(eq(invEntities.sensitive, true));
+    if (q.bundleIds?.include) {
+      if (q.bundleIds.include.length === 0) return { rows: [], total: 0 };
+      where.push(inArray(invEntities.bundleId, q.bundleIds.include));
+    }
+    if (q.bundleIds?.exclude?.length) where.push(notInArray(invEntities.bundleId, q.bundleIds.exclude));
     const sortCol = SORTS[q.sort ?? "confidence"];
     const dir =
       (q.dir ??

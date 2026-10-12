@@ -61,12 +61,15 @@ export function refang(s: string): string {
 
 /** Fold a name: NFKD, ASCII only, lower case, no separators or punctuation ("Black-Cat" and "black cat" agree). */
 export function foldName(s: string): string {
-  return s
-    .normalize("NFKD")
-    .replace(/[^\x00-\x7F]/g, "")
-    .toLowerCase()
-    .replace(/[\s\-_.]/g, "")
-    .replace(/[^\w]/g, "");
+  return (
+    s
+      .normalize("NFKD")
+      // eslint-disable-next-line no-control-regex -- strips every non-ASCII character
+      .replace(/[^\x00-\x7F]/g, "")
+      .toLowerCase()
+      .replace(/[\s\-_.]/g, "")
+      .replace(/[^\w]/g, "")
+  );
 }
 
 const SECOND_LEVEL = new Set(["co", "com", "org", "net", "gov", "ac", "edu", "or", "ne"]);

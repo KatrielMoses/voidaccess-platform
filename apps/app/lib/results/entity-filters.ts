@@ -10,6 +10,8 @@ export interface EntityFilters {
   sort: EntitySort;
   dir: "asc" | "desc";
   focus: string | null;
+  /** archive filter: all | new (not seen before in the archive) | seen */
+  archive: "all" | "new" | "seen";
 }
 
 export const DEFAULT_SORT: { sort: EntitySort; dir: "asc" | "desc" } = { sort: "confidence", dir: "desc" };
@@ -30,6 +32,7 @@ export function parseFilters(sp: URLSearchParams): EntityFilters {
     sort: sort && SORTS.includes(sort) ? sort : DEFAULT_SORT.sort,
     dir: sp.get("dir") === "asc" ? "asc" : sp.get("dir") === "desc" ? "desc" : DEFAULT_SORT.dir,
     focus: sp.get("focus"),
+    archive: sp.get("archive") === "new" ? "new" : sp.get("archive") === "seen" ? "seen" : "all",
   };
 }
 
@@ -45,6 +48,7 @@ export function filtersToParams(f: EntityFilters, includeFocus = true): URLSearc
     p.set("sort", f.sort);
     p.set("dir", f.dir);
   }
+  if (f.archive !== "all") p.set("archive", f.archive);
   if (includeFocus && f.focus) p.set("focus", f.focus);
   return p;
 }

@@ -2,6 +2,7 @@
 
 import { Button, Checkbox, Tooltip } from "@voidaccess/ui";
 import { EDGE_DISCLAIMER, typeLabel, typeStyle } from "@/lib/results/entity-style";
+import { archiveCopy } from "@/lib/archive/copy";
 import { BIG_GRAPH_TOP, type GraphFilterState } from "@/lib/results/graph-model";
 
 export interface GraphControlsProps {
@@ -21,6 +22,20 @@ export interface GraphControlsProps {
   exporting: boolean;
   tableHref: string;
   cssColor: (type: string) => string;
+  /** archive context overlay (off by default) */
+  archive?: {
+    on: boolean;
+    onToggle: (on: boolean) => void;
+    hops: 1 | 2;
+    onHops: (h: 1 | 2) => void;
+    minTier: "unconfirmed" | "corroborated" | "feed_validated";
+    onMinTier: (t: "unconfirmed" | "corroborated" | "feed_validated") => void;
+    loading: boolean;
+    nodes: number;
+    truncated: boolean;
+    failed: boolean;
+    color: string;
+  };
 }
 
 export function GraphControls(p: GraphControlsProps) {
@@ -113,6 +128,69 @@ export function GraphControls(p: GraphControlsProps) {
           </label>
         ) : null}
       </div>
+      {p.archive ? (
+        <div
+          className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border border-border-dim bg-surface px-3 py-2"
+          data-testid="archive-controls"
+        >
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={p.archive.on}
+              onCheckedChange={(c) => p.archive!.onToggle(c === true)}
+              aria-label={archiveCopy.graph.toggle}
+              data-testid="archive-toggle"
+            />
+            {archiveCopy.graph.toggle}
+          </label>
+          {p.archive.on ? (
+            <>
+              <label className="flex items-center gap-2 text-fg-secondary">
+                {archiveCopy.graph.hops}
+                <select
+                  value={p.archive.hops}
+                  onChange={(e) => p.archive!.onHops(e.target.value === "2" ? 2 : 1)}
+                  data-testid="archive-hops"
+                  className="h-8 rounded border border-border-subtle bg-void px-2 text-fg"
+                >
+                  <option value={1}>{archiveCopy.graph.hop1}</option>
+                  <option value={2}>{archiveCopy.graph.hop2}</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-fg-secondary">
+                {archiveCopy.graph.minTier}
+                <select
+                  value={p.archive.minTier}
+                  onChange={(e) =>
+                    p.archive!.onMinTier(e.target.value as "unconfirmed" | "corroborated" | "feed_validated")
+                  }
+                  data-testid="archive-min-tier"
+                  className="h-8 rounded border border-border-subtle bg-void px-2 text-fg"
+                >
+                  <option value="unconfirmed">{archiveCopy.tierLabel.unconfirmed}</option>
+                  <option value="corroborated">{archiveCopy.tierLabel.corroborated}</option>
+                  <option value="feed_validated">{archiveCopy.tierLabel.feed_validated}</option>
+                </select>
+              </label>
+              <span
+                className="flex items-center gap-1.5 text-xs text-fg-secondary"
+                data-testid="archive-status"
+                aria-live="polite"
+              >
+                <span aria-hidden className="size-2.5 rounded-full" style={{ background: p.archive.color }} />
+                {archiveCopy.graph.legend}
+                {p.archive.loading
+                  ? " …"
+                  : p.archive.failed
+                    ? " (couldn't load)"
+                    : p.archive.nodes === 0
+                      ? `: ${archiveCopy.graph.none}`
+                      : `: ${p.archive.nodes}`}
+                {p.archive.truncated ? ` ${archiveCopy.graph.truncated}` : ""}
+              </span>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       {p.big && !filters.showAll ? (
         <p role="status" className="text-xs text-warning">
           Large graph: showing the top {BIG_GRAPH_TOP.toLocaleString("en-US")} of{" "}

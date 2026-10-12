@@ -166,7 +166,7 @@ async function resolve(db: Database, probe: Probe): Promise<Resolved> {
 /** Archive context for an investigation's entities. `only` restricts the answer to one probe key (the entity drawer). */
 export async function archiveContext(
   probe: Probe,
-  opts: { database?: Database; neighbourLimit?: number; only?: string } = {},
+  opts: { database?: Database; neighbourLimit?: number; only?: string; lite?: boolean } = {},
 ): Promise<ArchiveContext> {
   const db = opts.database ?? getDatabase();
   const limit = opts.neighbourLimit ?? 12;
@@ -209,6 +209,7 @@ export async function archiveContext(
   }
   out.totals.seenBefore = Object.keys(out.seen).length;
   out.totals.newToArchive = probe.entities.length - out.totals.seenBefore;
+  if (opts.lite) return out;
 
   const rels = await relationshipsOf(db, ids, r.own, ids, limit * 4);
   const viaById = new Map<string, string[]>();

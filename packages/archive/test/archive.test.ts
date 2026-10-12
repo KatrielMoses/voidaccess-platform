@@ -115,7 +115,14 @@ describe("the headline flow (fictional names)", () => {
     const g = await archiveGraph(probeOf(run2()), opts);
     const node = g.nodes.find((n) => n.label === "ALPHV")!;
     expect(node.hop).toBe(1);
-    expect(g.edges.some((e) => new Set([e.source, e.target]).has("o2") && new Set([e.source, e.target]).has(node.id) && e.evidence === 1)).toBe(true);
+    expect(
+      g.edges.some(
+        (e) =>
+          new Set([e.source, e.target]).has("o2") &&
+          new Set([e.source, e.target]).has(node.id) &&
+          e.evidence === 1,
+      ),
+    ).toBe(true);
 
     // nothing of run 1's private world is in what B receives
     const payload = JSON.stringify({ ctx, g });

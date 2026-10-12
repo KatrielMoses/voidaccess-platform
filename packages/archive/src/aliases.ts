@@ -16,6 +16,7 @@ export interface AliasHit {
 const fold = (s: string) =>
   s
     .normalize("NFKD")
+    // eslint-disable-next-line no-control-regex -- strips every non-ASCII character
     .replace(/[^\x00-\x7F]/g, "")
     .toLowerCase()
     .replace(/[\s\-_.]/g, "")
