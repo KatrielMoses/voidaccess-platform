@@ -127,6 +127,9 @@ describe("tenant isolation (RLS)", () => {
       "events",
       "abuse_flags",
       "credential_vault",
+      "billing_customers", // P5: system-only
+      "billing_events",
+      "billing_alerts",
     ]);
     const missing = (await tenantTables()).filter((t) => !covered.has(t));
     expect(missing, "new tenant table: add it to the isolation seed + this list").toEqual([]);
@@ -134,7 +137,15 @@ describe("tenant isolation (RLS)", () => {
 
   it("user A sees none of user B's rows, via withUser and via raw app-role SQL", async () => {
     const tables = (await tenantTables()).filter(
-      (t) => !["events", "abuse_flags", "credential_vault"].includes(t),
+      (t) =>
+        ![
+          "events",
+          "abuse_flags",
+          "credential_vault",
+          "billing_customers",
+          "billing_events",
+          "billing_alerts",
+        ].includes(t),
     );
     for (const t of tables) {
       // ground truth: B has rows (owner connection, bypasses RLS)
@@ -217,6 +228,10 @@ describe("tenant isolation (RLS)", () => {
       "run_costs",
       "credential_vault",
       "verifications",
+      "billing_catalog", // P5
+      "billing_customers",
+      "billing_events",
+      "billing_alerts",
     ]) {
       const r = await attempt(A, `select * from ${t}`);
       expect("denied" in r && r.denied, t).toBe("42501");

@@ -12,7 +12,9 @@
     "test:e2e": "playwright test e2e/app.spec.ts",
     "test:e2e:results": "playwright test -c playwright.results.config.ts",
     "test:screenshots": "playwright test e2e/screenshots.spec.ts",
-    "screenshots:results": "node scripts/results-screenshots.mjs"
+    "screenshots:results": "node scripts/results-screenshots.mjs",
+    "dodo:sync": "tsx scripts/dodo-sync.ts",
+    "billing:checkout-smoke": "tsx scripts/dodo-checkout-smoke.ts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.15",
@@ -24,6 +26,7 @@
     "@voidaccess/ingest": "workspace:*",
     "@voidaccess/ui": "workspace:*",
     "better-auth": "^1.7.7",
+    "dodopayments": "^2.54.2",
     "drizzle-orm": "^0.45.4",
     "fflate": "^0.8.3",
     "graphology": "^0.26.0",

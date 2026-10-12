@@ -10,3 +10,4 @@ export * from "./platform";
 export * from "./vault";
 export * from "./archive";
 export * from "./waitlist";
+export * from "./billing-dodo";
