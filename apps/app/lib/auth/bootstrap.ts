@@ -5,6 +5,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { getDatabase, grantMonthly } from "@voidaccess/db";
 import { creditLedger, users } from "@voidaccess/db/schema";
+import type { FirstTouch } from "@voidaccess/db/schema";
 import { FIRST_TOUCH_COOKIE, parseAttribution } from "./attribution";
 
 export async function bootstrapAccount(
@@ -46,5 +47,18 @@ export async function acceptAup(userId: string): Promise<void> {
       .update(users)
       .set({ aupAcceptedAt: new Date() })
       .where(and(eq(users.id, userId), isNull(users.aupAcceptedAt))),
+  );
+}
+
+/** Store first-touch attribution once (never overwritten). */
+export async function saveFirstTouch(userId: string, ft: FirstTouch): Promise<void> {
+  await getDatabase().withSystem(
+    "account.first-touch",
+    (tx) =>
+      tx
+        .update(users)
+        .set({ firstTouch: ft })
+        .where(and(eq(users.id, userId), sql`${users.firstTouch} is null`)),
+    { audit: false },
   );
 }

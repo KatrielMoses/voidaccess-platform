@@ -122,7 +122,7 @@ describe("account deletion", () => {
   it("a deleted user can no longer sign in, even with the old password", async () => {
     const email = `del-${Date.now()}@test.local`;
     const password = "correct horse battery";
-    const created = await getAuth().api.signUpEmail({ body: { name: "Del", email, password } });
+    const created = await getAuth().api.signUpEmail({ body: { name: "Del", email, password, aupAccepted: true } as never });
     await db().withSystem(
       "test.verify",
       (tx) => tx.update(users).set({ emailVerified: true }).where(eq(users.id, created.user.id)),

@@ -159,7 +159,7 @@ describe("idempotency", () => {
     expect([...now.failed, ...now.cancelled]).not.toContain(fresh.id);
     expect([...now.failed, ...now.cancelled]).not.toContain(stuckLaunch.id);
 
-    const later = await runWatchdog(new Date(Date.now() + 6 * 60_000)); // past LAUNCHING_STUCK, not past silence
+    const later = await runWatchdog(new Date(Date.now() + 9 * 60_000)); // past LAUNCHING_STUCK (8 min), not past silence (10 min)
     expect(later.failed).toContain(stuckLaunch.id);
     expect(later.failed).not.toContain(fresh.id);
     expect(await balanceOf(stuckLaunch.u.id)).toBe(500);

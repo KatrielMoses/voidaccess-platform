@@ -5,6 +5,12 @@ export const envSchema = z.object({
   /** Optional in dev; health reports db "unconfigured" without it. */
   DATABASE_URL: z.string().min(1).optional(),
   APP_URL: z.url().default("http://localhost:3000"),
+  /** Public site origin (sign-in, sign-up, legal pages). Signed-out visitors are redirected here. */
+  SITE_URL: z.url().default("https://voidaccess.pro"),
+  /** Parent domain for the shared session cookie (".voidaccess.pro"). Unset = host-only cookie. Required in production. */
+  COOKIE_DOMAIN: z.string().min(2).optional(),
+  /** Cloudflare Turnstile secret; sign-up, magic-link and reset requests are verified with it. Required in production. */
+  TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
   /** Build/commit identifier, injected at image build time. */
   APP_VERSION: z.string().min(1).default("0.0.0"),
   COMMIT_SHA: z.string().min(1).default("dev"),

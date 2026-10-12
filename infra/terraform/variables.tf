@@ -19,16 +19,38 @@ variable "runner_image" {
   type        = string
 }
 
-variable "enable_database_url" {
-  description = "Wire DATABASE_URL from secret database-url. Keep false until the secret has a version, otherwise the revision cannot start."
+variable "enable_dodo_webhook" {
+  description = "Wire DODO_WEBHOOK_SECRET from secret dodo-webhook-secret. Keep false until the secret has a version, otherwise the revision cannot start."
   type        = bool
   default     = false
 }
 
-variable "allow_unauthenticated" {
-  description = "Grant allUsers run.invoker on va-app. Keep false until auth ships (P2); /dev/ui must be gated first."
+variable "app_domain" {
+  description = "Custom domain of the app (Cloud Run domain mapping)."
+  type        = string
+  default     = "app.voidaccess.pro"
+}
+
+variable "site_domain" {
+  type    = string
+  default = "voidaccess.pro"
+}
+
+variable "email_from" {
+  type    = string
+  default = "VoidAccess <hello@voidaccess.pro>"
+}
+
+variable "manage_domain_mapping" {
+  description = "Create the Cloud Run domain mapping. Needs va-agent to be a verified owner of voidaccess.pro (Search Console)."
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "allow_unauthenticated" {
+  description = "Grant allUsers run.invoker on va-app. The app authenticates every request itself (proxy.ts); only machine endpoints are open."
+  type        = bool
+  default     = true
 }
 
 variable "manage_iam" {
@@ -38,7 +60,7 @@ variable "manage_iam" {
 }
 
 variable "manage_schedulers" {
-  description = "Create the (paused) Cloud Scheduler jobs."
+  description = "Create the Cloud Scheduler jobs (enabled)."
   type        = bool
   default     = true
 }

@@ -20,10 +20,6 @@ for (const size of SIZES) {
     const ctx = await browser.newContext({ viewport: size });
     const page = await ctx.newPage();
 
-    await page.goto("/sign-up");
-    await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
-    await shot(page, "sign-up", size.width);
-
     await signUpAndVerify(page, uniqueEmail("shot"), "Ada Lovelace");
     await expect(page.getByRole("heading", { name: /Welcome/ })).toBeVisible();
     await shot(page, "first-run", size.width);

@@ -18,6 +18,7 @@ import {
   buttonVariants,
 } from "@voidaccess/ui";
 import { authClient } from "@/lib/auth/client";
+import { SIGN_IN_URL } from "@/lib/site";
 import { Field, FormError, FormNotice } from "@/components/field";
 
 type Result = { ok: boolean; text: string } | null;
@@ -269,7 +270,7 @@ function SessionsSection() {
         onClick={async () => {
           setBusy(true);
           await authClient.revokeSessions();
-          router.push("/sign-in");
+          window.location.assign(SIGN_IN_URL);
           router.refresh();
         }}
       >
@@ -362,7 +363,7 @@ function DeleteSection({ email }: { email: string }) {
                     body: JSON.stringify({ confirm: typed }),
                   });
                   if (res.ok) {
-                    window.location.assign("/sign-in");
+                    window.location.assign(SIGN_IN_URL);
                     return;
                   }
                   setBusy(false);

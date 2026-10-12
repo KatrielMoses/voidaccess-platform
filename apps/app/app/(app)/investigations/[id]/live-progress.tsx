@@ -186,6 +186,12 @@ export function LiveProgress({ initial }: { initial: RunSnapshot }) {
         </h1>
       </header>
 
+      {state.status === "launching" || state.status === "reserved" ? (
+        <p className="text-sm text-fg-secondary" role="status" data-testid="run-launching">
+          Starting a secure environment… This can take a minute or two.
+        </p>
+      ) : null}
+
       {state.status === "completed" ? (
         <Card className="border-success/30" data-testid="run-completed">
           <CardContent className="flex flex-col gap-3 pt-5 sm:flex-row sm:items-center sm:justify-between">

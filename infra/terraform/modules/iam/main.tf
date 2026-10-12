@@ -3,20 +3,18 @@ variable "app_member" { type = string }
 variable "run_member" { type = string }
 variable "secret_ids" { type = map(string) }
 
-locals {
-  app_secrets    = ["database-url", "engine-callback-secret", "openrouter-api-key"]
-  runner_secrets = ["openrouter-api-key"] # not engine-callback-secret: see modules/runner
-}
+variable "app_secrets" { type = list(string) }
+variable "runner_secrets" { type = list(string) }
 
 resource "google_secret_manager_secret_iam_member" "app" {
-  for_each  = toset(local.app_secrets)
+  for_each  = toset(var.app_secrets)
   secret_id = var.secret_ids[each.key]
   role      = "roles/secretmanager.secretAccessor"
   member    = var.app_member
 }
 
 resource "google_secret_manager_secret_iam_member" "runner" {
-  for_each  = toset(local.runner_secrets)
+  for_each  = toset(var.runner_secrets)
   secret_id = var.secret_ids[each.key]
   role      = "roles/secretmanager.secretAccessor"
   member    = var.run_member
