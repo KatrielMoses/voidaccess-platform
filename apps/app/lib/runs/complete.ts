@@ -6,7 +6,7 @@ import { sendEmail } from "@voidaccess/emails";
 import { users } from "@voidaccess/db/schema";
 import { enqueueArchive } from "@voidaccess/archive";
 import { ingestBundle } from "./ingest";
-import { viewerActive } from "./sse";
+import { viewedRecently } from "./viewers";
 import { lockRun, settleLockedRun } from "./settle";
 
 /** Called once the run is in status `ingesting`. Never throws. */
@@ -49,8 +49,8 @@ export async function finishIngest(runId: string): Promise<void> {
       props: { investigationId: runId, depth: outcome.depth, durationMs: outcome.ms },
     });
   }
-  // "Results ready" email, only when nobody is watching the run.
-  if (outcome && !viewerActive(runId)) {
+  // "Results ready" email, only when nobody (on any instance) viewed the run in the last 60 s.
+  if (outcome && !(await viewedRecently(runId).catch(() => false))) {
     try {
       const [u] = await getDatabase().withSystem(
         "runs.notify",

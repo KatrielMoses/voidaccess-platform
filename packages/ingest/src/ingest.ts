@@ -41,6 +41,11 @@ function chunks<T>(xs: T[], n = CHUNK): T[][] {
   return out;
 }
 
+/** `llm` | `fallback` | `none`; anything else (or nothing) is `none`. */
+export function normalizeSummaryKind(kind: string | undefined): "llm" | "fallback" | "none" {
+  return kind === "llm" || kind === "fallback" ? kind : "none";
+}
+
 const lookup = (runId: string) =>
   or(sql`${investigations.id}::text = ${runId}`, eq(investigations.engineRunId, runId));
 
@@ -145,6 +150,11 @@ export async function ingestBundle(runId: string, deps: IngestDeps, opts: Ingest
         .onConflictDoNothing()
         .returning({ id: invSummary.id });
       if (inserted.length === 0) return;
+      // How the summary was produced, for the results page (same transaction as the snapshot).
+      await tx
+        .update(investigations)
+        .set({ summaryKind: normalizeSummaryKind(bundle.summary.summary_kind) })
+        .where(eq(investigations.id, inv.id));
 
       // Raw sensitive values: encrypted into the vault inside this same transaction.
       for (const v of t.vault) {

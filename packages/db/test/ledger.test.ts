@@ -217,6 +217,97 @@ describe("ledger", () => {
     await assertConsistent(u);
   });
 
+  it("H1-7 refund: credits taken from a lot that has since expired go to the current grant bucket, never the expired lot", async () => {
+    const u = await makeUser("free");
+    const now = new Date();
+    await adminGrant(u, 100, u, "h17:" + u, {}, { database: db, now }); // lot, expires in TOPUP_EXPIRY_MONTHS
+    const inv = await newInvestigation(u, "standard");
+    await reserve(u, inv, "standard", { database: db, now }); // 40 from the lot (no grant bucket yet)
+    const [lot] = await db.withSystem(
+      "test.lot",
+      (tx) => tx.select().from(topupLots).where(eq(topupLots.userId, u)),
+      {
+        audit: false,
+      },
+    );
+    expect(lot!.remaining).toBe(60);
+
+    // the lot expires and is swept while the run is still in flight, then the run fails: full refund
+    const later = new Date(lot!.expiresAt.getTime() + 60_000);
+    expect((await expireLots(later, { database: db })).lots).toBeGreaterThanOrEqual(1); // sweeps every user's lots
+    expect((await ledgerRows(u)).filter((x) => x.reason === "expiry")).toMatchObject([
+      { amount: -60, lotId: lot!.id },
+    ]);
+    const r = await refund(u, inv, {}, { database: db, now: later });
+    expect(r).toMatchObject({ refunded: 40, charged: 40, alreadyRefunded: false });
+
+    const rows = (await ledgerRows(u)).filter((x) => x.reason === "refund");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ bucket: "grant", amount: 40, lotId: null });
+    const [lotAfter] = await db.withSystem(
+      "test.lot",
+      (tx) => tx.select().from(topupLots).where(eq(topupLots.userId, u)),
+      {
+        audit: false,
+      },
+    );
+    expect(lotAfter!.remaining).toBe(0); // the expired lot got nothing back
+    expect(await getBalance(u, { database: db, now: later })).toEqual({ grant: 40, topup: 0, total: 40 });
+    // and it is spendable: a 40-credit run can start from the refund
+    const inv2 = await newInvestigation(u, "standard");
+    expect((await reserve(u, inv2, "standard", { database: db, now: later })).ok).toBe(true);
+    expect(await refund(u, inv, {}, { database: db, now: later })).toMatchObject({ alreadyRefunded: true });
+    await assertConsistent(u);
+  });
+
+  it("H1-7 refund: a lot past its expiry but not yet swept is not credited either; a live lot still is", async () => {
+    const u = await makeUser("free");
+    const now = new Date();
+    await adminGrant(u, 100, u, "h17b:" + u, {}, { database: db, now });
+    const live = await newInvestigation(u, "quick");
+    await reserve(u, live, "quick", { database: db, now }); // 20 from the lot
+    // refund while the lot is alive: back into the same lot (existing behaviour)
+    await refund(u, live, {}, { database: db, now });
+    const liveRows = (await ledgerRows(u)).filter((x) => x.reason === "refund");
+    expect(liveRows[0]).toMatchObject({ bucket: "topup", amount: 20 });
+    expect(liveRows[0]!.lotId).not.toBeNull();
+
+    const inv = await newInvestigation(u, "quick");
+    await reserve(u, inv, "quick", { database: db, now }); // 20 from the lot
+    const [lot] = await db.withSystem(
+      "test.lot",
+      (tx) => tx.select().from(topupLots).where(eq(topupLots.userId, u)),
+      {
+        audit: false,
+      },
+    );
+    const later = new Date(lot!.expiresAt.getTime() + 1000); // expired, no expireLots() run
+    await refund(u, inv, {}, { database: db, now: later });
+    const refunds = (await ledgerRows(u)).filter((x) => x.reason === "refund" && x.investigationId === inv);
+    expect(refunds).toMatchObject([{ bucket: "grant", amount: 20, lotId: null }]);
+    expect((await getBalance(u, { database: db, now: later })).total).toBe(20);
+    await assertConsistent(u);
+  });
+
+  it("H1-7 refund at a month boundary: grant credits reserved last month return to this month's grant bucket", async () => {
+    const u = await makeUser("free");
+    const june = new Date("2026-06-15T12:00:00Z");
+    const july = new Date("2026-07-15T12:00:00Z");
+    await grantMonthly(u, "free", june, { database: db, now: june }); // 100
+    const inv = await newInvestigation(u, "standard");
+    await reserve(u, inv, "standard", { database: db, now: june }); // 40 from the grant bucket; 60 left
+    const g = await grantMonthly(u, "free", july, { database: db, now: july });
+    expect(g).toMatchObject({ granted: true, expired: 60 }); // last month's remainder expired, 100 granted
+    expect((await getBalance(u, { database: db, now: july })).grant).toBe(100);
+
+    const r = await refund(u, inv, {}, { database: db, now: july });
+    expect(r.refunded).toBe(40);
+    expect((await getBalance(u, { database: db, now: july })).grant).toBe(140); // credited to the CURRENT bucket
+    const refunds = (await ledgerRows(u)).filter((x) => x.reason === "refund");
+    expect(refunds).toMatchObject([{ bucket: "grant", amount: 40 }]);
+    await assertConsistent(u);
+  });
+
   it("20 parallel reserves cannot double-spend", async () => {
     const u = await makeUser("free");
     await adminGrant(u, 100, u, "par:" + u, {}, ctx); // 100 credits → exactly 2 standard runs (40 each), 20 left
