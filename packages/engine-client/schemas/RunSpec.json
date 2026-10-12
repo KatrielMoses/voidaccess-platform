@@ -39,6 +39,10 @@
             "type": "string",
             "format": "uri"
           }
+        },
+        "pages": {
+          "type": "string",
+          "format": "uri"
         }
       },
       "required": ["bundle", "exports"],

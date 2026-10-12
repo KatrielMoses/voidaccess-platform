@@ -1,0 +1,205 @@
+{
+  "signing": [
+    {
+      "secret": "run-secret-0123456789abcdef",
+      "run_id": "r1",
+      "seq": 1,
+      "timestamp": 1800000000,
+      "body": "{\"run_id\":\"r1\",\"seq\":1,\"type\":\"stage\",\"stage\":\"refine\",\"status\":\"start\",\"stage_total\":8}",
+      "headers": {
+        "X-VA-Run": "r1",
+        "X-VA-Seq": "1",
+        "X-VA-Timestamp": "1800000000",
+        "X-VA-Signature": "sha256=b84110f9ac64b7d97684c6c1262833b6f82a9aec4a6524f2447c1f5540835226"
+      }
+    },
+    {
+      "secret": "run-secret-0123456789abcdef",
+      "run_id": "r1",
+      "seq": 2,
+      "timestamp": 1800000001,
+      "body": "{\"run_id\":\"r1\",\"seq\":2,\"type\":\"counts\",\"message\":\"café ☃ 😀\",\"stage_total\":8}",
+      "headers": {
+        "X-VA-Run": "r1",
+        "X-VA-Seq": "2",
+        "X-VA-Timestamp": "1800000001",
+        "X-VA-Signature": "sha256=23c200640f6010884b8e58a2a3903aafaa72a55d49a0fee8e64f51e7caf6924f"
+      }
+    },
+    {
+      "secret": "run-secret-0123456789abcdef",
+      "run_id": "r1",
+      "seq": 3,
+      "timestamp": 1800000002,
+      "body": "",
+      "headers": {
+        "X-VA-Run": "r1",
+        "X-VA-Seq": "3",
+        "X-VA-Timestamp": "1800000002",
+        "X-VA-Signature": "sha256=be0f000ecc65dbba348d8d5d076e7e2d19a762f9d1e58b575454adb4fea272aa"
+      }
+    }
+  ],
+  "masking": [
+    {
+      "type": "API_KEY",
+      "value": "sk-live-AbCdEf0123456789",
+      "mask_entity_value": "len:24",
+      "secret_value_token": "len:24 sha256:d444110b",
+      "mask_credential": "len:24",
+      "mask_email": "sk-********789",
+      "mask_partial": "sk-********789",
+      "mask_phone": "***89"
+    },
+    {
+      "type": "AWS_ACCESS_KEY",
+      "value": "AKIAIOSFODNN7EXAMPLE",
+      "mask_entity_value": "len:20",
+      "secret_value_token": "len:20 sha256:1a5d44a2",
+      "mask_credential": "len:20",
+      "mask_email": "AKI********PLE",
+      "mask_partial": "AKI********PLE",
+      "mask_phone": "AKI********PLE"
+    },
+    {
+      "type": "GITHUB_TOKEN",
+      "value": "ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "mask_entity_value": "len:40",
+      "secret_value_token": "len:40 sha256:ba94fef9",
+      "mask_credential": "len:40",
+      "mask_email": "ghp********aaa",
+      "mask_partial": "ghp********aaa",
+      "mask_phone": "ghp********aaa"
+    },
+    {
+      "type": "CRYPTO_SEED_PHRASE",
+      "value": "abandon ability able about above absent absorb abstract absurd abuse access accident",
+      "mask_entity_value": "len:84",
+      "secret_value_token": "len:84 sha256:68c6ab3e",
+      "mask_credential": "len:84",
+      "mask_email": "aba********ent",
+      "mask_partial": "aba********ent",
+      "mask_phone": "aba********ent"
+    },
+    {
+      "type": "API_KEY",
+      "value": "pässwörd😀",
+      "mask_entity_value": "len:9",
+      "secret_value_token": "len:9 sha256:8694ef7d",
+      "mask_credential": "len:9",
+      "mask_email": "pä*****d😀",
+      "mask_partial": "pä*****d😀",
+      "mask_phone": "pä*****d😀"
+    },
+    {
+      "type": "EMAIL_ADDRESS",
+      "value": "john.doe@acme.com",
+      "mask_entity_value": "j***@acme.com",
+      "secret_value_token": "len:17 sha256:36d6de70",
+      "mask_credential": "len:17",
+      "mask_email": "j***@acme.com",
+      "mask_partial": "joh********com",
+      "mask_phone": "joh********com"
+    },
+    {
+      "type": "EMAIL_ADDRESS",
+      "value": "a@b.co",
+      "mask_entity_value": "a***@b.co",
+      "secret_value_token": "len:6 sha256:80305c9b",
+      "mask_credential": "len:6",
+      "mask_email": "a***@b.co",
+      "mask_partial": "a****o",
+      "mask_phone": "a****o"
+    },
+    {
+      "type": "EMAIL_ADDRESS",
+      "value": "no-at-sign",
+      "mask_entity_value": "no******gn",
+      "secret_value_token": "len:10 sha256:ec212403",
+      "mask_credential": "len:10",
+      "mask_email": "no******gn",
+      "mask_partial": "no******gn",
+      "mask_phone": "no******gn"
+    },
+    {
+      "type": "XMPP_JID",
+      "value": "boss@jabber.example",
+      "mask_entity_value": "b***@jabber.example",
+      "secret_value_token": "len:19 sha256:7255bb0f",
+      "mask_credential": "len:19",
+      "mask_email": "b***@jabber.example",
+      "mask_partial": "bos********ple",
+      "mask_phone": "bos********ple"
+    },
+    {
+      "type": "PHONE_NUMBER",
+      "value": "+1 (415) 555-0132",
+      "mask_entity_value": "+***32",
+      "secret_value_token": "len:17 sha256:1e2bd1da",
+      "mask_credential": "len:17",
+      "mask_email": "+1 ********132",
+      "mask_partial": "+1 ********132",
+      "mask_phone": "+***32"
+    },
+    {
+      "type": "PHONE_NUMBER",
+      "value": "12345",
+      "mask_entity_value": "1***5",
+      "secret_value_token": "len:5 sha256:5994471a",
+      "mask_credential": "len:5",
+      "mask_email": "1***5",
+      "mask_partial": "1***5",
+      "mask_phone": "1***5"
+    },
+    {
+      "type": "PERSON_NAME",
+      "value": "Jane Q. Public",
+      "mask_entity_value": "J*** Q*** P***",
+      "secret_value_token": "len:14 sha256:5f0b42d8",
+      "mask_credential": "len:14",
+      "mask_email": "Ja********ic",
+      "mask_partial": "Ja********ic",
+      "mask_phone": "Ja********ic"
+    },
+    {
+      "type": "PERSON_NAME",
+      "value": "Zoe",
+      "mask_entity_value": "Z***",
+      "secret_value_token": "len:3 sha256:458556af",
+      "mask_credential": "len:3",
+      "mask_email": "***",
+      "mask_partial": "***",
+      "mask_phone": "***"
+    },
+    {
+      "type": "CVE_NUMBER",
+      "value": "CVE-2024-3400",
+      "mask_entity_value": "CVE-2024-3400",
+      "secret_value_token": "len:13 sha256:a7d37a5d",
+      "mask_credential": "len:13",
+      "mask_email": "CV********00",
+      "mask_partial": "CV********00",
+      "mask_phone": "***00"
+    },
+    {
+      "type": "IP_ADDRESS",
+      "value": "203.0.113.7",
+      "mask_entity_value": "203.0.113.7",
+      "secret_value_token": "len:11 sha256:fec52565",
+      "mask_credential": "len:11",
+      "mask_email": "20*******.7",
+      "mask_partial": "20*******.7",
+      "mask_phone": "***37"
+    },
+    {
+      "type": "ONION_URL",
+      "value": "http://exampleonionaddress.onion/",
+      "mask_entity_value": "http://exampleonionaddress.onion/",
+      "secret_value_token": "len:33 sha256:8e2c8632",
+      "mask_credential": "len:33",
+      "mask_email": "htt********on/",
+      "mask_partial": "htt********on/",
+      "mask_phone": "htt********on/"
+    }
+  ]
+}

@@ -10,7 +10,8 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "gen:schemas": "tsx scripts/gen-schemas.ts"
+    "gen:schemas": "tsx scripts/gen-schemas.ts",
+    "gen:runner-vectors": "tsx scripts/gen-runner-vectors.ts"
   },
   "dependencies": {
     "zod": "^4.6.0"

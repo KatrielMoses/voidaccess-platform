@@ -4,6 +4,11 @@ variable "service_account_email" { type = string }
 variable "image" { type = string }
 variable "enable_database_url" { type = bool }
 variable "allow_unauthenticated" { type = bool }
+variable "runner_member" {
+  description = "Service account of the runner job: it calls the private app (spec fetch, callbacks) with an identity token."
+  type        = string
+  default     = ""
+}
 
 locals {
   secret_env = merge(
@@ -76,6 +81,15 @@ resource "google_cloud_run_v2_service_iam_member" "public" {
   name     = google_cloud_run_v2_service.app.name
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+# The runner reaches the private app with an identity token; resource-level binding, no project IAM.
+resource "google_cloud_run_v2_service_iam_member" "runner_invoker" {
+  count    = var.runner_member == "" ? 0 : 1
+  location = google_cloud_run_v2_service.app.location
+  name     = google_cloud_run_v2_service.app.name
+  role     = "roles/run.invoker"
+  member   = var.runner_member
 }
 
 output "url" {

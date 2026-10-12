@@ -67,6 +67,8 @@ export const BundleSummary = z.object({
   risk_notes: z.array(z.string()),
   confidence: z.enum(["low", "medium", "high"]),
   source_count: z.number().int().nonnegative(),
+  /** How the summary was produced (the engine's `summary_kind`, e.g. llm or fallback). Optional. */
+  summary_kind: z.string().optional(),
 });
 export type BundleSummary = z.infer<typeof BundleSummary>;
 
