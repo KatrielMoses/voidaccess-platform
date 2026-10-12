@@ -290,3 +290,17 @@ def test_sigterm_during_tor_bootstrap_still_cancels(monkeypatch, world):
     assert world.died.wait(8)
     (term,) = world.terminals()
     assert term["type"] == "cancelled" and term["stages_completed"] == []
+
+
+def test_the_wall_clock_override_can_tighten_the_cap_but_not_loosen_it(monkeypatch, world):
+    monkeypatch.setattr(C, "FINALIZE_RESERVE_S", 0.0)
+    run = make_run(monkeypatch, world)
+    run.env["VA_WALL_CLOCK_CAP_S"] = "1"  # the depth cap is 480 s: the override wins because it is lower
+
+    async def slow(self, query, cli_depth, out_dir, timeout_s):
+        await asyncio.wait_for(asyncio.sleep(30), timeout=timeout_s)
+
+    monkeypatch.setattr(run_mod.Run, "_run_engine", slow)
+    t0 = time.monotonic()
+    assert run.run() == 0 and time.monotonic() - t0 < 10
+    assert world.terminals()[0]["reason"] == "deadline"

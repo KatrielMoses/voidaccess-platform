@@ -33,6 +33,7 @@ from . import constants as C
 from . import policy, scrub
 from .archive import build_pages_archive
 from .bundle import BundleInputs, build_bundle, deep_scrub, integrity_problems
+from .metrics import enrichment_calls, lower_only
 from .events import TERMINAL_TYPES, EventSender, utc_now_iso
 from .exports import EXPORT_CONTENT_TYPE, EXPORT_FORMATS, build_exports, redact_local_db
 from .identity import TokenSource
@@ -108,11 +109,7 @@ class Run:
                     ).fetchone()
             except Exception:
                 pass
-        enrich = {
-            name: 1
-            for name, info in (s.cli_payload.get("sources_used") or {}).items()
-            if isinstance(info, dict) and str(info.get("status", "")).startswith(("ok", "ran"))
-        }
+        enrich = enrichment_calls(s.cli_payload.get("sources_used"), os.environ.get("VOIDACCESS_ENRICHMENT_SOURCES"))
         metrics: dict[str, Any] = {
             "duration_ms": round((time.monotonic() - s.t0) * 1000.0, 1),
             "tor_bootstrap_ms": round(s.tor_bootstrap_ms, 1),
@@ -264,8 +261,9 @@ class Run:
         cli_config.save_config(cfg)
         cli_config.apply_env(cfg)
         policy.verify_policy()
-        budget = C.LLM_TOKEN_BUDGET[self.spec["depth"]]
-        self.recorder.token_budget = budget
+        self.recorder.token_budget = lower_only(
+            C.LLM_TOKEN_BUDGET[self.spec["depth"]], self.env.get("VA_LLM_TOKEN_BUDGET")
+        )
         install_usage_recording(self.recorder)
 
     # ---- finalize ---------------------------------------------------------------------------------------
@@ -362,7 +360,8 @@ class Run:
             except ValueError:
                 pass
         remaining = (deadline - datetime.now(timezone.utc)).total_seconds()
-        budget = min(C.WALL_CLOCK_CAP_S[spec["depth"]] - (time.monotonic() - self.state.t0), remaining)
+        cap = lower_only(C.WALL_CLOCK_CAP_S[spec["depth"]], env.get("VA_WALL_CLOCK_CAP_S"))
+        budget = min(cap - (time.monotonic() - self.state.t0), remaining)
         if budget <= 0:
             self.finish("failed", "deadline", message="deadline already passed")
             return self.exit_code

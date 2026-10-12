@@ -98,7 +98,7 @@ def check_run(run_dir: Path) -> tuple[list[str], dict]:
 
 def main() -> int:
     root = Path(sys.argv[1])
-    wanted = sys.argv[2:] or sorted(p.name for p in root.iterdir() if p.is_dir())
+    wanted = sys.argv[2:] or sorted(p.name for p in root.iterdir() if p.is_dir() and any(p.iterdir()))  # runs with artifacts
     failed = 0
     for rid in wanted:
         problems, info = check_run(root / rid)

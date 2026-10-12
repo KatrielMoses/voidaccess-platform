@@ -52,11 +52,20 @@ _LABEL_KIND = (
 _ACTOR_ALIAS_SKIP_TYPES = frozenset({"email", "wallet", "pgp_fingerprint", "phone"})
 _BULLET_RE = re.compile(r"^\s*(?:[-*\u2022]|\d+[.)])\s+(.*\S)\s*$")
 _PLAIN_BULLET_RE = re.compile(r"^\s*[-*\u2022]\s+")
-# Section titles of the engine's summary prompts (voidaccess/llm.py PRESET_PROMPTS output formats).
+_MD_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$")
+_BOLD_HEADING_RE = re.compile(r"^\s*(?:[-*\u2022]\s+)?\*\*(.{2,90}?)\*\*:?\s*$|^\s*\*\*(.{2,90}?):\*\*\s*$")
+_NUMBERED_HEADING_RE = re.compile(r"^\s*\d+[.)]\s+(.{2,90})$")
+_SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+")
+# Section titles of the engine's summary prompts (voidaccess/llm.py PRESET_PROMPTS output formats). A numbered line is
+# a heading only when it starts with one of these; markdown (`###`) and bold-only lines are headings anyway.
 _SECTION_TITLES = (
     "input query", "source link", "investigation artifact", "key insight", "key finding", "next step",
-    "malware", "threat actor profile", "risk", "caveat", "limitation",
+    "malware", "threat actor profile", "intelligence summary", "threat activity", "key actors",
+    "operational significance", "risk", "caveat", "limitation",
 )  # fmt: skip
+# Titles whose content is not a finding (the query echoed back, the sources, what to do next).
+_NOT_FINDINGS = ("input query", "source link", "next step", "intelligence summary")
+_RISK_TITLES = ("operational significance", "risk", "caveat", "limitation", "recommendation")
 _MIN_RAW_REPLACE_LEN = 4
 # Entities whose value is several secrets joined together; each part is registered for scrubbing too.
 COMPOUND_SECRET_TYPES = frozenset({"COMBO_LIST_ENTRY", "STEALER_LOG_ENTRY"})
@@ -223,36 +232,64 @@ def _excerpt(text: str) -> str:
 
 
 def _heading_title(line: str) -> str | None:
-    """The lowercased title when `line` is a section heading of the summary, else None. A plain bullet is
-    never a heading; a numbered line is one only when it is short and starts with a known section title."""
-    s = line.strip()
-    if _PLAIN_BULLET_RE.match(s):
+    """The lowercased title when `line` is a section heading of the summary, else None."""
+    stripped = line.strip()
+    if _PLAIN_BULLET_RE.match(stripped) and not _BOLD_HEADING_RE.match(stripped):
         return None
-    title = re.sub(r"^[#>\d.)\s]+", "", s).strip("*:# ").lower()
-    if len(title) < 90 and any(title.startswith(t) for t in _SECTION_TITLES) and not title.endswith("."):
-        return title
+    for rx in (_MD_HEADING_RE, _BOLD_HEADING_RE):
+        m = rx.match(line)
+        if m:
+            return next(g for g in m.groups() if g).strip(" *:#").lower()
+    m = _NUMBERED_HEADING_RE.match(line)
+    if m:
+        title = m.group(1).strip(" *:#").lower()
+        if len(title) < 90 and not title.endswith(".") and any(title.startswith(t) for t in _SECTION_TITLES):
+            return title
     return None
 
 
-def _section_items(markdown: str, wanted: tuple[str, ...]) -> list[str]:
-    """Bullet or numbered items under the heading(s) whose title starts with one of `wanted`."""
-    items: list[str] = []
-    active = False
+def summary_sections(markdown: str) -> list[tuple[str, list[str]]]:
+    """(lowercased title, body lines) for every heading of the summary, in order."""
+    sections: list[tuple[str, list[str]]] = []
     for line in markdown.splitlines():
         if not line.strip():
             continue
         title = _heading_title(line)
         if title is not None:
-            active = any(title.startswith(w) for w in wanted)
-            continue
-        if not active:
-            continue
+            sections.append((title, []))
+        elif sections:
+            sections[-1][1].append(line)
+    return sections
+
+
+def _section_points(body: list[str]) -> list[str]:
+    """The bullet items of a section, or (when it is prose) its first sentence."""
+    items: list[str] = []
+    for line in body:
         bullet = _BULLET_RE.match(line)
         if bullet:
             items.append(bullet.group(1).strip()[:500])
         elif items:
             items[-1] = (items[-1] + " " + line.strip())[:500]
-    return items[:10]
+    if items:
+        return items
+    text = " ".join(x.strip() for x in body).strip()
+    return [_SENTENCE_END_RE.split(text, maxsplit=1)[0][:500]] if text else []
+
+
+def summary_points(markdown: str) -> tuple[list[str], list[str]]:
+    """(key_findings, risk_notes) from the engine's summary. Findings are the points of every section that is not the
+    query echo, the source list or the next steps; risk notes are the points of the risk / operational-significance
+    sections. Both are empty when the summary has no recognisable sections (the fallback summary)."""
+    findings: list[str] = []
+    risks: list[str] = []
+    for title, body in summary_sections(markdown):
+        points = _section_points(body)
+        if title.startswith(_RISK_TITLES):
+            risks += points
+        elif not title.startswith(_NOT_FINDINGS):
+            findings += points
+    return findings[:10], risks[:10]
 
 
 def summary_confidence(kind: str, source_count: int) -> str:
@@ -266,8 +303,9 @@ def summary_confidence(kind: str, source_count: int) -> str:
 def build_summary(cli: dict[str, Any], source_count: int, raw: RawSecrets) -> dict[str, Any]:
     kind = str(cli.get("summary_kind") or "none")
     markdown = raw.scrub(str(cli.get("summary") or ""))
-    findings = [raw.scrub(x) for x in _section_items(markdown, ("key insight", "key finding", "findings"))]
-    risks = [raw.scrub(x) for x in _section_items(markdown, ("risk", "caveat", "limitation"))]
+    found, risk = summary_points(markdown)
+    findings = [raw.scrub(x) for x in found]
+    risks = [raw.scrub(x) for x in risk]
     if kind != "llm":
         risks.append("The AI summary was unavailable for this run; this summary was built from extracted entities only.")
     return {
@@ -339,7 +377,7 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
             {
                 "id": pid,
                 "kind": source_kind(info["url"], label),
-                "name": (label or urlsplit(info["url"]).hostname or "page")[:200],
+                "name": (urlsplit(info["url"]).hostname or label or "page")[:200],
                 "url": info["url"],
                 "fetched_at": info["fetched_at"],
                 "excerpt": _excerpt(sanitized[pid]),
