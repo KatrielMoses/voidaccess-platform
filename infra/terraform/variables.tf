@@ -42,9 +42,9 @@ variable "email_from" {
 }
 
 variable "manage_domain_mapping" {
-  description = "Create the Cloud Run domain mapping. Needs va-agent to be a verified owner of voidaccess.pro (Search Console)."
+  description = "Create the Cloud Run domain mapping (off: fallback is the Cloudflare Worker in infra/cloudflare/app-proxy until ownership is verified). Needs va-agent to be a verified owner of voidaccess.pro (Search Console)."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "allow_unauthenticated" {
