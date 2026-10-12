@@ -3,23 +3,16 @@ import re
 import pytest
 
 from cloud.taxonomy import ALIASES, TYPE_CATEGORY, is_secret_type, is_sensitive_type, normalize_type
-import importlib.util, sys
-from pathlib import Path as _P
-_spec = importlib.util.spec_from_file_location('va_test_paths', _P(__file__).with_name('paths.py'))
-_paths = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_paths)
-ROOT = _paths.ROOT
-
-ENTITIES_TS = ROOT / "packages" / "engine-client" / "src" / "entities.ts"
 
 
-def _ts_taxonomy() -> dict[str, str]:
-    src = ENTITIES_TS.read_text(encoding="utf-8")
+def _ts_taxonomy(root) -> dict[str, str]:
+    src = (root / "packages" / "engine-client" / "src" / "entities.ts").read_text(encoding="utf-8")
     block = src[src.index("const TYPE_CATEGORY = {") : src.index("} as const satisfies")]
     return dict(re.findall(r"^\s+([A-Z][A-Z_0-9]+): \"(\w+)\"", block, re.M))
 
 
-def test_matches_engine_client_taxonomy():
-    assert TYPE_CATEGORY == _ts_taxonomy()
+def test_matches_engine_client_taxonomy(repo_root):
+    assert TYPE_CATEGORY == _ts_taxonomy(repo_root)
 
 
 def test_sensitivity_rules_match_engine_client():
