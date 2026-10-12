@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "voidaccess-app-proxy",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+  // Fallback for app.voidaccess.pro while the Cloud Run domain mapping is blocked on Search Console ownership.
+  "routes": [{ "pattern": "app.voidaccess.pro", "custom_domain": true }],
+  "vars": {
+    "UPSTREAM": "https://va-app-801065098085.us-central1.run.app",
+    "PUBLIC_HOST": "app.voidaccess.pro",
+  },
+}

@@ -5,9 +5,11 @@ import { Attribution } from "@/components/attribution";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { JsonLd } from "@/components/json-ld";
+import { MinimalFooter, MinimalHeader } from "@/components/minimal-chrome";
 import { getStars } from "@/lib/github";
 import { organizationLd } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/site";
+import { IS_MINIMAL } from "@/lib/site-mode";
 import { siteContent } from "@content/site";
 import "./globals.css";
 
@@ -27,19 +29,20 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#080b11", colorScheme: "dark" };
 
-const PLAUSIBLE_ON = process.env.NODE_ENV === "production" && process.env.PLAUSIBLE_DISABLED !== "1";
+// Minimal mode serves no /pl proxy, so analytics stay off there.
+const PLAUSIBLE_ON = !IS_MINIMAL && process.env.NODE_ENV === "production" && process.env.PLAUSIBLE_DISABLED !== "1";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const stars = (await getStars()) ?? siteContent.githubStarsFallback;
+  const stars = IS_MINIMAL ? null : ((await getStars()) ?? siteContent.githubStarsFallback);
   return (
     <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-fg-inverse">
           Skip to content
         </a>
-        <Header stars={stars} />
+        {IS_MINIMAL ? <MinimalHeader /> : <Header stars={stars} />}
         <main id="main">{children}</main>
-        <Footer />
+        {IS_MINIMAL ? <MinimalFooter /> : <Footer />}
         <Attribution />
         <JsonLd data={organizationLd()} />
         {PLAUSIBLE_ON && <Script src="/pl/script.js" data-domain="voidaccess.pro" data-api="/pl/event" strategy="afterInteractive" />}

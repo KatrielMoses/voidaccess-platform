@@ -3,10 +3,13 @@ import { SITE_URL } from "@/lib/site";
 import { getDb } from "@/lib/waitlist/db";
 import { confirmWaitlist } from "@/lib/waitlist/service";
 import { drizzleStore } from "@/lib/waitlist/store";
+import { minimalGuard } from "@/lib/site-mode";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const off = minimalGuard();
+  if (off) return off;
   const token = new URL(req.url).searchParams.get("token");
   try {
     const outcome = await confirmWaitlist(token, drizzleStore(await getDb()));

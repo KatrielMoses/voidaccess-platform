@@ -62,14 +62,32 @@ test("sign up, run on the mock engine, watch it finish, then cancel a second run
   expect(((await res.json()) as { user: { email: string } }).user.email).toBe(email);
 });
 
-test("/dev/ui is closed outside development", async ({ request }) => {
-  const res = await request.get("/dev/ui");
-  expect(res.status()).toBe(process.env.E2E_PROD ? 404 : 200);
+test("/dev/ui is not reachable signed out (guard) and is closed in production (404 for everyone)", async ({
+  page,
+  request,
+}) => {
+  const res = await request.get("/dev/ui", { maxRedirects: 0 });
+  expect(res.status()).toBe(307);
+  if (process.env.E2E_PROD) {
+    await signUpAndVerify(page, uniqueEmail("devui"));
+    expect((await page.request.get("/dev/ui")).status()).toBe(404);
+  }
 });
 
-test("authenticated pages redirect signed-out visitors to sign-in", async ({ page }) => {
-  for (const path of ["/welcome", "/investigations", "/settings"]) {
-    await page.goto(path);
-    await expect(page).toHaveURL(/\/sign-in/);
+test("signed-out visitors are sent to the site's sign-in; app APIs answer 401", async ({ request }) => {
+  for (const path of ["/welcome", "/investigations", "/settings", "/billing", "/accept-terms", "/"]) {
+    const res = await request.get(path, { maxRedirects: 0 });
+    expect(res.status(), path).toBe(307);
+    const loc = new URL(res.headers().location!);
+    expect(loc.pathname, path).toBe("/sign-in");
+    expect(loc.origin, path).not.toBe(new URL(res.url()).origin); // the site, not the app
   }
+  for (const path of ["/api/account/balance", "/api/investigations"]) {
+    const res = await request.get(path);
+    expect(res.status(), path).toBe(401);
+  }
+  // the old auth pages moved
+  const old = await request.get("/sign-up?x=1", { maxRedirects: 0 });
+  expect(old.status()).toBe(307);
+  expect(old.headers().location).toMatch(/\/sign-up\?x=1$/);
 });

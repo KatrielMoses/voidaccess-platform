@@ -4,6 +4,7 @@ import { E2E_DB, appUrl } from "./e2e/results-global-setup";
 
 void E2E_DB;
 export default defineConfig({
+  outputDir: "test-results/results", // per suite, so suites can run side by side
   testDir: "e2e",
   testMatch: /results\.spec\.ts/,
   globalSetup: "./e2e/results-global-setup.ts",
@@ -27,6 +28,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
+      NEXT_DIST_DIR: ".next-e2e-results",
       DATABASE_URL: appUrl(),
       VA_FINGERPRINT_KEY: "e2e-fp",
       VA_LOCAL_KEK: Buffer.alloc(32, 5).toString("base64"),

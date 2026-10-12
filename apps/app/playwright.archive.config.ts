@@ -11,6 +11,7 @@ export const CRON_SECRET = "e2e-cron-shared-secret-0123456789";
 const PORT = 3500;
 
 export default defineConfig({
+  outputDir: "test-results/archive", // per suite, so suites can run side by side
   testDir: "e2e",
   testMatch: /archive(-screenshots)?\.spec\.ts/,
   globalSetup: "./e2e/archive-global-setup.ts",
@@ -35,6 +36,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 300_000,
     env: {
+      NEXT_DIST_DIR: ".next-e2e-archive",
       DATABASE_URL: appUrl(),
       APP_URL: `http://localhost:${PORT}`,
       VA_FINGERPRINT_KEY: "e2e-fp",

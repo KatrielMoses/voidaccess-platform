@@ -24,7 +24,7 @@ describe("Better Auth wiring", () => {
     getTransport(); // initialise the log transport
     const email = `ada-${Date.now()}@test.local`;
     const res = await getAuth().api.signUpEmail({
-      body: { name: "Ada", email, password: "correct-horse-battery" },
+      body: { name: "Ada", email, password: "correct-horse-battery", aupAccepted: true } as never,
       headers,
     });
     const id = res.user.id;
@@ -51,7 +51,7 @@ describe("Better Auth wiring", () => {
       status: "active",
       role: "user",
       emailVerified: false,
-      aupAcceptedAt: null,
+      aupAcceptedAt: expect.any(Date), // stored by the server from aupAccepted: true
     });
     expect(u!.referralCode).toMatch(/^[0-9a-f]{10}$/);
 
@@ -88,6 +88,7 @@ describe("Better Auth wiring", () => {
         password: "correct-horse-battery",
         plan: "pro_plus",
         role: "admin",
+        aupAccepted: true,
         status: "active",
       } as never,
       headers,

@@ -4,36 +4,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { DEPTHS, PLANS, TOPUPS, topupCredits } from "@voidaccess/config";
 import { BILLING_EMAIL_LOG } from "../playwright.billing.config";
 import { WEBHOOK_SECRET, ownerUrl } from "./billing-global-setup";
-import { existsSync, readFileSync } from "node:fs";
-import { PASSWORD, pillBalance, uniqueEmail } from "./helpers";
+import { pillBalance, signUpAndVerify as signUpAndVerifyWith, uniqueEmail } from "./helpers";
 
-/** Same flow as helpers.signUpAndVerify, reading this run's own email log. */
-async function signUpAndVerify(page: Page, email: string) {
-  await page.goto("/sign-up");
-  await page.getByLabel("Name").fill("Billing E2E");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/check-email/);
-  let link: string | undefined;
-  await expect
-    .poll(
-      () => {
-        if (!existsSync(BILLING_EMAIL_LOG)) return false;
-        for (const line of readFileSync(BILLING_EMAIL_LOG, "utf8").split("\n").filter(Boolean).reverse()) {
-          const m = JSON.parse(line) as { to: string; template: string; text: string };
-          if (m.to === email && m.template === "verifyEmail")
-            return (link = /https?:\/\/\S+/.exec(m.text)?.[0]) !== undefined;
-        }
-        return false;
-      },
-      { timeout: 15_000 },
-    )
-    .toBe(true);
-  await page.goto(link!);
-  await expect(page).toHaveURL(/\/welcome/);
-}
+const signUpAndVerify = (page: Page, email: string) =>
+  signUpAndVerifyWith(page, email, "Billing E2E", BILLING_EMAIL_LOG);
 const key = (s: string) => Buffer.from(s.replace(/^whsec_/, ""), "base64");
 
 /** A Dodo webhook delivery signed with Standard Webhooks: HMAC-SHA256 over `${id}.${timestamp}.${body}`. */

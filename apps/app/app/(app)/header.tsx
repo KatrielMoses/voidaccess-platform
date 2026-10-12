@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CreditPill, cn } from "@voidaccess/ui";
 import { authClient } from "@/lib/auth/client";
+import { SIGN_IN_URL } from "@/lib/site";
 
 const NAV = [
   { href: "/investigations/new", label: "New" },
@@ -145,7 +146,7 @@ export function AppHeader({
                   role="menuitem"
                   onClick={async () => {
                     await authClient.signOut();
-                    router.push("/sign-in");
+                    window.location.assign(SIGN_IN_URL);
                     router.refresh();
                   }}
                   className="block w-full px-3 py-2 text-left text-sm text-fg hover:bg-raised focus-visible:bg-raised focus-visible:outline-none"

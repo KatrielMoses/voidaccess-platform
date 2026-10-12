@@ -48,3 +48,18 @@ terraform -chdir=infra/terraform apply -target=module.iam -target=module.app
   Terraform `secretAccessor` binding was removed). `va-runner` gets a resource-level `run.invoker` on `va-app`
   (`modules/app`) to fetch the spec and post callbacks. `va-app` runs the job: `run.developer` at project level, plus
   `iam.serviceAccountUser` on `va-runner` (actAs), which is a service-account-level binding.
+
+## D1: production deploy (2026-10-12)
+
+- `va-app` is public (`allUsers` invoker); the app authenticates every request itself (`apps/app/proxy.ts`). Env is plain
+  config plus Secret Manager references only (see `modules/app`). Image deploys: Cloud Build, then
+  `gcloud run deploy va-app --image ...:<sha>` and `gcloud run services update-traffic va-app --to-latest`
+  (traffic is pinned to a named revision otherwise).
+- **`app.voidaccess.pro` today** is the Cloudflare Worker in `infra/cloudflare/app-proxy` (`deploy.sh`), because the Cloud Run
+  domain mapping needs va-agent to be a verified owner of `voidaccess.pro` (Search Console). After that: `terraform apply
+-var manage_domain_mapping=true`, add the DNS-only (grey cloud) CNAME `app` -> `ghs.googlehosted.com`, remove the Worker
+  custom domain, re-point nothing else (APP_URL is already the final domain).
+- `enable_dodo_webhook` (default false): create a version of `dodo-webhook-secret` (the container is managed here), then apply
+  with `-var enable_dodo_webhook=true`.
+- Scheduler jobs are enabled (watchdog */5, credit-alerts hourly, founding and grants daily), OIDC as `va-app`.
+- The production proof lives in `apps/app/e2e-prod` (`playwright.prod.config.ts`); screenshots in `e2e-prod/evidence`.

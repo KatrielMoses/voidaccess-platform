@@ -2,21 +2,66 @@ variable "project_id" { type = string }
 variable "region" { type = string }
 variable "service_account_email" { type = string }
 variable "image" { type = string }
-variable "enable_database_url" { type = bool }
 variable "allow_unauthenticated" { type = bool }
 variable "runner_member" {
-  description = "Service account of the runner job: it calls the private app (spec fetch, callbacks) with an identity token."
+  description = "Service account of the runner job: it calls the app (spec fetch, callbacks) with an identity token."
   type        = string
   default     = ""
 }
+variable "app_url" {
+  description = "Public origin of the app (APP_URL). Also the audience of the Cloud Scheduler OIDC tokens."
+  type        = string
+}
+variable "site_url" {
+  description = "Public origin of the site (SITE_URL, SITE_ORIGIN): sign-in lives there."
+  type        = string
+}
+variable "cookie_domain" {
+  description = "Parent domain of the shared session cookie."
+  type        = string
+}
+variable "email_from" { type = string }
+variable "kms_key_name" { type = string }
+variable "cron_oidc_email" { type = string }
+variable "dodo_env" { type = string }
+variable "enable_dodo_webhook" {
+  description = "Wire DODO_WEBHOOK_SECRET. Keep false until secret dodo-webhook-secret has a version, otherwise the revision cannot start."
+  type        = bool
+  default     = false
+}
 
 locals {
+  # Plain configuration only. Anything sensitive is a Secret Manager reference below.
+  plain_env = {
+    NODE_ENV             = "production"
+    APP_URL              = var.app_url
+    SITE_URL             = var.site_url
+    SITE_ORIGIN          = var.site_url
+    COOKIE_DOMAIN        = var.cookie_domain
+    EMAIL_FROM           = var.email_from
+    ENGINE_LAUNCHER      = "cloudrun"
+    KMS_KEY_NAME         = var.kms_key_name
+    CRON_OIDC_EMAIL      = var.cron_oidc_email
+    DODO_ENV             = var.dodo_env
+    NEXT_PUBLIC_SITE_URL = var.site_url
+  }
+
+  # env var name => secret id
   secret_env = merge(
     {
+      DATABASE_URL           = "database-url" # va_app (RLS-bound), direct host. Never the owner.
+      BETTER_AUTH_SECRET     = "better-auth-secret"
       ENGINE_CALLBACK_SECRET = "engine-callback-secret"
+      CRON_SHARED_SECRET     = "cron-shared-secret"
+      VA_FINGERPRINT_KEY     = "va-fingerprint-key"
+      RESEND_API_KEY         = "resend-api-key"
+      GITHUB_CLIENT_ID       = "github-oauth-client-id"
+      GITHUB_CLIENT_SECRET   = "github-oauth-client-secret"
+      TURNSTILE_SECRET_KEY   = "turnstile-secret-key"
+      DODO_PAYMENTS_API_KEY  = "dodo-api-key-test"
       OPENROUTER_API_KEY     = "openrouter-api-key"
     },
-    var.enable_database_url ? { DATABASE_URL = "database-url" } : {},
+    var.enable_dodo_webhook ? { DODO_WEBHOOK_SECRET = "dodo-webhook-secret" } : {},
   )
 }
 
@@ -36,7 +81,7 @@ resource "google_cloud_run_v2_service" "app" {
     }
 
     containers {
-      image = var.image
+      image = var.image # CMD is `node apps/app/server.js` (Next standalone output) in apps/app/Dockerfile
 
       ports {
         container_port = 8080
@@ -46,6 +91,14 @@ resource "google_cloud_run_v2_service" "app" {
         limits = {
           cpu    = "1"
           memory = "512Mi"
+        }
+      }
+
+      dynamic "env" {
+        for_each = local.plain_env
+        content {
+          name  = env.key
+          value = env.value
         }
       }
 
@@ -75,6 +128,7 @@ resource "google_cloud_run_v2_service" "app" {
   }
 }
 
+# Public on the internet; the app authenticates every request itself (proxy.ts, requireUser, machine-endpoint auth).
 resource "google_cloud_run_v2_service_iam_member" "public" {
   count    = var.allow_unauthenticated ? 1 : 0
   location = google_cloud_run_v2_service.app.location
@@ -94,4 +148,8 @@ resource "google_cloud_run_v2_service_iam_member" "runner_invoker" {
 
 output "url" {
   value = google_cloud_run_v2_service.app.uri
+}
+
+output "latest_ready_revision" {
+  value = google_cloud_run_v2_service.app.latest_ready_revision
 }

@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { APIError } from "better-auth/api";
 import { PLANS } from "@voidaccess/config";
 import { creditLedger, users } from "@voidaccess/db/schema";
-import { signUpAction } from "@/lib/auth/actions";
 import { bootstrapAccount } from "@/lib/auth/bootstrap";
 import { getAuth } from "@/lib/auth/auth";
 import { startInvestigation } from "@/lib/runs/service";
@@ -14,11 +13,6 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 
-const form = (o: Record<string, string>) => {
-  const f = new FormData();
-  for (const [k, v] of Object.entries(o)) f.set(k, v);
-  return f;
-};
 const userByEmail = (email: string) =>
   db().withSystem("test.user", (tx) => tx.select().from(users).where(eq(users.email, email)), {
     audit: false,
@@ -30,26 +24,82 @@ const grants = (userId: string) =>
     { audit: false },
   );
 
-async function signUp(f: FormData) {
-  try {
-    return await signUpAction({}, f);
-  } catch (e) {
-    return { redirect: (e as { digest?: string; message?: string }).digest ?? (e as Error).message };
-  }
+let n = 0;
+const ip = () => `10.1.${Math.floor(++n / 250)}.${n % 250}`;
+const SITE_ORIGIN = "http://va.localhost:3700"; // a trusted origin outside production
+
+/** The request the site's sign-up form makes: POST /api/auth/sign-up/email from the site origin. */
+async function signUp(body: Record<string, unknown>, origin = SITE_ORIGIN, cookie?: string) {
+  const res = await getAuth().handler(
+    new Request("http://localhost:3000/api/auth/sign-up/email", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin,
+        "x-forwarded-for": ip(),
+        ...(cookie ? { cookie } : {}),
+      }, // fresh IP: the rate limiter is per IP
+      body: JSON.stringify(body),
+    }),
+  );
+  return { status: res.status, json: (await res.json().catch(() => null)) as { message?: string } | null };
 }
 
 describe("sign-up", () => {
   it("requires the AUP checkbox: no user is created without it", async () => {
     const email = `noaup-${Date.now()}@test.local`;
-    const r = await signUp(form({ name: "No Aup", email, password: "a long password" }));
-    expect(r).toMatchObject({ error: expect.stringMatching(/Acceptable Use/) });
+    const r = await signUp({ name: "No Aup", email, password: "a long password" });
+    expect(r.status).toBe(400);
+    expect(r.json?.message).toMatch(/Acceptable Use/);
+    for (const aupAccepted of [false, "true", "on", 1, null]) {
+      const x = await signUp({ name: "No Aup", email, password: "a long password", aupAccepted });
+      expect(x.status).toBe(400);
+    }
     expect(await userByEmail(email)).toHaveLength(0);
+  });
+
+  it("rejects a credentialed sign-up from an untrusted origin", async () => {
+    const email = `evil-${Date.now()}@test.local`;
+    const r = await signUp(
+      { name: "Evil", email, password: "a long password", aupAccepted: true },
+      "https://evil.example",
+      "better-auth.session_token=x",
+    );
+    expect(r.status).toBe(403); // origin checks guard requests that carry ambient credentials
+    expect(await userByEmail(email)).toHaveLength(0);
+  });
+
+  it("stores the consented first-touch with the sign-up, and ignores junk", async () => {
+    const email = `ft-${Date.now()}@test.local`;
+    const firstTouch = {
+      utm: { utm_source: "hn" },
+      ref: "news.ycombinator.com",
+      landing: "/",
+      at: "2026-10-12T00:00:00Z",
+    };
+    const r = await signUp({ name: "Ft", email, password: "a long password", aupAccepted: true, firstTouch });
+    expect(r.status).toBe(200);
+    const [u] = await userByEmail(email);
+    expect(u?.firstTouch).toMatchObject({ utm: { utm_source: "hn" }, ref: "news.ycombinator.com" });
+    const email2 = `ft2-${Date.now()}@test.local`;
+    expect(
+      (
+        await signUp({
+          name: "Ft",
+          email: email2,
+          password: "a long password",
+          aupAccepted: true,
+          firstTouch: "x",
+        })
+      ).status,
+    ).toBe(200);
+    expect((await userByEmail(email2))[0]?.firstTouch).toBeNull();
   });
 
   it("stores the AUP timestamp and grants the free credits exactly once", async () => {
     const email = `signup-${Date.now()}@test.local`;
-    const r = await signUp(form({ name: "Sign Up", email, password: "a long password", aup: "on" }));
-    expect(JSON.stringify(r)).toContain("/check-email");
+    const r = await signUp({ name: "Sign Up", email, password: "a long password", aupAccepted: true });
+    expect(r.status).toBe(200);
     const [u] = await userByEmail(email);
     expect(u?.aupAcceptedAt).toBeInstanceOf(Date);
     expect(u?.emailVerified).toBe(false);
@@ -75,7 +125,7 @@ describe("sign-up", () => {
 
   it("unverified users cannot sign in and cannot start a run", async () => {
     const email = `unv-${Date.now()}@test.local`;
-    await signUp(form({ name: "Unv", email, password: "a long password", aup: "on" }));
+    await signUp({ name: "Unv", email, password: "a long password", aupAccepted: true });
     await expect(
       getAuth().api.signInEmail({ body: { email, password: "a long password" } }),
     ).rejects.toBeInstanceOf(APIError);

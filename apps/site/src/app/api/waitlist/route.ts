@@ -2,10 +2,13 @@ import { after, NextResponse } from "next/server";
 import { clientIp } from "@/lib/request";
 import { joinWaitlist } from "@/lib/waitlist/service";
 import { runtimeDeps } from "@/lib/waitlist/runtime";
+import { minimalGuard } from "@/lib/site-mode";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const off = minimalGuard();
+  if (off) return off;
   let raw: unknown;
   try {
     raw = await req.json();

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Button } from "@voidaccess/ui";
 import { acceptAupAction } from "@/lib/auth/actions";
 import { getSessionUser } from "@/lib/auth/session";
+import { signInUrl } from "@/lib/page-user";
 import { AUP_URL } from "@/lib/site";
 import { AuthCard } from "@/components/auth-card";
 import { FormError } from "@/components/field";
@@ -17,7 +18,7 @@ export default async function AcceptTermsPage({
 }) {
   const { error } = await searchParams;
   const user = await getSessionUser().catch(() => null);
-  if (!user || user.status !== "active") redirect("/sign-in");
+  if (!user || user.status !== "active") redirect(await signInUrl());
   if (user.aupAcceptedAt) redirect("/welcome");
   return (
     <AuthCard

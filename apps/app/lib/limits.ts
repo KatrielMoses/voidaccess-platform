@@ -18,7 +18,7 @@ export const SPEC_TOKEN_TTL_MINUTES = 10;
 export const WATCHDOG_SILENCE_MINUTES = 10;
 
 /** A run stuck in `launching` with no callback after this long is failed and refunded. */
-export const LAUNCHING_STUCK_MINUTES = 5;
+export const LAUNCHING_STUCK_MINUTES = 8;
 
 /** A run still `reserved` after this long means the process died between reserve and launch. */
 export const RESERVED_STUCK_MINUTES = 2;

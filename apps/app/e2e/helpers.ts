@@ -9,9 +9,13 @@ export function uniqueEmail(tag = "e2e") {
 }
 
 /** The newest logged email to `to` for `template`, as parsed JSONL (the log transport appends one JSON object per line). */
-export function findEmail(to: string, template: string): { text: string } | undefined {
-  if (!existsSync(EMAIL_LOG)) return undefined;
-  const lines = readFileSync(EMAIL_LOG, "utf8").split("\n").filter(Boolean);
+export function findEmail(
+  to: string,
+  template: string,
+  file: string = EMAIL_LOG,
+): { text: string } | undefined {
+  if (!existsSync(file)) return undefined;
+  const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
   for (const line of lines.reverse()) {
     const m = JSON.parse(line) as { to: string; template: string; text: string };
     if (m.to === to && m.template === template) return m;
@@ -19,18 +23,22 @@ export function findEmail(to: string, template: string): { text: string } | unde
   return undefined;
 }
 
-export async function signUpAndVerify(page: Page, email: string, name = "E2E Tester") {
-  await page.goto("/sign-up");
-  await page.getByLabel("Name").fill(name);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/check-email/);
+/**
+ * Sign-up now lives on the site, so the app's e2e suites make the request the site's form makes (POST to Better
+ * Auth with the AUP flag), then follow the verification link from the log transport. The cross-domain flow
+ * through the real site pages is covered by e2e/cross-domain.spec.ts.
+ */
+export async function signUpAndVerify(page: Page, email: string, name = "E2E Tester", emailLog = EMAIL_LOG) {
+  const res = await page.request.post("/api/auth/sign-up/email", {
+    data: { name, email, password: PASSWORD, aupAccepted: true, callbackURL: "/welcome" },
+    // Cloudflare's documented test token: accepted by the always-pass test secret, ignored when Turnstile is off.
+    headers: { "x-captcha-response": "XXXX.DUMMY.TOKEN.XXXX" },
+  });
+  expect(res.ok(), "sign-up").toBeTruthy();
 
   let msg: { text: string } | undefined;
   await expect
-    .poll(() => (msg = findEmail(email, "verifyEmail")) !== undefined, { timeout: 15_000 })
+    .poll(() => (msg = findEmail(email, "verifyEmail", emailLog)) !== undefined, { timeout: 15_000 })
     .toBe(true);
   const link = /https?:\/\/\S+/.exec(msg!.text)?.[0];
   expect(link, "verification link in the logged email").toBeTruthy();

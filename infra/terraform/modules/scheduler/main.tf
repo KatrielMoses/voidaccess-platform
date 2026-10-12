@@ -18,7 +18,7 @@ resource "google_cloud_scheduler_job" "cron" {
   region    = var.region
   schedule  = each.value.schedule
   time_zone = "Etc/UTC"
-  paused    = true
+  paused    = false
 
   attempt_deadline = "180s"
 
@@ -34,10 +34,5 @@ resource "google_cloud_scheduler_job" "cron" {
       service_account_email = var.service_account_email
       audience              = var.app_url
     }
-  }
-
-  # Un-pausing is an operator action; do not fight it.
-  lifecycle {
-    ignore_changes = [paused]
   }
 }
