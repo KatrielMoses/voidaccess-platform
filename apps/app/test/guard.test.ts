@@ -38,7 +38,10 @@ const MACHINE = [
   /^\/api\/webhooks\/dodo$/,
   /^\/api\/health$/,
   /^\/api\/founding\/seats$/,
+  /^\/api\/unsubscribe$/,
 ];
+// public pages: the signed link in an email is the credential
+const PUBLIC_PAGES = new Set(["/unsubscribe"]);
 const get = (path: string, cookie?: string) =>
   proxy(new NextRequest(`${APP}${path}`, { headers: cookie ? { cookie } : {} }));
 
@@ -53,7 +56,7 @@ describe("signed-out guard (guarantee 1)", () => {
   });
 
   it("every page redirects signed-out visitors to the site's sign-in with an app-origin next", () => {
-    for (const r of routes.filter((x) => x.kind === "page")) {
+    for (const r of routes.filter((x) => x.kind === "page" && !PUBLIC_PAGES.has(x.url))) {
       const res = get(r.url);
       expect(res.status, r.url).toBe(307);
       const loc = new URL(res.headers.get("location")!);

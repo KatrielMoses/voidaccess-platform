@@ -11,6 +11,7 @@ import { accounts, sessions, users, verifications } from "@voidaccess/db/schema"
 import { getAuthDb } from "./auth-db";
 import { acceptAup, saveFirstTouch } from "./bootstrap";
 import { trackEvent } from "@/lib/analytics";
+import { sendLifecycle } from "@/lib/lifecycle/send";
 import { AUTH_RATE_LIMITS } from "../limits-auth";
 import { parseAttribution } from "./attribution";
 import { cookieDomainCovers, trustedOrigins } from "./origins";
@@ -87,6 +88,7 @@ function build() {
       autoSignInAfterVerification: true,
       afterEmailVerification: async (user) => {
         await trackEvent("email_verified", { userId: user.id });
+        await sendLifecycle("welcome", user.id).catch(() => {}); // consent-gated and once per user (lib/lifecycle)
       },
       sendVerificationEmail: async ({ user, url }) => {
         await sendEmail("verifyEmail", user.email, { name: user.name, url });
