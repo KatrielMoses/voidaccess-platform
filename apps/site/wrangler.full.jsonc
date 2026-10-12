@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "voidaccess-site",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  // Full marketing site + waitlist. Deploy with `SITE_MODE=full pnpm deploy` (scripts/deploy.sh). The minimal production config is wrangler.jsonc.
+  "routes": [
+    { "pattern": "voidaccess.pro", "custom_domain": true },
+    { "pattern": "www.voidaccess.pro", "custom_domain": true }
+  ],
+  // Non-secret config. Secrets (DATABASE_URL, RESEND_API_KEY, TURNSTILE_SECRET_KEY, IP_HASH_SALT)
+  // are uploaded by scripts/deploy.sh and never live in this file.
+  "vars": {
+    "SITE_URL": "https://voidaccess.pro",
+    "NEXT_PUBLIC_APP_URL": "https://app.voidaccess.pro",
+    "DB_DRIVER": "neon"
+  },
+  // Shared per-IP burst limiter for POST /api/waitlist (5 requests / 60 s). The daily cap is enforced in the DB.
+  "ratelimits": [{ "name": "WAITLIST_RL", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }]
+}

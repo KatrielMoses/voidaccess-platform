@@ -12,6 +12,8 @@ anything under `src/`.
 | `open-source.ts` | Open source |
 | `waitlist.ts` | Waitlist form, "check your email", "confirmed" page, and the confirmation email |
 | `terms.ts`, `privacy.ts`, `acceptable-use.ts` | Legal drafts (keep the "pending legal review" notice until counsel signs off) |
+| `placeholder-home.ts` | The placeholder home page, header and footer shown while the site runs in minimal mode (before launch) |
+| `auth.ts` | Sign-in, sign-up, forgot/reset password, "check your email" and "email verified" pages |
 | `site.ts` | Menu, footer, button labels, 404 text |
 | `consent.ts` | The one privacy prompt |
 | `graph-hero.json` | The hero graph data. **Do not edit by hand**: it is redacted real data (see `docs/GRAPH-PROVENANCE.md`) |

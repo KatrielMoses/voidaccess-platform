@@ -15,7 +15,10 @@ const config: NextConfig = {
   outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   turbopack: { root: path.join(import.meta.dirname, "../..") },
   images: { unoptimized: true },
+  // SITE_MODE=minimal is read at build time and inlined (see src/lib/site-mode.ts).
+  env: { NEXT_PUBLIC_SITE_MODE: process.env.SITE_MODE ?? "" },
   async rewrites() {
+    if (process.env.SITE_MODE === "minimal") return [];
     // Plausible script served first-party so ad blockers and third-party cookie rules don't apply.
     // The event endpoint is a route handler (app/pl/event) so we can forward the visitor IP.
     return [{ source: "/pl/script.js", destination: "https://plausible.io/js/script.js" }];

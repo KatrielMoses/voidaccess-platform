@@ -1,9 +1,12 @@
 import { ImageResponse } from "next/og";
+import { minimalGuard } from "@/lib/site-mode";
 
 export const dynamic = "force-dynamic";
 
 /** Branded social card: /og?title=… (title is length-capped and rendered as text only). */
 export function GET(req: Request) {
+  const off = minimalGuard();
+  if (off) return off;
   const raw = new URL(req.url).searchParams.get("title") ?? "VoidAccess";
   const title = raw.slice(0, 110);
   return new ImageResponse(

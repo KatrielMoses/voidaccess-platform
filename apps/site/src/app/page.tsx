@@ -1,3 +1,4 @@
+import { PlaceholderHome } from "@/components/placeholder-home";
 import { FaqList } from "@/components/faq";
 import { HeroGraph } from "@/components/hero-graph";
 import { JsonLd } from "@/components/json-ld";
@@ -6,14 +7,17 @@ import { resolve } from "@/lib/facts";
 import { getStars } from "@/lib/github";
 import { homeFaqLd, softwareApplicationLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/metadata";
+import { IS_MINIMAL } from "@/lib/site-mode";
 import { getPypiDownloads } from "@/lib/pypi";
 import { GITHUB_URL } from "@/lib/site";
 import * as home from "@content/home";
+import { placeholderHome } from "@content/placeholder-home";
 import { siteContent } from "@content/site";
 
-export const metadata = pageMetadata(home.meta, "/");
+export const metadata = pageMetadata(IS_MINIMAL ? placeholderHome.meta : home.meta, "/");
 
 export default async function HomePage() {
+  if (IS_MINIMAL) return <PlaceholderHome />;
   const [stars, downloads] = await Promise.all([getStars(), getPypiDownloads()]);
   const shownStars = stars ?? siteContent.githubStarsFallback;
   const r = resolve;
