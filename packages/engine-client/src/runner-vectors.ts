@@ -26,7 +26,10 @@ export function buildVectors() {
     ["API_KEY", "sk-live-AbCdEf0123456789"],
     ["AWS_ACCESS_KEY", "AKIAIOSFODNN7EXAMPLE"],
     ["GITHUB_TOKEN", "ghp_" + "a".repeat(36)],
-    ["CRYPTO_SEED_PHRASE", "abandon ability able about above absent absorb abstract absurd abuse access accident"],
+    [
+      "CRYPTO_SEED_PHRASE",
+      "abandon ability able about above absent absorb abstract absurd abuse access accident",
+    ],
     ["API_KEY", "pässwörd😀"],
     ["EMAIL_ADDRESS", "john.doe@acme.com"],
     ["EMAIL_ADDRESS", "a@b.co"],

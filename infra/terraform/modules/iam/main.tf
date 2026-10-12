@@ -5,7 +5,7 @@ variable "secret_ids" { type = map(string) }
 
 locals {
   app_secrets    = ["database-url", "engine-callback-secret", "openrouter-api-key"]
-  runner_secrets = ["engine-callback-secret", "openrouter-api-key"]
+  runner_secrets = ["openrouter-api-key"] # not engine-callback-secret: see modules/runner
 }
 
 resource "google_secret_manager_secret_iam_member" "app" {

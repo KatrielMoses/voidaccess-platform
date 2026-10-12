@@ -11,6 +11,14 @@ export const envSchema = z.object({
   // ---- run lifecycle (all optional; safe dev defaults, see lib/runs/secrets.ts) ----
   /** Root key for per-run callback secrets and artifact tokens. Required in production. */
   ENGINE_CALLBACK_SECRET: z.string().min(16).optional(),
+  /** Cloud Run launcher (R0): where the runner job lives and which bucket holds run artifacts. */
+  GCP_PROJECT: z.string().min(1).default("voidaccess-cloud"),
+  GCP_REGION: z.string().min(1).default("us-central1"),
+  RUNNER_JOB_NAME: z.string().min(1).default("va-runner"),
+  RUNS_BUCKET: z.string().min(1).default("voidaccess-cloud-runs"),
+  /** The runner job's size, for the per-run compute cost (must match infra/terraform/modules/runner). */
+  RUNNER_VCPU: z.coerce.number().positive().default(1),
+  RUNNER_MEMORY_GIB: z.coerce.number().positive().default(2),
   /** Which launcher starts runs. Default: mock outside production, cloudrun in production. */
   ENGINE_LAUNCHER: z.enum(["mock", "cloudrun"]).optional(),
   /** Mock engine behaviour: success | failure | cancel | blocked | deadline. */

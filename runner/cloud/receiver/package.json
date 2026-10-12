@@ -1,0 +1,6 @@
+{
+  "name": "va-r0-receiver",
+  "private": true,
+  "type": "module",
+  "dependencies": { "tsx": "^4.23.0", "zod": "^4.6.0" }
+}

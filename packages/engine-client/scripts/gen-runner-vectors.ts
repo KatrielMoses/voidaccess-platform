@@ -8,7 +8,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildVectors } from "../src/runner-vectors";
 
-const out = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "runner", "cloud", "tests", "vectors");
+const out = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "..",
+  "runner",
+  "cloud",
+  "tests",
+  "vectors",
+);
 mkdirSync(out, { recursive: true });
 writeFileSync(join(out, "engine-client.json"), JSON.stringify(buildVectors(), null, 2) + "\n");
 console.log("wrote runner/cloud/tests/vectors/engine-client.json");

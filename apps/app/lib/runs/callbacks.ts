@@ -14,6 +14,7 @@ import { eq } from "drizzle-orm";
 import { ProgressEvent, isTerminalEvent, verifyCallback } from "@voidaccess/engine-client";
 import { getDatabase, investigations, runEvents } from "@voidaccess/db";
 import { finishIngest } from "./complete";
+import { recordRunCost } from "./cost";
 import { deriveCallbackSecret } from "./secrets";
 import { isTerminalStatus, lockRun, settleLockedRun } from "./settle";
 
@@ -103,6 +104,8 @@ export async function handleEngineCallback(
   );
 
   if (res.kind === "unknown") return { status: 404, body: { error: "not found" } };
+  // Terminal events carry the runner's metrics: record what the run cost (never throws, first write wins).
+  if (ev.metrics && (res.kind === "settled" || res.kind === "ingest")) await recordRunCost(runId, ev.metrics);
   if (res.kind === "ingest") await finishIngest(runId);
   return { status: 200, body: { ok: true, result: res.kind } };
 }

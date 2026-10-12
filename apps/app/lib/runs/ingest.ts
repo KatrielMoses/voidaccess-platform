@@ -18,6 +18,7 @@
 import { ingestBundle as runIngest, type IngestDeps } from "@voidaccess/ingest";
 import { launcherKind } from "../launcher";
 import { readMockBundle } from "../launcher/artifacts";
+import { gcsArtifactDeps } from "../launcher/artifacts-gcs";
 
 export type IngestFn = (runId: string) => Promise<void>;
 
@@ -35,7 +36,7 @@ function artifactDeps(): IngestDeps {
       },
     };
   }
-  throw new Error("GCS artifact readers are not wired yet (R0)");
+  return gcsArtifactDeps();
 }
 
 /** P3's ingest (validate, mask, write the inv_* snapshot) is the default since the P2+P3 merge. */
