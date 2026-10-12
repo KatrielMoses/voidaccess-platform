@@ -8,6 +8,21 @@ export const envSchema = z.object({
   /** Build/commit identifier, injected at image build time. */
   APP_VERSION: z.string().min(1).default("0.0.0"),
   COMMIT_SHA: z.string().min(1).default("dev"),
+  // ---- run lifecycle (all optional; safe dev defaults, see lib/runs/secrets.ts) ----
+  /** Root key for per-run callback secrets and artifact tokens. Required in production. */
+  ENGINE_CALLBACK_SECRET: z.string().min(16).optional(),
+  /** Which launcher starts runs. Default: mock outside production, cloudrun in production. */
+  ENGINE_LAUNCHER: z.enum(["mock", "cloudrun"]).optional(),
+  /** Mock engine behaviour: success | failure | cancel | blocked | deadline. */
+  MOCK_ENGINE_MODE: z.enum(["success", "failure", "cancel", "blocked", "deadline"]).default("success"),
+  /** Mock engine total duration in ms (default 60s). */
+  MOCK_ENGINE_DURATION_MS: z.coerce.number().int().positive().default(60_000),
+  /** Where the mock engine's bundle upload is stored (default: OS temp dir). */
+  MOCK_ARTIFACT_DIR: z.string().min(1).optional(),
+  /** Dev shared secret for /api/cron/*. In production use the Cloud Scheduler OIDC identity. */
+  CRON_SHARED_SECRET: z.string().min(16).optional(),
+  /** Service-account email expected in the Cloud Scheduler OIDC token. */
+  CRON_OIDC_EMAIL: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

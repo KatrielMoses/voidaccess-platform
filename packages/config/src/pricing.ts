@@ -105,6 +105,15 @@ export const PLANS: Record<PlanId, Plan> = {
   },
 };
 
+/**
+ * Run-creation limits per account (abuse and cost control; credits are the real limiter).
+ * Product-tunable, so they live here. Operational timeouts stay in apps/app/lib/limits.ts.
+ */
+export const RUN_LIMITS = {
+  maxConcurrentRuns: 3,
+  dailyRunCap: { free: 5, pro: 40, pro_plus: 100 } as Record<PlanId, number>,
+} as const;
+
 /** Subscription credits reset monthly, no rollover. Spend order: grant, then top-ups. */
 export const ROLLOVER = false;
 
