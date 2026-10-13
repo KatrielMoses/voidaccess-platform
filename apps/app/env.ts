@@ -4,6 +4,13 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   /** Optional in dev; health reports db "unconfigured" without it. */
   DATABASE_URL: z.string().min(1).optional(),
+  /**
+   * The va_worker login (H1): system work (withSystem) and Better Auth, on a pool separate from DATABASE_URL.
+   * Required in production (the server refuses to start without it, see instrumentation.ts).
+   */
+  DATABASE_URL_SYSTEM: z.string().min(1).optional(),
+  /** Signs the tenant context (`app.user_id`) so a SQL-injected set_config cannot impersonate. >= 32 chars; required in production. */
+  RLS_CONTEXT_KEY: z.string().min(32).optional(),
   APP_URL: z.url().default("http://localhost:3000"),
   /** Public site origin (sign-in, sign-up, legal pages). Signed-out visitors are redirected here. */
   SITE_URL: z.url().default("https://voidaccess.pro"),

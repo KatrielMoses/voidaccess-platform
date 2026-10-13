@@ -11,16 +11,16 @@ import { creditLedger, getDatabase, investigations, runEvents } from "@voidacces
 import { SSE_POLL_INTERVAL_MS } from "../limits";
 import { RunError } from "./errors";
 import { isTerminalStatus } from "./settle";
+import { VIEW_TOUCH_SECONDS, markViewed } from "./viewers";
 
-// Per-instance "is someone watching this run" marker, used to decide whether to send the results-ready email.
-const lastSeen = new Map<string, number>();
-export function touchViewer(runId: string) {
-  lastSeen.set(runId, Date.now());
-  if (lastSeen.size > 5000) for (const [k, t] of lastSeen) if (Date.now() - t > 3_600_000) lastSeen.delete(k);
-}
-export function viewerActive(runId: string, withinMs = SSE_POLL_INTERVAL_MS * 6): boolean {
-  const t = lastSeen.get(runId);
-  return t !== undefined && Date.now() - t < withinMs;
+/**
+ * "Someone is watching" is recorded in investigations.last_viewed_at (lib/runs/viewers.ts), so every instance sees
+ * it. This stream writes it when it opens and then at most every VIEW_TOUCH_SECONDS; failures never break the stream.
+ */
+function touchViewer(runId: string, lastTouch: { at: number }) {
+  if (Date.now() - lastTouch.at < VIEW_TOUCH_SECONDS * 1000) return;
+  lastTouch.at = Date.now();
+  markViewed(runId).catch((e) => console.error("markViewed failed:", e instanceof Error ? e.message : e));
 }
 
 export function parseLastEventId(raw: string | null): number {
@@ -30,13 +30,11 @@ export function parseLastEventId(raw: string | null): number {
 
 type Row = typeof runEvents.$inferSelect;
 const progressFrame = (r: Row) => {
-  const stage = r.type.startsWith("stage") ? "stage" : r.type;
-  const status = r.type === "stage" ? "start" : r.type.startsWith("stage_") ? r.type.slice(6) : undefined;
   return `id: ${r.seq}\nevent: progress\ndata: ${JSON.stringify({
     seq: r.seq,
-    type: stage,
+    type: r.type,
     stage: r.stage,
-    status,
+    status: r.status ?? undefined,
     counts: r.counts,
     at: r.at.toISOString(),
   })}\n\n`;
@@ -71,7 +69,8 @@ export async function openEventStream(
     });
 
   const first = await poll(lastEventId);
-  touchViewer(id);
+  const lastTouch = { at: 0 };
+  if (first) touchViewer(id, lastTouch); // only a run the caller owns is marked as viewed
   if (!first) throw new RunError("not_found", "Investigation not found.");
 
   const enc = new TextEncoder();
@@ -104,7 +103,7 @@ export async function openEventStream(
       let ticks = 0;
       try {
         while (!closed && snap) {
-          touchViewer(id);
+          touchViewer(id, lastTouch);
           for (const r of snap.evs) {
             send(progressFrame(r));
             after = Math.max(after, r.seq);

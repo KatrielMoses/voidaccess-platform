@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { addMonths, grantMonthly, reserve, topup } from "../src";
+import { DEV_CONTEXT_KEY, signUserContext } from "../src/client";
 import {
   accounts,
   foundingNotices,
@@ -93,7 +94,12 @@ async function attempt(userId: string | null, query: string): Promise<{ rows: nu
   const client = await db.pool.connect();
   try {
     await client.query("begin");
-    if (userId) await client.query("select set_config('app.user_id', $1, true)", [userId]);
+    // exactly what withUser does: the id plus its signature (an unsigned id is ignored, see role-split.test.ts)
+    if (userId)
+      await client.query("select set_config('app.user_id', $1, true), set_config('app.user_sig', $2, true)", [
+        userId,
+        signUserContext(DEV_CONTEXT_KEY, userId),
+      ]);
     const r = await client.query(query);
     await client.query("rollback");
     return { rows: r.rowCount ?? 0 };
@@ -131,6 +137,7 @@ describe("tenant isolation (RLS)", () => {
       "billing_events",
       "billing_alerts",
       "lifecycle_emails", // P6: system-only
+      "rate_limit_events", // H1: system-only
     ]);
     const missing = (await tenantTables()).filter((t) => !covered.has(t));
     expect(missing, "new tenant table: add it to the isolation seed + this list").toEqual([]);
@@ -147,6 +154,7 @@ describe("tenant isolation (RLS)", () => {
           "billing_events",
           "billing_alerts",
           "lifecycle_emails",
+          "rate_limit_events", // H1: system-only
         ].includes(t),
     );
     for (const t of tables) {
@@ -235,9 +243,12 @@ describe("tenant isolation (RLS)", () => {
       "billing_events",
       "billing_alerts",
       "lifecycle_emails", // P6
-      "blocked_email_domains", // P6 placeholder for H1's table (also system-only there)
+      "rate_limit_events", // H1: system-only
       "archive_jobs", // P4: the archive work queue
       "archive_removed_pages",
+      "rate_limits", // H1
+      "blocked_email_domains",
+      "app_ctx_key",
     ]) {
       const r = await attempt(A, `select * from ${t}`);
       expect("denied" in r && r.denied, t).toBe("42501");

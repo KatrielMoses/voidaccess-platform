@@ -1,15 +1,16 @@
 import pg from "pg";
 import { randomUUID } from "node:crypto";
-import { createDatabase, investigations, users, type Database } from "@voidaccess/db";
+import { investigations, users, type Database } from "@voidaccess/db";
 import type { PlanId } from "@voidaccess/config";
 import { ingestBundle } from "@voidaccess/ingest";
 import { bundleDeps } from "@voidaccess/ingest/test-support";
 import type { ResultBundle } from "@voidaccess/engine-client";
+import { createLocalDatabase } from "@voidaccess/db/local";
 import { appUrl, ownerUrl } from "./urls";
 
 let app: Database | undefined;
 let owner: pg.Pool | undefined;
-export const appDb = () => (app ??= createDatabase(appUrl, { max: 10 }));
+export const appDb = () => (app ??= createLocalDatabase(appUrl, { max: 10 }));
 export const ownerPool = () => (owner ??= new pg.Pool({ connectionString: ownerUrl, max: 3 }));
 
 export async function makeUser(plan: PlanId = "pro") {

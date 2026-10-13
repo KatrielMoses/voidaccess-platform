@@ -5,7 +5,8 @@
 // Prints the results URL. Refuses to run against a non-local database. Fixtures are redacted; no real data.
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { createDatabase, investigations, users } from "@voidaccess/db";
+import { investigations, users } from "@voidaccess/db";
+import { createLocalDatabase } from "@voidaccess/db/local";
 import { PLANS, depthCredits, type PlanId } from "@voidaccess/config";
 import { FIXTURE_NAMES } from "@voidaccess/engine-mock";
 import { ingestBundle } from "./ingest";
@@ -33,7 +34,7 @@ const plan = (opt("--plan") ?? "pro") as PlanId;
 if (!(plan in PLANS)) throw new Error(`unknown plan ${plan}`);
 const userId = opt("--user") ?? process.env.DEV_AS_USER ?? randomUUID();
 
-const database = createDatabase(url);
+const database = createLocalDatabase(url);
 const bundle =
   name === "generated" ? generateBundle() : fixtureBundle(name as (typeof FIXTURE_NAMES)[number]);
 const invId = randomUUID();

@@ -31,7 +31,7 @@ export default async function AdminBlockedDomains() {
               <tr key={d.domain}>
                 <Td className="font-mono">{d.domain}</Td>
                 <Td className="max-w-sm break-words">{d.reason}</Td>
-                <Td className="font-mono text-xs">{d.createdBy.slice(0, 13)}</Td>
+                <Td className="font-mono text-xs">{d.createdBy?.slice(0, 13) ?? "—"}</Td>
                 <Td className="whitespace-nowrap">{fmtDate(d.createdAt, false)}</Td>
                 <Td className="min-w-72">
                   <ActionForm

@@ -1,5 +1,6 @@
 import pg from "pg";
 import { runMigrations } from "@voidaccess/db/migrate";
+import { prepareLocalRolesAt } from "@voidaccess/db/local";
 
 export const OPS_DB = `${process.env.VA_TEST_DB ?? "voidaccess_test"}_ops_e2e`;
 const admin = new URL(process.env.TEST_DATABASE_URL ?? "postgres://localhost:5432/postgres");
@@ -19,6 +20,6 @@ export default async function setup() {
   await a.query(`DROP DATABASE IF EXISTS ${OPS_DB} WITH (FORCE)`);
   await a.query(`CREATE DATABASE ${OPS_DB}`);
   await runMigrations(ownerUrl());
-  await a.query(`ALTER ROLE va_app LOGIN PASSWORD '${process.env.VA_APP_LOCAL_PASSWORD ?? "va_app_local"}'`);
+  await prepareLocalRolesAt(ownerUrl()); // va_app and va_worker logins plus the RLS context key (H1)
   await a.end();
 }

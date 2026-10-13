@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, "p*-*", "e*-*", "r*-*", "d*-*"]
+    branches: [main, "p*-*", "e*-*", "r*-*", "d*-*", "h*-*"]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

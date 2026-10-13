@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "@playwright/test";
 import { WEBHOOK_SECRET, appUrl } from "./e2e/billing-global-setup";
+import { DEV_CONTEXT_KEY } from "@voidaccess/db/client";
+import { localSystemUrl } from "@voidaccess/db/local";
 
 export const BILLING_EMAIL_LOG = join(tmpdir(), "va-p5-e2e-emails.jsonl");
 const PORT = 3400;
@@ -24,6 +26,8 @@ export default defineConfig({
     env: {
       NEXT_DIST_DIR: ".next-e2e-billing",
       DATABASE_URL: appUrl(),
+      DATABASE_URL_SYSTEM: localSystemUrl(appUrl()),
+      RLS_CONTEXT_KEY: DEV_CONTEXT_KEY,
       APP_URL: `http://localhost:${PORT}`,
       VA_FINGERPRINT_KEY: "e2e-fp",
       VA_LOCAL_KEK: Buffer.alloc(32, 5).toString("base64"),

@@ -1,4 +1,5 @@
 import pg from "pg";
+import { prepareLocalRolesAt } from "@voidaccess/db/local";
 import { runMigrations } from "@voidaccess/db/migrate";
 
 export const ARCHIVE_DB = `${process.env.VA_TEST_DB ?? "voidaccess_test"}_archive_e2e`;
@@ -20,6 +21,6 @@ export default async function setup() {
   await a.query(`DROP DATABASE IF EXISTS ${ARCHIVE_DB} WITH (FORCE)`);
   await a.query(`CREATE DATABASE ${ARCHIVE_DB}`);
   await runMigrations(ownerUrl());
-  await a.query(`ALTER ROLE va_app LOGIN PASSWORD '${process.env.VA_APP_LOCAL_PASSWORD ?? "va_app_local"}'`);
+  await prepareLocalRolesAt(ownerUrl());
   await a.end();
 }

@@ -47,15 +47,36 @@
     {
       "idx": 6,
       "version": "7",
-      "when": 1791816950095,
-      "tag": "0006_ops_admin_lifecycle",
+      "when": 1791817002667,
+      "tag": "0006_h1_role_split",
       "breakpoints": true
     },
     {
       "idx": 7,
       "version": "7",
-      "when": 1791816950745,
-      "tag": "0007_pending_h1_blocked_email_domains",
+      "when": 1791817658205,
+      "tag": "0007_h1_rate_limits_blocked_domains",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791817658573,
+      "tag": "0008_h1_run_events_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791817658927,
+      "tag": "0009_h1_investigation_last_viewed",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791903278140,
+      "tag": "0010_ops_admin_lifecycle",
       "breakpoints": true
     }
   ]

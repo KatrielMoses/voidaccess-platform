@@ -1,18 +1,23 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "@playwright/test";
+import { DEV_CONTEXT_KEY } from "@voidaccess/db/client";
+import { localSystemUrl } from "@voidaccess/db/local";
 
-// The end-to-end run uses the mock engine on a local database. Port 3000 only.
+// The end-to-end run uses the mock engine on a local database. Port 3000 unless E2E_PORT says otherwise.
 //   pnpm --filter @voidaccess/app test:e2e          (next dev)
 //   E2E_PROD=1 pnpm --filter @voidaccess/app test:e2e   (production build + next start)
-const PORT = 3000;
-const OWNER_URL = process.env.E2E_MIGRATE_URL ?? "postgres://localhost/voidaccess_p2_dev";
+const PORT = Number(process.env.E2E_PORT ?? 3000); // lanes running side by side each pick their own
+// A dedicated database, dropped and recreated by e2e/prepare-db.ts on every run, so no lane pollutes it.
+const OWNER_URL = process.env.E2E_MIGRATE_URL ?? "postgres://localhost/voidaccess_e2e_app";
 const APP_DB_URL =
-  process.env.E2E_DATABASE_URL ?? "postgres://va_app:va_app_local@localhost/voidaccess_p2_dev";
+  process.env.E2E_DATABASE_URL ?? "postgres://va_app:va_app_local@localhost/voidaccess_e2e_app";
 export const EMAIL_LOG = join(tmpdir(), "va-p2-e2e-emails.jsonl");
 
 export const e2eEnv = {
   DATABASE_URL: APP_DB_URL,
+  DATABASE_URL_SYSTEM: localSystemUrl(APP_DB_URL),
+  RLS_CONTEXT_KEY: DEV_CONTEXT_KEY, // required by the production build (E2E_PROD=1)
   MIGRATE_DATABASE_URL: OWNER_URL,
   APP_URL: `http://localhost:${PORT}`,
   ENGINE_LAUNCHER: "mock",
@@ -40,12 +45,11 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [["list"]],
-  globalSetup: "./e2e/global-setup.ts",
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
   webServer: {
     command: process.env.E2E_PROD
-      ? `pnpm exec next build && pnpm exec next start -p ${PORT}`
-      : `pnpm exec next dev -p ${PORT}`,
+      ? `pnpm exec tsx e2e/prepare-db.ts && pnpm exec next build && pnpm exec next start -p ${PORT}`
+      : `pnpm exec tsx e2e/prepare-db.ts && pnpm exec next dev -p ${PORT}`,
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 300_000,

@@ -37,12 +37,12 @@ export async function lockRun(tx: Tx, runId: string): Promise<Run | undefined> {
   return r;
 }
 
-/** Stage-end events are stored with type `stage_end` (see lib/runs/events.ts). */
+/** Completed stages: `stage` events whose status is `end` (see lib/runs/callbacks.ts). */
 export async function stagesCompletedFromEvents(tx: Tx, runId: string): Promise<Stage[]> {
   const rows = await tx
     .select({ stage: runEvents.stage })
     .from(runEvents)
-    .where(and(eq(runEvents.runId, runId), eq(runEvents.type, "stage_end")));
+    .where(and(eq(runEvents.runId, runId), eq(runEvents.type, "stage"), eq(runEvents.status, "end")));
   const seen = new Set(rows.map((r) => r.stage));
   return STAGES.filter((s) => seen.has(s));
 }

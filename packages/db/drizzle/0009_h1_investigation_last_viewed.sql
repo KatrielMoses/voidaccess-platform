@@ -1,0 +1,1 @@
+ALTER TABLE "investigations" ADD COLUMN "last_viewed_at" timestamp with time zone;

@@ -392,8 +392,8 @@ export interface AbuseQueue {
 /**
  * Sources: (1) investigations that failed with blocked_query and have no review yet, (2) users with at least
  * ABUSE_BLOCKED_THRESHOLD of them in ABUSE_WINDOW_DAYS and no review since their latest, (3) open abuse_flags rows
- * (P5 refunds/disputes, founding-claim races, anything written by hand), (4) per-account rate-limit hits, read from
- * H1's `rate_limit_hits` table when it exists (columns user_id, created_at), otherwise reported as unavailable.
+ * (P5 refunds/disputes, founding-claim races, anything written by hand), (4) per-account rate-limit hits from H1's
+ * `rate_limit_events` (source auth|run_create, path, user_id, ip_hash, at); hits without a known user are not listed.
  */
 export async function getAbuseQueue(adminId: string, o?: Opts): Promise<AbuseQueue> {
   const now = nowOf(o);
@@ -426,7 +426,7 @@ export async function getAbuseQueue(adminId: string, o?: Opts): Promise<AbuseQue
       ).rows as Array<Record<string, unknown>>;
 
       let rateLimits: AbuseQueue["rateLimits"] = { available: false, rows: [] };
-      const exists = (await tx.execute(sql`SELECT to_regclass('public.rate_limit_hits') IS NOT NULL AS ok`))
+      const exists = (await tx.execute(sql`SELECT to_regclass('public.rate_limit_events') IS NOT NULL AS ok`))
         .rows[0] as { ok: boolean } | undefined;
       if (exists?.ok) {
         // a savepoint: if H1's columns differ from what we read, the queue still loads
@@ -434,9 +434,9 @@ export async function getAbuseQueue(adminId: string, o?: Opts): Promise<AbuseQue
           const rows = await tx.transaction(
             async (sp) =>
               (
-                await sp.execute(sql`SELECT h.user_id, u.email, count(*)::int AS hits, max(h.created_at) AS last_at
-                FROM rate_limit_hits h LEFT JOIN users u ON u.id = h.user_id
-                WHERE h.user_id IS NOT NULL AND h.created_at >= ${windowStart}
+                await sp.execute(sql`SELECT h.user_id, u.email, count(*)::int AS hits, max(h.at) AS last_at
+                FROM rate_limit_events h LEFT JOIN users u ON u.id = h.user_id
+                WHERE h.user_id IS NOT NULL AND h.at >= ${windowStart}
                 GROUP BY h.user_id, u.email ORDER BY hits DESC LIMIT 100`)
               ).rows,
           );

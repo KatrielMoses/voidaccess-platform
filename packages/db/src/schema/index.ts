@@ -12,4 +12,4 @@ export * from "./archive";
 export * from "./waitlist";
 export * from "./billing-dodo";
 export * from "./ops";
-export * from "./pending-h1-blocked-email-domains"; // placeholder until H1 merges (see the file)
+export * from "./hardening";

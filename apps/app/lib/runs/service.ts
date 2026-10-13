@@ -3,6 +3,7 @@ import { and, count, desc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm"
 import { DEPTHS, type Depth, type PlanId } from "@voidaccess/config";
 import { creditLedger, getDatabase, investigations, reserve, runEvents, users } from "@voidaccess/db";
 import { trackEvent } from "../analytics";
+import { recordRateLimitEvent } from "../rate-limit";
 import { getEnv } from "../../env";
 import { getLauncher } from "../launcher";
 import {
@@ -61,6 +62,7 @@ export function parseDepth(raw: unknown): Depth {
 export async function startInvestigation(
   user: StartUser,
   input: { query: unknown; depth: unknown },
+  ctx: { ip?: string } = {},
 ): Promise<StartResult> {
   const query = parseQuery(input.query);
   const depth = parseDepth(input.depth);
@@ -69,6 +71,9 @@ export async function startInvestigation(
     throw new RunError("unverified_email", "Verify your email address before starting an investigation.");
 
   const db = getDatabase();
+  // Recorded on the system pool, so the row survives the rollback of the refused transaction (best-effort).
+  const traceRefusal = (path: "rate_limited_concurrent" | "rate_limited_daily") =>
+    recordRateLimitEvent({ source: "run_create", path, userId: user.id, ip: ctx.ip });
   const created = await db.withUser(user.id, async (tx) => {
     // Serialise this user's run creation so the concurrency and daily caps cannot be raced past.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${"runs:" + user.id}, 0))`);
@@ -86,19 +91,22 @@ export async function startInvestigation(
       .select({ n: count() })
       .from(investigations)
       .where(and(eq(investigations.userId, user.id), inArray(investigations.status, [...ACTIVE_STATUSES])));
-    if ((active?.n ?? 0) >= MAX_CONCURRENT_RUNS)
+    if ((active?.n ?? 0) >= MAX_CONCURRENT_RUNS) {
+      await traceRefusal("rate_limited_concurrent");
       throw new RunError(
         "rate_limited_concurrent",
         `You can have ${MAX_CONCURRENT_RUNS} investigations running at once. Wait for one to finish or cancel it.`,
         { limit: MAX_CONCURRENT_RUNS },
       );
+    }
     const cap = DAILY_RUN_CAP[row.plan as PlanId];
     const since = new Date(Date.now() - 24 * 3_600_000);
     const [day] = await tx
       .select({ n: count() })
       .from(investigations)
       .where(and(eq(investigations.userId, user.id), gte(investigations.createdAt, since)));
-    if ((day?.n ?? 0) >= cap)
+    if ((day?.n ?? 0) >= cap) {
+      await traceRefusal("rate_limited_daily");
       throw new RunError(
         "rate_limited_daily",
         `Daily limit of ${cap} investigations reached. Try again tomorrow.`,
@@ -106,6 +114,7 @@ export async function startInvestigation(
           limit: cap,
         },
       );
+    }
     const [total] = await tx
       .select({ n: count() })
       .from(investigations)
@@ -274,12 +283,22 @@ export async function getInvestigation(userId: string, id: string) {
     const reserved = -ledger.filter((l) => l.reason === "reserve").reduce((a, l) => a + l.amount, 0);
     const refunded = ledger.filter((l) => l.reason === "refund").reduce((a, l) => a + l.amount, 0);
     const events = await tx
-      .select({ type: runEvents.type, stage: runEvents.stage, counts: runEvents.counts, seq: runEvents.seq })
+      .select({
+        type: runEvents.type,
+        stage: runEvents.stage,
+        status: runEvents.status,
+        counts: runEvents.counts,
+        seq: runEvents.seq,
+      })
       .from(runEvents)
       .where(eq(runEvents.runId, id))
       .orderBy(runEvents.seq);
-    const stagesCompleted = [...new Set(events.filter((e) => e.type === "stage_end").map((e) => e.stage!))];
-    const stageEvents = events.filter((e) => e.type === "stage" || e.type === "stage_end");
+    const stagesCompleted = [
+      ...new Set(events.filter((e) => e.type === "stage" && e.status === "end").map((e) => e.stage!)),
+    ];
+    const stageEvents = events.filter(
+      (e) => e.type === "stage" && (e.status === "start" || e.status === "end"),
+    );
     const currentStage = isTerminalStatus(r.status) ? null : (stageEvents.at(-1)?.stage ?? null);
     const counts = [...events].reverse().find((e) => e.counts)?.counts ?? null;
     return {

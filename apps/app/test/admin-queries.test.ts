@@ -6,6 +6,7 @@ import {
   claimFoundingSeat,
   investigations,
   payments,
+  rateLimitEvents,
   reserve,
   runCosts,
   subscriptions,
@@ -37,7 +38,7 @@ const sys = <T>(fn: Parameters<ReturnType<typeof db>["withSystem"]>[1]) =>
   db().withSystem("t", fn as never, { audit: false }) as Promise<T>;
 
 describe("abuse queue", () => {
-  it("lists blocked_query runs, repeat users at the threshold, open flags, and says none for rate limits when H1's table is absent", async () => {
+  it("lists blocked_query runs, repeat users at the threshold, open flags, and per-user rate-limit hits (H1 rate_limit_events)", async () => {
     const admin = await makeAdmin();
     const few = await makeUser({ credits: 0 });
     const many = await makeUser({ credits: 0 });
@@ -60,6 +61,14 @@ describe("abuse queue", () => {
         .returning({ id: abuseFlags.id }),
     );
 
+    await sys((tx) =>
+      tx.insert(rateLimitEvents).values([
+        { source: "auth", path: "/sign-in/email", userId: few.id, ipHash: "h1" },
+        { source: "run_create", path: "investigations", userId: few.id, ipHash: "h1" },
+        { source: "auth", path: "/sign-in/email", userId: null, ipHash: "h2" }, // anonymous: not listed
+      ]),
+    );
+
     const q = await getAbuseQueue(admin.id);
     expect(q.blockedRuns.find((r) => r.id === fewRun)).toMatchObject({
       userId: few.id,
@@ -71,7 +80,9 @@ describe("abuse queue", () => {
     expect(q.repeatUsers.map((u) => u.userId)).not.toContain(few.id);
     expect(q.repeatUsers.find((u) => u.userId === many.id)!.blocked).toBe(ABUSE_BLOCKED_THRESHOLD);
     expect(q.flags.find((f) => f.id === flag!.id)).toMatchObject({ kind: "dispute", userId: few.id });
-    expect(q.rateLimits).toEqual({ available: false, rows: [] });
+    expect(q.rateLimits.available).toBe(true);
+    expect(q.rateLimits.rows.find((r) => r.userId === few.id)).toMatchObject({ hits: 2, email: few.email });
+    expect(q.rateLimits.rows.every((r) => r.userId)).toBe(true);
     // the queue shows query text, so opening it is an audited read
     expect((await audits("admin.abuse.view")).some((a) => a.actor === admin.id)).toBe(true);
 

@@ -3,7 +3,8 @@ import pg from "pg";
 import { randomUUID } from "node:crypto";
 import { runMigrations } from "@voidaccess/db/migrate";
 import { hashPassword } from "better-auth/crypto";
-import { accounts, createDatabase, investigations, users } from "@voidaccess/db";
+import { accounts, investigations, users } from "@voidaccess/db";
+import { createLocalDatabase, prepareLocalRolesAt } from "@voidaccess/db/local";
 import { ingestBundle } from "@voidaccess/ingest";
 import { bundleDeps, fixtureBundle, generateBundle } from "@voidaccess/ingest/test-support";
 import type { ResultBundle } from "@voidaccess/engine-client";
@@ -26,12 +27,12 @@ export default async function setup() {
   await a.query(`DROP DATABASE IF EXISTS ${E2E_DB} WITH (FORCE)`);
   await a.query(`CREATE DATABASE ${E2E_DB}`);
   await runMigrations(withDb(E2E_DB));
-  await a.query(`ALTER ROLE va_app LOGIN PASSWORD '${process.env.VA_APP_LOCAL_PASSWORD ?? "va_app_local"}'`);
+  await prepareLocalRolesAt(withDb(E2E_DB));
   await a.end();
 
   process.env.VA_FINGERPRINT_KEY ??= "e2e-fp";
   process.env.VA_LOCAL_KEK ??= Buffer.alloc(32, 5).toString("base64");
-  const db = createDatabase(appUrl());
+  const db = createLocalDatabase(appUrl());
   const pro = randomUUID();
   const free = randomUUID();
   const other = randomUUID();

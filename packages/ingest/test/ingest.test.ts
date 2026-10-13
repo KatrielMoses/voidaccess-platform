@@ -92,6 +92,44 @@ describe("ingestBundle: happy path", () => {
   });
 });
 
+describe("H1-5: summary_kind at ingest", () => {
+  const kindOf = async (id: string) =>
+    (await ownerPool().query(`select summary_kind from investigations where id=$1`, [id])).rows[0]
+      .summary_kind;
+
+  it.each([
+    ["llm", "llm"],
+    ["fallback", "fallback"],
+    ["none", "none"],
+    [undefined, "none"], // bundle without the field: default none
+    ["something-else", "none"],
+  ])("bundle summary_kind %s is stored as %s, in the ingest transaction", async (given, stored) => {
+    const user = await makeUser();
+    const { id, runId } = await makeInvestigation(user);
+    expect(await kindOf(id)).toBeNull();
+    const bundle = fixtureBundle("lockbit-deep", false);
+    bundle.summary.summary_kind = given;
+    await ingest(runId, bundleDeps(bundle));
+    expect(await kindOf(id)).toBe(stored);
+  });
+
+  it("a failed ingest leaves summary_kind untouched (same transaction), and a repeat does not overwrite it", async () => {
+    const user = await makeUser();
+    const { id, runId } = await makeInvestigation(user);
+    const bad = fixtureBundle("lockbit-deep", false);
+    bad.summary.summary_kind = "llm";
+    bad.relationships = [{ ...bad.relationships[0]!, source: "missing-id" } as never];
+    await expect(ingest(runId, bundleDeps(bad))).rejects.toThrow();
+    expect(await kindOf(id)).toBeNull();
+    const good = fixtureBundle("lockbit-deep", false);
+    good.summary.summary_kind = "fallback";
+    await ingest(runId, bundleDeps(good));
+    good.summary.summary_kind = "llm";
+    await ingest(runId, bundleDeps(good));
+    expect(await kindOf(id)).toBe("fallback");
+  });
+});
+
 describe("ingestBundle: failures", () => {
   it("rejects a bundle that fails the schema and writes nothing", async () => {
     const user = await makeUser();
