@@ -6,12 +6,14 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { captcha, magicLink } from "better-auth/plugins";
 import { randomBytes } from "node:crypto";
 import { sendEmail } from "@voidaccess/emails";
-import { grantMonthly, getDatabase } from "@voidaccess/db";
-import { accounts, sessions, users, verifications } from "@voidaccess/db/schema";
+import { grantMonthly, getDatabase, type Database } from "@voidaccess/db";
+import { accounts, rateLimits, sessions, users, verifications } from "@voidaccess/db/schema";
 import { getAuthDb } from "./auth-db";
 import { acceptAup, saveFirstTouch } from "./bootstrap";
 import { trackEvent } from "@/lib/analytics";
 import { AUTH_RATE_LIMITS } from "../limits-auth";
+import { accountExists, isBlockedEmail, signUpRefused } from "./blocked-domains";
+import { createAuthRateLimitStorage } from "../rate-limit";
 import { parseAttribution } from "./attribution";
 import { cookieDomainCovers, trustedOrigins } from "./origins";
 
@@ -32,8 +34,9 @@ export const githubEnabled = Boolean(process.env.GITHUB_CLIENT_ID && process.env
 
 /** Email sign-up happens on the site; the server is the authority on the AUP, never the form. */
 const SIGN_UP_PATH = "/sign-up/email";
+const MAGIC_LINK_PATH = "/sign-in/magic-link";
 
-function build() {
+function build(database?: Database) {
   if (isProd && !cookieDomain)
     throw new Error("COOKIE_DOMAIN is required in production (shared session cookie)");
   if (isProd && !turnstileSecret) throw new Error("TURNSTILE_SECRET_KEY is required in production");
@@ -43,10 +46,11 @@ function build() {
     baseURL: appUrl,
     secret: secret(),
     trustedOrigins: trustedOrigins(appUrl, siteUrl, isProd),
-    database: drizzleAdapter(getAuthDb().db, {
+    database: drizzleAdapter(getAuthDb(database).db, {
       provider: "pg",
       usePlural: true,
-      schema: { users, sessions, accounts, verifications },
+      // rateLimits: the table behind `storage: "database"` (same shape as Better Auth's own rateLimit model)
+      schema: { users, sessions, accounts, verifications, rateLimits },
     }),
     advanced: {
       database: { generateId: "uuid" },
@@ -60,17 +64,34 @@ function build() {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        const body = ctx.body as { aupAccepted?: unknown; email?: unknown } | undefined;
+        const email = typeof body?.email === "string" ? body.email : null;
+        if (ctx.path === MAGIC_LINK_PATH) {
+          // A magic link for an unknown address creates the account, so it is a sign-up: refuse blocked domains
+          // for new addresses with the same generic error. Existing accounts on such a domain still sign in.
+          if (email && (await isBlockedEmail(email)) && !(await accountExists(email))) throw signUpRefused();
+          return;
+        }
         if (ctx.path !== SIGN_UP_PATH) return;
-        const body = ctx.body as { aupAccepted?: unknown } | undefined;
         if (body?.aupAccepted !== true) {
           throw new APIError("BAD_REQUEST", {
             message: "You must accept the Acceptable Use Policy to continue",
           });
         }
+        if (email && (await isBlockedEmail(email))) throw signUpRefused();
       }),
     },
     session: { expiresIn: 60 * 60 * 24 * 14, updateAge: 60 * 60 * 24 },
-    rateLimit: { enabled: true, window: 60, max: 100, storage: "memory", customRules: AUTH_RATE_LIMITS },
+    // Counters live in Postgres (rate_limits) so the limits hold across Cloud Run instances; hits are recorded in
+    // rate_limit_events. See lib/rate-limit.ts.
+    rateLimit: {
+      enabled: true,
+      window: 60,
+      max: 100,
+      storage: "database",
+      customStorage: createAuthRateLimitStorage(database ? () => database : undefined),
+      customRules: AUTH_RATE_LIMITS,
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 10,
@@ -131,6 +152,10 @@ function build() {
     databaseHooks: {
       user: {
         create: {
+          // The one choke point every sign-up path goes through (email, magic link, GitHub): last line of defence.
+          before: async (user) => {
+            if (user.email && (await isBlockedEmail(user.email))) throw signUpRefused();
+          },
           // Plan defaults to 'free' in the schema. Grant the free monthly credits (idempotent per period) and
           // give the user a referral code. Anything needing the request (AUP, first touch) is applied in
           // lib/auth/bootstrap.ts, which is also idempotent.
@@ -168,6 +193,14 @@ async function stampSignUp(userId: string, body: SignUpBody | undefined): Promis
       : null;
   if (ft) await saveFirstTouch(userId, ft);
   await trackEvent("signup_completed", { userId, props: { method: "password" } });
+}
+
+/**
+ * A separate Better Auth instance on its own Database: stands in for another Cloud Run instance in the tests that
+ * prove rate limits are shared. Production code uses getAuth().
+ */
+export function createAuth(database: Database) {
+  return build(database);
 }
 
 let instance: ReturnType<typeof build> | undefined;

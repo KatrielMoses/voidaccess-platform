@@ -68,6 +68,8 @@ export const investigations = pgTable(
     cancelRequestedAt: tstz("cancel_requested_at"),
     /** last engine callback received; the watchdog fails runs silent for 10 minutes */
     lastEventAt: tstz("last_event_at"),
+    /** last time any instance's SSE stream served this run to a viewer; gates the results-ready email (60 s) */
+    lastViewedAt: tstz("last_viewed_at"),
   },
   (t) => [
     index("investigations_user_created_idx").on(t.userId, t.createdAt),
@@ -87,13 +89,23 @@ export const runEvents = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     seq: integer("seq").notNull(),
+    /** engine event type: stage | counts | refined | completed | failed | cancelled */
     type: text("type").notNull(),
     stage: text("stage"),
+    /** lifecycle of a `stage` event (start | end | skipped | failed); null for every other type */
+    status: text("status"),
     counts: jsonb("counts").$type<Record<string, number>>(),
     at: tstz("at").notNull(),
     receivedAt: createdAt(),
   },
-  (t) => [primaryKey({ columns: [t.runId, t.seq] }), index("run_events_user_idx").on(t.userId)],
+  (t) => [
+    primaryKey({ columns: [t.runId, t.seq] }),
+    index("run_events_user_idx").on(t.userId),
+    check(
+      "run_events_status_check",
+      sql`${t.status} IS NULL OR ${t.status} IN ('start', 'end', 'skipped', 'failed')`,
+    ),
+  ],
 );
 
 // ---- snapshot tables: immutable after ingest (UPDATE blocked by trigger) ----

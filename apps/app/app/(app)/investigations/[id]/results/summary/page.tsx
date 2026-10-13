@@ -28,7 +28,8 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
   const { summary } = inv;
   const stats = summary.stats;
   const empty = summary.markdown.trim().length === 0;
-  const fallback = inv.summaryKind !== null && inv.summaryKind !== "ai";
+  // summary_kind is set at ingest: llm | fallback | none (legacy seed rows: "ai"). Only a real fallback gets the notice.
+  const fallback = inv.summaryKind === "fallback";
   const types = Object.entries(summary.entityCounts).sort((a, b) => b[1] - a[1]);
   const maxCount = types[0]?.[1] ?? 1;
 

@@ -3,7 +3,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { grantMonthly } from "./ledger";
-import { createDatabase, type Database } from "./client";
+import type { Database } from "./client";
+import { createLocalDatabase } from "./local";
 import { fingerprint, type ResultBundle } from "@voidaccess/engine-client";
 import {
   invActors,
@@ -145,7 +146,7 @@ export async function seed(
 if (import.meta.url === `file://${process.argv[1]}`) {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL (the va_app connection) is not set");
-  const database = createDatabase(url);
+  const database = createLocalDatabase(url);
   console.log(JSON.stringify(await seed(database), null, 2));
   await database.close();
 }

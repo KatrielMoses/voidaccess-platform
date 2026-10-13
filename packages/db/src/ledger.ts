@@ -140,7 +140,8 @@ export interface RefundResult {
 /**
  * Refund a reserved run, once per investigation. Full by default; pass `stagesCompleted` for a partial
  * refund of the stages that did not run. Credits return to the buckets they were taken from, most
- * recently spent first (top-up lots, then grant).
+ * recently spent first (top-up lots, then grant). Credits taken from a lot that has expired by `ctx.now`
+ * are returned to the current grant bucket instead (never into an expired lot, where they would be lost).
  * `refundAmount` (credits, clamped to 0..charged) overrides the stage-weight maths, so the caller can apply
  * its own rounding rule (the platform uses ceil(charged * weight_not_run / 100) for cancels).
  */
@@ -178,17 +179,23 @@ export async function refund(
     );
     lotReserves.sort((a, b) => (lotExpiry.get(b.lotId!) ?? 0) - (lotExpiry.get(a.lotId!) ?? 0));
     const order = [...lotReserves, ...reserves.filter((r) => !r.lotId)];
+    const nowMs = nowOf(ctx).getTime();
     for (const r of order) {
       if (left === 0) break;
       const give = Math.min(-r.amount, left);
+      // A lot that has expired since the reserve can no longer be spent from: crediting it would lose the refund
+      // silently, so the credits go to the user's current grant bucket instead.
+      const expiredLot = r.lotId !== null && (lotExpiry.get(r.lotId) ?? 0) <= nowMs;
       await tx.insert(creditLedger).values({
         userId,
-        bucket: r.bucket,
+        bucket: expiredLot ? "grant" : r.bucket,
         amount: give,
         reason: "refund",
         investigationId,
-        lotId: r.lotId,
-        idempotencyKey: `refund:${investigationId}:${r.lotId ?? "grant"}`,
+        lotId: expiredLot ? null : r.lotId,
+        idempotencyKey: expiredLot
+          ? `refund:${investigationId}:expired-lot:${r.lotId}`
+          : `refund:${investigationId}:${r.lotId ?? "grant"}`,
       });
       left -= give;
     }

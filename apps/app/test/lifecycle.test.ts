@@ -138,7 +138,7 @@ describe("lifecycle per mock mode (real routes, real Postgres)", () => {
         "test.read",
         (tx) =>
           tx.query.runEvents.findMany({
-            where: (e, { and, eq }) => and(eq(e.runId, id), eq(e.type, "stage_end")),
+            where: (e, { and, eq }) => and(eq(e.runId, id), eq(e.type, "stage"), eq(e.status, "end")),
           }),
         { audit: false },
       );
@@ -156,7 +156,7 @@ describe("lifecycle per mock mode (real routes, real Postgres)", () => {
         "test.read",
         (tx) =>
           tx.query.runEvents.findMany({
-            where: (e, { and, eq }) => and(eq(e.runId, id), eq(e.type, "stage_end")),
+            where: (e, { and, eq }) => and(eq(e.runId, id), eq(e.type, "stage"), eq(e.status, "end")),
           }),
         { audit: false },
       )

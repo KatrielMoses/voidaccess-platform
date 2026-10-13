@@ -7,8 +7,8 @@
  *  - terminal events settle inside the same transaction as the event insert, so a crash cannot leave an
  *    event recorded but unsettled (the engine's retry would otherwise be deduped away);
  *  - `completed` moves to `ingesting` in that transaction and runs the ingest hook afterwards (complete.ts).
- * Stage events are stored as type `stage` (start) or `stage_<status>` (end/skipped/failed) so the cancel
- * timeout can derive completed stages without a schema change; the SSE stream maps them back.
+ * Stage events are stored as type `stage` with `run_events.status` = start | end | skipped | failed, so the cancel
+ * timeout can derive completed stages (type `stage`, status `end`) and the SSE stream maps them straight back.
  */
 import { eq } from "drizzle-orm";
 import { ProgressEvent, isTerminalEvent, verifyCallback } from "@voidaccess/engine-client";
@@ -22,9 +22,9 @@ export type CallbackResult = { status: number; body: Record<string, unknown> };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function storedEventType(e: ProgressEvent): string {
-  if (e.type === "stage" && e.status && e.status !== "start") return `stage_${e.status}`;
-  return e.type;
+/** The `run_events.status` of an event: the stage lifecycle for stage events (a missing one means start), else null. */
+export function storedEventStatus(e: ProgressEvent): "start" | "end" | "skipped" | "failed" | null {
+  return e.type === "stage" ? (e.status ?? "start") : null;
 }
 
 export async function handleEngineCallback(
@@ -65,8 +65,9 @@ export async function handleEngineCallback(
           runId,
           userId: run.userId,
           seq: ev.seq,
-          type: storedEventType(ev),
+          type: ev.type,
           stage: ev.stage ?? null,
+          status: storedEventStatus(ev),
           counts: ev.counts ?? null,
           at: new Date(ev.at),
         })

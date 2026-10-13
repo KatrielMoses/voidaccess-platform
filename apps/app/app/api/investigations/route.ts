@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth/session";
 import { assertSameOrigin, handle, json, readJson } from "@/lib/runs/http";
+import { clientIp } from "@/lib/rate-limit";
 import { listInvestigations, startInvestigation } from "@/lib/runs/service";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,11 @@ export function POST(req: Request) {
     assertSameOrigin(req);
     const user = await requireUser();
     const body = await readJson(req);
-    const r = await startInvestigation(user, { query: body.query, depth: body.depth });
+    const r = await startInvestigation(
+      user,
+      { query: body.query, depth: body.depth },
+      { ip: clientIp(req.headers) },
+    );
     return json(r, 201);
   });
 }
