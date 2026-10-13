@@ -77,6 +77,8 @@ def verify_policy() -> None:
     for name in ("VOIDACCESS_ENRICHMENT_SOURCES", "VOIDACCESS_DISABLED_SOURCES", "VOIDACCESS_LLM_CHUNK_TIMEOUT"):
         if not os.environ.get(name):
             raise PolicyError(f"cloud profile variable {name} is missing")
+    if os.environ.get("VOIDACCESS_RSS_SNIPPET_ONLY") != "1":
+        raise PolicyError("VOIDACCESS_RSS_SNIPPET_ONLY must be 1 in the cloud (RSS licence)")
     from sources.enrichment_allowlist import validate_enrichment_allowlist
     from sources.source_control import CLOUD_DISABLED_SOURCES, validate_disabled_sources
 

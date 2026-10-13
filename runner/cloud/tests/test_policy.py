@@ -11,6 +11,7 @@ ENV_KEYS = [
     "VOIDACCESS_SEARCH_WORKERS", "VOIDACCESS_SCRAPE_WORKERS", "VOIDACCESS_EXTRACT_CONCURRENCY",
     "VOIDACCESS_SEARCH_DEADLINE", "VOIDACCESS_CONCURRENT_COLLECT", "VOIDACCESS_LLM_CHUNK_TIMEOUT",
     "VOIDACCESS_ENRICHMENT_TIMEOUT", "VOIDACCESS_ENRICHMENT_SOURCES", "VOIDACCESS_DISABLED_SOURCES",
+    "VOIDACCESS_RSS_SNIPPET_ONLY",
 ]
 
 
@@ -67,5 +68,14 @@ def test_policy_requires_the_full_cloud_deny_list(monkeypatch):
     with pytest.raises(policy.PolicyError):
         policy.verify_policy()
     monkeypatch.delenv("VOIDACCESS_DISABLED_SOURCES")
+    with pytest.raises(policy.PolicyError):
+        policy.verify_policy()
+
+
+def test_policy_requires_rss_snippet_only(monkeypatch):
+    policy.apply_cloud_policy_base()
+    policy.apply_cloud_profile()
+    policy.verify_policy()
+    monkeypatch.setenv("VOIDACCESS_RSS_SNIPPET_ONLY", "0")
     with pytest.raises(policy.PolicyError):
         policy.verify_policy()

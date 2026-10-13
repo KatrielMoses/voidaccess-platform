@@ -8,7 +8,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PLATFORM_REPO="${PLATFORM_REPO:-$(cd "$HERE/../../.." && pwd)}"
 ENGINE_REPO="${ENGINE_REPO:-$(cd "$PLATFORM_REPO/../../.." 2>/dev/null && cd voidaccess 2>/dev/null && pwd || echo "")}"
-ENGINE_REF="${ENGINE_REF:-0dd59da}"
+ENGINE_REF="${ENGINE_REF:-9db5262}"
 OUT="${1:-$(mktemp -d)}"
 
 if [[ -z "$ENGINE_REPO" || ! -d "$ENGINE_REPO/.git" ]]; then

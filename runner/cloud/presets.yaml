@@ -47,6 +47,8 @@ cloud_profile:
     VOIDACCESS_ENRICHMENT_SOURCES: "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack"
     # E1C: sources whose commercial terms are unverified or non-commercial, off in every stage (engine CLOUD_DISABLED_SOURCES)
     VOIDACCESS_DISABLED_SOURCES: "openphish,sslbl,phishtank,ransomwhere,hibp_pwned_passwords,fbi_doj_press,pastebin,paste_ee,dpaste,rentry,gitlab,telegram"
+    # E2: RSS feeds keep headline, link, date and the feed's own snippet only (licence: no full article bodies)
+    VOIDACCESS_RSS_SNIPPET_ONLY: "1"
   # Not recommended: VOIDACCESS_PACE=aggressive (pilot 1: page ratio 0.44 in standard),
   # search deadline 15 s + enrichment cap 20 s (wave 1 variant A: pages ratio 0.75),
   # VOIDACCESS_LLM_CHUNK_CONCURRENCY=4 (no measurable gain under shared-key load).
