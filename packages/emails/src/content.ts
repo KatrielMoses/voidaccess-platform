@@ -4,6 +4,10 @@
 export const EMAIL_CONTENT = {
   productName: "VoidAccess",
   signature: "— The VoidAccess team",
+  // Lifecycle emails are written in Katriel's voice, so they sign off as him.
+  founderSignature: "— Katriel\nFounder, VoidAccess",
+  // Appended to every lifecycle/marketing email (never to transactional ones). {{unsubscribeUrl}} is the signed link.
+  unsubscribeFooter: `You're getting this because you have a VoidAccess account. Stop product tips and tutorials any time (receipts, security and usage emails still arrive): {{unsubscribeUrl}}`,
   verifyEmail: {
     subject: "Confirm your email for VoidAccess",
     body: `Hi {{name}},
@@ -122,5 +126,60 @@ Your latest payment didn't go through. Your plan stays active for now, but if it
 Update your payment method here: {{portalUrl}}
 
 If you've already fixed it, ignore this message.`,
+  },
+  // ---- lifecycle (P6, PRD §5). Plain text, founder-voiced, sent once per user, only with product-email consent. ----
+  // No prices or credit numbers are typed here: the sender passes them in from @voidaccess/config.
+  welcome: {
+    subject: "Welcome to VoidAccess",
+    // {{examples}} is the bullet list below; {{freeCredits}} comes from config.
+    exampleQueries: [
+      "LockBit ransomware group",
+      "acme-corp.com credential leaks",
+      "BlackCat ALPHV affiliates and infrastructure",
+    ],
+    body: `Hi {{name}},
+
+I'm Katriel, the person building VoidAccess. Thanks for signing up.
+
+VoidAccess searches dark web sources for you, pulls out the entities it finds (actors, domains, wallets, emails), maps how they connect and writes up what it found. You describe what you're looking into in plain words and it does the legwork. Every finding links back to where it was seen, and we label what is a lead and what is confirmed.
+
+Your account comes with {{freeCredits}} free credits each month. A few queries people start with:
+
+{{examples}}
+
+Start your first investigation: {{url}}
+
+If something is confusing or broken, reply to this email. It comes straight to me.`,
+  },
+  firstInvestigationNudge: {
+    subject: "Your first investigation takes 2 minutes",
+    body: `Hi {{name}},
+
+You signed up yesterday but haven't run an investigation yet, so here is the shortest path.
+
+Open the new-investigation page, type what you want to look into, and leave the depth on Standard. Something like:
+
+  {{example}}
+
+It runs in the background; you can close the tab and we'll email you when the results are ready.
+
+Start here: {{url}}
+
+If you're not sure what to search, reply with what you're working on and I'll suggest a query.`,
+  },
+  whatNext: {
+    subject: "Here's what you can do with your first results",
+    body: `Hi {{name}},
+
+You've finished your first investigation. A few things worth knowing:
+
+- The graph shows how the entities connect. Open the Graph tab, click a node, and follow the edges to the sources behind them.
+- Exports: CSV and JSON are free on every plan. Pro adds STIX, MISP, Sigma, YARA and the other formats.
+- Archive context: findings are also filed anonymously in a shared archive (no queries, no accounts). Your results show when something was seen before from other sources. Treat those as leads, not facts.
+- Credits: your monthly credits reset each month and don't roll over. If you need more, you can top up or move to Pro from the billing page: {{billingUrl}}
+
+Run another investigation: {{url}}
+
+Hit reply if there's something you wish it did. I read everything.`,
   },
 } as const;

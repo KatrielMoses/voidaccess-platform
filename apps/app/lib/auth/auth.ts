@@ -11,6 +11,7 @@ import { accounts, rateLimits, sessions, users, verifications } from "@voidacces
 import { getAuthDb } from "./auth-db";
 import { acceptAup, saveFirstTouch } from "./bootstrap";
 import { trackEvent } from "@/lib/analytics";
+import { sendLifecycle } from "@/lib/lifecycle/send";
 import { AUTH_RATE_LIMITS } from "../limits-auth";
 import { accountExists, isBlockedEmail, signUpRefused } from "./blocked-domains";
 import { createAuthRateLimitStorage } from "../rate-limit";
@@ -108,6 +109,7 @@ function build(database?: Database) {
       autoSignInAfterVerification: true,
       afterEmailVerification: async (user) => {
         await trackEvent("email_verified", { userId: user.id });
+        await sendLifecycle("welcome", user.id).catch(() => {}); // consent-gated and once per user (lib/lifecycle)
       },
       sendVerificationEmail: async ({ user, url }) => {
         await sendEmail("verifyEmail", user.email, { name: user.name, url });

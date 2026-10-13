@@ -24,6 +24,8 @@ async function runToCompletion(page: Page) {
   return /investigations\/([0-9a-f-]{36})/.exec(page.url())![1]!;
 }
 
+test.skip(!process.env.SCREENSHOTS, "set SCREENSHOTS=1 to regenerate the archive screenshots");
+
 test("archive screenshots: panel, graph toggle, a source that is no longer online", async ({ page }) => {
   await signUpAndVerify(page, uniqueEmail("arc-shot"), "Archive Shots");
   const inv = await runToCompletion(page);

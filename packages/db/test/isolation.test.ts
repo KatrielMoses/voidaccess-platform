@@ -136,6 +136,7 @@ describe("tenant isolation (RLS)", () => {
       "billing_customers", // P5: system-only
       "billing_events",
       "billing_alerts",
+      "lifecycle_emails", // P6: system-only
       "rate_limit_events", // H1: system-only
     ]);
     const missing = (await tenantTables()).filter((t) => !covered.has(t));
@@ -152,6 +153,7 @@ describe("tenant isolation (RLS)", () => {
           "billing_customers",
           "billing_events",
           "billing_alerts",
+          "lifecycle_emails",
           "rate_limit_events", // H1: system-only
         ].includes(t),
     );
@@ -240,6 +242,7 @@ describe("tenant isolation (RLS)", () => {
       "billing_customers",
       "billing_events",
       "billing_alerts",
+      "lifecycle_emails", // P6
       "rate_limit_events", // H1: system-only
       "archive_jobs", // P4: the archive work queue
       "archive_removed_pages",

@@ -31,6 +31,12 @@ export const users = pgTable("users", {
   profileUseCase: text("profile_use_case"),
   firstTouch: jsonb("first_touch").$type<FirstTouch>(),
   referralCode: text("referral_code").unique(),
+  // P6 (ops): consent for lifecycle and marketing email. Transactional email (verification, receipts, results-ready,
+  // usage alerts, founding notices) ignores this. Default on; one-click unsubscribe and /settings/notifications flip it.
+  productEmails: boolean("product_emails").notNull().default(true),
+  productEmailsChangedAt: tstz("product_emails_changed_at"),
+  // P6: the post-first-investigation "Star us on GitHub" prompt was dismissed; never shown again.
+  starPromptDismissedAt: tstz("star_prompt_dismissed_at"),
 });
 
 export const sessions = pgTable(

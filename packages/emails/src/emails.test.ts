@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LogTransport, setTransport, sendEmail, templates } from "./index";
+import { LogTransport, TEMPLATE_CATEGORY, setTransport, sendEmail, templates } from "./index";
 
 describe("emails", () => {
   it("renders plain-text templates with the link and signature", () => {
@@ -42,6 +42,51 @@ describe("emails", () => {
     await sendEmail("passwordReset", "a@b.test", { name: "A", url: "https://x" });
     expect(log.outbox).toHaveLength(1);
     expect(log.outbox[0]).toMatchObject({ to: "a@b.test", template: "passwordReset" });
+    setTransport(undefined);
+  });
+  it("lifecycle templates are founder-signed, carry the unsubscribe link, and fill every placeholder", () => {
+    const u = "https://app.test/unsubscribe?u=1&t=2";
+    const out = [
+      templates.welcome({
+        name: "A",
+        url: "https://app.test/investigations/new",
+        freeCredits: "100",
+        unsubscribeUrl: u,
+      }),
+      templates.firstInvestigationNudge({
+        name: "A",
+        url: "https://app.test/n",
+        example: "q",
+        unsubscribeUrl: u,
+      }),
+      templates.whatNext({
+        name: "A",
+        url: "https://app.test/n",
+        billingUrl: "b",
+        unsubscribeUrl: u,
+      }),
+    ];
+    for (const t of out) {
+      expect(t.text).not.toMatch(/\{\{/);
+      expect(t.text).toContain(u);
+      expect(t.text).toContain("— Katriel");
+    }
+    expect(out[0]!.text).toContain("LockBit ransomware group"); // the three example queries
+  });
+  it("every template is classified, and a lifecycle email cannot be sent without a one-click unsubscribe", async () => {
+    expect(Object.keys(TEMPLATE_CATEGORY).sort()).toEqual(Object.keys(templates).sort());
+    const log = new LogTransport(undefined);
+    setTransport(log);
+    const p = { name: "A", url: "u", freeCredits: "1", unsubscribeUrl: "x" };
+    await expect(sendEmail("welcome", "a@b.test", p)).rejects.toThrow(/lifecycle/);
+    await sendEmail("welcome", "a@b.test", p, { oneClickUrl: "https://app.test/api/unsubscribe?u=1&t=2" });
+    expect(log.outbox[0]!.headers).toEqual({
+      "List-Unsubscribe": "<https://app.test/api/unsubscribe?u=1&t=2>",
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    });
+    // transactional email never carries unsubscribe headers
+    await sendEmail("passwordReset", "a@b.test", { name: "A", url: "https://x" });
+    expect(log.outbox[1]!.headers).toBeUndefined();
     setTransport(undefined);
   });
 });

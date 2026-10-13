@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PLANS } from "@voidaccess/config";
 import { Badge } from "@voidaccess/ui";
 import { githubEnabled } from "@/lib/auth/auth";
@@ -14,6 +15,13 @@ export default async function SettingsPage() {
         <h1 className="font-display text-3xl font-semibold tracking-tight">Settings</h1>
         <Badge variant="accent">{PLANS[user.plan].name} plan</Badge>
       </header>
+      <Link
+        href="/settings/notifications"
+        className="rounded-lg border border-border-subtle bg-surface px-5 py-4 text-sm hover:border-border-strong"
+      >
+        <span className="font-medium text-fg">Notifications</span>
+        <span className="mt-0.5 block text-fg-secondary">Choose which emails you get.</span>
+      </Link>
       <SettingsForms
         name={user.name}
         email={user.email}

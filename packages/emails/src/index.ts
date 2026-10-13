@@ -9,6 +9,8 @@ export interface EmailMessage {
   text: string;
   /** template id, used by tests and the e2e log transport */
   template: string;
+  /** extra headers (List-Unsubscribe, List-Unsubscribe-Post on lifecycle email) */
+  headers?: Record<string, string>;
 }
 
 export interface EmailTransport {
@@ -38,7 +40,13 @@ export class ResendTransport implements EmailTransport {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: this.from, to: [msg.to], subject: msg.subject, text: msg.text }),
+      body: JSON.stringify({
+        from: this.from,
+        to: [msg.to],
+        subject: msg.subject,
+        text: msg.text,
+        ...(msg.headers ? { headers: msg.headers } : {}),
+      }),
     });
     if (!res.ok) throw new Error(`Resend send failed: ${res.status}`);
   }
@@ -70,6 +78,15 @@ const fill = (tpl: string, vars: Record<string, string>) =>
 const compose = (t: { subject: string; body: string }, vars: Record<string, string>) => ({
   subject: fill(t.subject, vars),
   text: `${fill(t.body, vars)}\n\n${EMAIL_CONTENT.signature}\n`,
+});
+/** Lifecycle email: founder sign-off plus the unsubscribe footer carrying the signed link. */
+const composeLifecycle = (
+  t: { subject: string; body: string },
+  vars: Record<string, string>,
+  unsubscribeUrl: string,
+) => ({
+  subject: fill(t.subject, vars),
+  text: `${fill(t.body, vars)}\n\n${EMAIL_CONTENT.founderSignature}\n\n--\n${fill(EMAIL_CONTENT.unsubscribeFooter, { unsubscribeUrl })}\n`,
 });
 
 export const templates = {
@@ -108,18 +125,73 @@ export const templates = {
     compose(EMAIL_CONTENT.foundingReleased, p),
   cancellationSurvey: (p: { name: string; date: string }) => compose(EMAIL_CONTENT.cancellationSurvey, p),
   paymentFailed: (p: { name: string; portalUrl: string }) => compose(EMAIL_CONTENT.paymentFailed, p),
+  // ---- lifecycle (P6): consent-gated, every one carries the unsubscribe footer ----
+  welcome: (p: { name: string; url: string; freeCredits: string; unsubscribeUrl: string }) =>
+    composeLifecycle(
+      EMAIL_CONTENT.welcome,
+      {
+        name: p.name,
+        url: p.url,
+        freeCredits: p.freeCredits,
+        examples: EMAIL_CONTENT.welcome.exampleQueries.map((q) => `  - ${q}`).join("\n"),
+      },
+      p.unsubscribeUrl,
+    ),
+  firstInvestigationNudge: (p: { name: string; url: string; example: string; unsubscribeUrl: string }) =>
+    composeLifecycle(EMAIL_CONTENT.firstInvestigationNudge, p, p.unsubscribeUrl),
+  whatNext: (p: { name: string; url: string; billingUrl: string; unsubscribeUrl: string }) =>
+    composeLifecycle(EMAIL_CONTENT.whatNext, p, p.unsubscribeUrl),
 };
 
 export type TemplateName = keyof typeof templates;
+
+/**
+ * Consent class of every template. `transactional` is always sent (the account holder needs it to use or secure
+ * the account); `lifecycle` is product/marketing email: it needs the user's preference and an unsubscribe link.
+ * A new template must be classified here (the TS record is exhaustive).
+ */
+export const TEMPLATE_CATEGORY: Record<TemplateName, "transactional" | "lifecycle"> = {
+  verifyEmail: "transactional",
+  magicLink: "transactional",
+  passwordReset: "transactional",
+  changeEmail: "transactional",
+  resultsReady: "transactional",
+  welcomePro: "transactional",
+  creditAlert80: "transactional",
+  creditAlert100: "transactional",
+  foundingReleaseWarning: "transactional",
+  foundingReleased: "transactional",
+  cancellationSurvey: "transactional",
+  paymentFailed: "transactional",
+  welcome: "lifecycle",
+  firstInvestigationNudge: "lifecycle",
+  whatNext: "lifecycle",
+};
+
+/** RFC 8058 one-click unsubscribe headers for a lifecycle message. `oneClickUrl` accepts a POST without sign-in. */
+export const unsubscribeHeaders = (oneClickUrl: string) => ({
+  "List-Unsubscribe": `<${oneClickUrl}>`,
+  "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+});
 
 /** Render a template and send it with the configured transport. */
 export async function sendEmail<T extends TemplateName>(
   template: T,
   to: string,
   params: Parameters<(typeof templates)[T]>[0],
+  opts: { oneClickUrl?: string } = {},
 ): Promise<void> {
   const { subject, text } = (templates[template] as (p: typeof params) => { subject: string; text: string })(
     params,
   );
-  await getTransport().send({ to, subject, text, template });
+  // Lifecycle email must be unsubscribable in one click; refuse to send it without the header.
+  if (TEMPLATE_CATEGORY[template] === "lifecycle" && !opts.oneClickUrl)
+    throw new Error(`${template} is a lifecycle email: pass opts.oneClickUrl (List-Unsubscribe)`);
+  await getTransport().send({
+    to,
+    subject,
+    text,
+    template,
+    ...(opts.oneClickUrl ? { headers: unsubscribeHeaders(opts.oneClickUrl) } : {}),
+  });
 }
