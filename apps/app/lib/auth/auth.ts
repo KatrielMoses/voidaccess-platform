@@ -3,13 +3,13 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { APIError, createAuthMiddleware } from "better-auth/api";
-import { captcha, magicLink } from "better-auth/plugins";
+import { captcha, emailOTP } from "better-auth/plugins";
 import { randomBytes } from "node:crypto";
 import { sendEmail } from "@voidaccess/emails";
 import { grantMonthly, getDatabase, type Database } from "@voidaccess/db";
 import { accounts, rateLimits, sessions, users, verifications } from "@voidaccess/db/schema";
 import { getAuthDb } from "./auth-db";
-import { acceptAup, saveFirstTouch } from "./bootstrap";
+import { saveFirstTouch } from "./bootstrap";
 import { trackEvent } from "@/lib/analytics";
 import { sendLifecycle } from "@/lib/lifecycle/send";
 import { AUTH_RATE_LIMITS } from "../limits-auth";
@@ -32,10 +32,23 @@ function secret(): string {
 }
 
 export const githubEnabled = Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET);
+export const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+export const microsoftEnabled = Boolean(
+  process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET,
+);
 
-/** Email sign-up happens on the site; the server is the authority on the AUP, never the form. */
-const SIGN_UP_PATH = "/sign-up/email";
-const MAGIC_LINK_PATH = "/sign-in/magic-link";
+/**
+ * Sign-in is passwordless: Google, Microsoft, GitHub, or a 6-digit code sent by email. There is no separate sign-up;
+ * the first successful sign-in creates the account (email already verified). The Acceptable Use Policy is accepted on
+ * the app's /accept-terms page before anything else, for every method.
+ */
+export const SEND_CODE_PATH = "/email-otp/send-verification-otp";
+export const CODE_SIGN_IN_PATH = "/sign-in/email-otp";
+export const SIGN_IN_CODE_MINUTES = 10;
+
+/** Client IP for rate limits: the header the real front end sets (cf-connecting-ip behind Cloudflare, x-forwarded-for
+ * behind Google's front end). Unset: Better Auth's default. */
+const ipHeader = process.env.AUTH_IP_HEADER;
 
 function build(database?: Database) {
   if (isProd && !cookieDomain)
@@ -62,27 +75,28 @@ function build(database?: Database) {
       disableOriginCheck: false, // explicit: Better Auth switches it off by default under NODE_ENV=test
       // One session across voidaccess.pro and app.voidaccess.pro. Same attributes as above, just a parent domain.
       ...(cookieDomain ? { crossSubDomainCookies: { enabled: true, domain: cookieDomain } } : {}),
+      ...(ipHeader ? { ipAddress: { ipAddressHeaders: [ipHeader] } } : {}),
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
-        const body = ctx.body as { aupAccepted?: unknown; email?: unknown } | undefined;
-        const email = typeof body?.email === "string" ? body.email : null;
-        if (ctx.path === MAGIC_LINK_PATH) {
-          // A magic link for an unknown address creates the account, so it is a sign-up: refuse blocked domains
-          // for new addresses with the same generic error. Existing accounts on such a domain still sign in.
-          if (email && (await isBlockedEmail(email)) && !(await accountExists(email))) throw signUpRefused();
-          return;
-        }
-        if (ctx.path !== SIGN_UP_PATH) return;
-        if (body?.aupAccepted !== true) {
-          throw new APIError("BAD_REQUEST", {
-            message: "You must accept the Acceptable Use Policy to continue",
-          });
-        }
-        if (email && (await isBlockedEmail(email))) throw signUpRefused();
+        if (ctx.path !== SEND_CODE_PATH) return;
+        const body = ctx.body as { email?: unknown; type?: unknown } | undefined;
+        if (body?.type !== "sign-in")
+          throw new APIError("BAD_REQUEST", { message: "Only sign-in codes are supported" });
+        const email = typeof body.email === "string" ? body.email : null;
+        // A code for an unknown address creates the account on first sign-in, so refuse blocked domains here for
+        // new addresses (same generic error). Existing accounts on such a domain can still sign in.
+        if (email && (await isBlockedEmail(email)) && !(await accountExists(email))) throw signUpRefused();
       }),
     },
     session: { expiresIn: 60 * 60 * 24 * 14, updateAge: 60 * 60 * 24 },
+    // Same email, any method, one account: a later Google or GitHub sign-in joins the account an email code created
+    // (both providers verify the address). Microsoft is deliberately NOT trusted for automatic linking: multi-tenant
+    // Entra can return an unverified email, a known takeover path. A Microsoft sign-in for an email that already has
+    // an account is refused; the user signs in with a code once and connects Microsoft in Settings.
+    account: {
+      accountLinking: { enabled: true, trustedProviders: ["google", "github"], allowDifferentEmails: false },
+    },
     // Counters live in Postgres (rate_limits) so the limits hold across Cloud Run instances; hits are recorded in
     // rate_limit_events. See lib/rate-limit.ts.
     rateLimit: {
@@ -93,44 +107,35 @@ function build(database?: Database) {
       customStorage: createAuthRateLimitStorage(database ? () => database : undefined),
       customRules: AUTH_RATE_LIMITS,
     },
-    emailAndPassword: {
-      enabled: true,
-      minPasswordLength: 10,
-      requireEmailVerification: true,
-      revokeSessionsOnPasswordReset: true,
-      // The reset form lives on the site; the emailed link carries the token there.
-      sendResetPassword: async ({ user, token }) => {
-        const url = `${siteUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(token)}`;
-        await sendEmail("passwordReset", user.email, { name: user.name, url });
-      },
+    // Each provider is on only when its credentials are configured.
+    socialProviders: {
+      ...(githubEnabled
+        ? {
+            github: {
+              clientId: process.env.GITHUB_CLIENT_ID!,
+              clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+            },
+          }
+        : {}),
+      ...(googleEnabled
+        ? {
+            google: {
+              clientId: process.env.GOOGLE_CLIENT_ID!,
+              clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+              prompt: "select_account" as const,
+            },
+          }
+        : {}),
+      ...(microsoftEnabled
+        ? {
+            microsoft: {
+              clientId: process.env.MICROSOFT_CLIENT_ID!,
+              clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
+              tenantId: "common", // personal and work/school accounts
+            },
+          }
+        : {}),
     },
-    emailVerification: {
-      sendOnSignUp: true,
-      autoSignInAfterVerification: true,
-      afterEmailVerification: async (user) => {
-        await trackEvent("email_verified", { userId: user.id });
-        await sendLifecycle("welcome", user.id).catch(() => {}); // consent-gated and once per user (lib/lifecycle)
-      },
-      sendVerificationEmail: async ({ user, url }) => {
-        await sendEmail("verifyEmail", user.email, { name: user.name, url });
-      },
-    },
-    user: {
-      changeEmail: {
-        enabled: true,
-        sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
-          await sendEmail("changeEmail", newEmail, { name: user.name, url });
-        },
-      },
-    },
-    socialProviders: githubEnabled
-      ? {
-          github: {
-            clientId: process.env.GITHUB_CLIENT_ID!,
-            clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-          },
-        }
-      : {},
     plugins: [
       // Turnstile on the endpoints a bot would hammer. Verified here, not on the site, so calling the API
       // directly gains nothing. Off only outside production when no secret is set (tests, local dev).
@@ -139,14 +144,17 @@ function build(database?: Database) {
             captcha({
               provider: "cloudflare-turnstile",
               secretKey: turnstileSecret,
-              endpoints: [SIGN_UP_PATH, "/sign-in/magic-link", "/request-password-reset"],
+              endpoints: [SEND_CODE_PATH],
             }),
           ]
         : []),
-      magicLink({
-        expiresIn: 300,
-        sendMagicLink: async ({ email, url }) => {
-          await sendEmail("magicLink", email, { url, minutes: 5 });
+      emailOTP({
+        otpLength: 6,
+        expiresIn: SIGN_IN_CODE_MINUTES * 60,
+        allowedAttempts: 5,
+        sendVerificationOTP: async ({ email, otp, type }) => {
+          if (type === "sign-in")
+            await sendEmail("signInCode", email, { code: otp, minutes: SIGN_IN_CODE_MINUTES });
         },
       }),
       nextCookies(), // must be last
@@ -154,7 +162,7 @@ function build(database?: Database) {
     databaseHooks: {
       user: {
         create: {
-          // The one choke point every sign-up path goes through (email, magic link, GitHub): last line of defence.
+          // The one choke point every first sign-in goes through (email code, Google, Microsoft, GitHub).
           before: async (user) => {
             if (user.email && (await isBlockedEmail(user.email))) throw signUpRefused();
           },
@@ -163,7 +171,7 @@ function build(database?: Database) {
           // lib/auth/bootstrap.ts, which is also idempotent.
           after: async (user, ctx) => {
             try {
-              if (ctx?.path === SIGN_UP_PATH) await stampSignUp(user.id, ctx.body as SignUpBody | undefined);
+              await stampSignUp(user.id, ctx?.path, ctx?.body as SignUpBody | undefined);
               await getDatabase().withSystem("account.create", (tx) =>
                 tx
                   .update(users)
@@ -171,6 +179,12 @@ function build(database?: Database) {
                   .where(and(eq(users.id, user.id), isNull(users.referralCode))),
               );
               await grantMonthly(user.id, "free", new Date());
+              // Every sign-in method verifies the address (the email code itself, or the provider's verified email),
+              // so the account starts verified: record it and send the welcome email (consent-gated, once).
+              if (user.emailVerified) {
+                await trackEvent("email_verified", { userId: user.id });
+                await sendLifecycle("welcome", user.id).catch(() => {});
+              }
             } catch (e) {
               console.error("account.create hook failed; bootstrap will retry", e);
             }
@@ -182,19 +196,23 @@ function build(database?: Database) {
 }
 
 interface SignUpBody {
-  aupAccepted?: unknown;
   firstTouch?: unknown;
 }
 
-/** Email sign-up: store the AUP timestamp and the first-touch the visitor consented to (sent in the body). */
-async function stampSignUp(userId: string, body: SignUpBody | undefined): Promise<void> {
-  if (body?.aupAccepted === true) await acceptAup(userId);
+/** First sign-in: store the first-touch attribution the visitor consented to (sent with the email-code sign-in). */
+async function stampSignUp(
+  userId: string,
+  path: string | undefined,
+  body: SignUpBody | undefined,
+): Promise<void> {
   const ft =
     body?.firstTouch && typeof body.firstTouch === "object"
       ? parseAttribution({ cookie: JSON.stringify(body.firstTouch) })
       : null;
   if (ft) await saveFirstTouch(userId, ft);
-  await trackEvent("signup_completed", { userId, props: { method: "password" } });
+  const method =
+    path === CODE_SIGN_IN_PATH ? "email_code" : path?.startsWith("/callback/") ? path.slice(10) : "other";
+  await trackEvent("signup_completed", { userId, props: { method } });
 }
 
 /**

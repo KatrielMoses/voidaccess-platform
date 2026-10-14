@@ -16,7 +16,14 @@ export const ownerPool = () => (owner ??= new pg.Pool({ connectionString: ownerU
 export async function makeUser(plan: PlanId = "pro") {
   const id = randomUUID();
   await appDb().withSystem("test.makeUser", (tx) =>
-    tx.insert(users).values({ id, name: "T " + id.slice(0, 4), email: `${id}@test.local`, plan }),
+    tx.insert(users).values({
+      id,
+      name: "T " + id.slice(0, 4),
+      email: `${id}@test.local`,
+      plan,
+      emailVerified: true,
+      aupAcceptedAt: new Date(),
+    }),
   );
   return id;
 }

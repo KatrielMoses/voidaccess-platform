@@ -7,7 +7,6 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 const SITE = "https://voidaccess.pro";
 const APP = "https://app.voidaccess.pro";
 const OUT = process.env.PROOF_OUT ?? "e2e-prod/evidence";
-const PASSWORD = "d1 proof correct horse battery";
 const tag = Date.now().toString(36);
 const A = `delivered+d1proof-a${tag}@resend.dev`;
 const B = `delivered+d1proof-b${tag}@resend.dev`;
@@ -19,15 +18,23 @@ const script = (name: string, email: string, ...rest: string[]) =>
     env: process.env,
   }).trim();
 
-/** Turnstile keeps automation off the real form, so the account is created server-side (see the script). */
-const createAccount = (email: string) => script("ops-create-test-account", email, PASSWORD);
-
+/**
+ * Turnstile keeps automation off the real code request, and a resend.dev inbox can't be read, so the code is issued
+ * server-side (see the script). It is then used through the real sign-in endpoint, from the site's origin, exactly as
+ * the form sends it: the first sign-in creates the account, later ones return to it.
+ */
 async function signIn(page: Page, email: string) {
-  const next = encodeURIComponent(`${APP}/welcome`);
-  await page.goto(`${SITE}/sign-in?next=${next}`);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  const otp = script("ops-sign-in-code", email);
+  const r = await page.request.post(`${APP}/api/auth/sign-in/email-otp`, {
+    data: { email, otp, name: "D1 Proof" },
+    headers: { origin: SITE },
+  });
+  expect(r.ok(), "sign-in with the issued code").toBeTruthy();
+  await page.goto(`${APP}/welcome`);
+  if (/\/accept-terms/.test(page.url())) {
+    await page.getByRole("checkbox").click();
+    await page.getByRole("button", { name: "Continue" }).click();
+  }
   await expect(page).toHaveURL(new RegExp(`^${APP}/welcome`), { timeout: 60_000 });
 }
 
@@ -43,24 +50,16 @@ test("production proof", async ({ browser }) => {
   const t0 = Date.now();
   const a = await newContext(browser);
 
-  // 1-2. sign up on the site, verify (ops script), land on the app signed in with 100 credits
-  // the sign-up page and its gates on production
-  await a.page.goto(`${SITE}/sign-up`);
-  const submitBtn = a.page.getByRole("button", { name: "Create account" });
-  await expect(submitBtn).toBeDisabled(); // no AUP, no Turnstile token
-  await a.page.screenshot({ path: `${OUT}/01-sign-up-page.png` });
-  for (const body of [
-    { name: "x", email: A, password: PASSWORD, aupAccepted: true }, // no captcha token
-    { name: "x", email: A, password: PASSWORD }, // no AUP, no captcha token
-  ]) {
-    const r = await a.page.request.post(`${APP}/api/auth/sign-up/email`, {
-      data: body,
-      headers: { origin: SITE },
-    });
-    console.log("sign-up without captcha:", r.status());
-    expect(r.status()).toBe(400);
-  }
-  console.log("create:", createAccount(A));
+  // 1-2. the sign-in page and its gates on production, then a first sign-in that creates the account
+  await a.page.goto(`${SITE}/sign-in`);
+  await expect(a.page.getByRole("button", { name: "Email me a sign-in code" })).toBeDisabled(); // no Turnstile token
+  await a.page.screenshot({ path: `${OUT}/01-sign-in-page.png` });
+  const noCaptcha = await a.page.request.post(`${APP}/api/auth/email-otp/send-verification-otp`, {
+    data: { email: A, type: "sign-in" },
+    headers: { origin: SITE },
+  });
+  console.log("code request without captcha:", noCaptcha.status());
+  expect(noCaptcha.status()).toBe(400);
   await signIn(a.page, A);
   await expect(a.page.getByRole("heading", { name: /Welcome/ })).toBeVisible();
   await expect.poll(() => pill(a.page)).toBe(100);
@@ -126,7 +125,6 @@ test("production proof", async ({ browser }) => {
 
   // 6. isolation: a second account gets 404 on the first account's investigation everywhere
   const b = await newContext(browser);
-  console.log("create:", createAccount(B));
   await signIn(b.page, B);
   const paths = [
     `/investigations/${invId}`,

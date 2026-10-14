@@ -48,23 +48,27 @@ function Section({
   );
 }
 
+export type ProviderId = "google" | "microsoft" | "github";
+const PROVIDER_LABEL: Record<ProviderId, string> = {
+  google: "Google",
+  microsoft: "Microsoft",
+  github: "GitHub",
+};
+
 export function SettingsForms({
   name,
   email,
-  emailVerified,
-  githubEnabled,
+  providers,
 }: {
   name: string;
   email: string;
-  emailVerified: boolean;
-  githubEnabled: boolean;
+  providers: ProviderId[];
 }) {
   return (
     <>
       <ProfileSection name={name} />
-      <EmailSection email={email} verified={emailVerified} />
-      <PasswordSection />
-      {githubEnabled ? <GithubSection /> : null}
+      <EmailSection email={email} />
+      {providers.length ? <ConnectedSection providers={providers} /> : null}
       <SessionsSection />
       <ExportSection />
       <DeleteSection email={email} />
@@ -105,159 +109,71 @@ function ProfileSection({ name }: { name: string }) {
   );
 }
 
-function EmailSection({ email, verified }: { email: string; verified: boolean }) {
-  const [busy, setBusy] = useState(false);
-  const [r, setR] = useState<Result>(null);
+function EmailSection({ email }: { email: string }) {
   return (
     <Section
       title="Email"
-      description={`Signed in as ${email}${verified ? "" : " (not confirmed yet)"}. A new address only takes effect after you confirm it from your inbox.`}
+      description="Sign-in is passwordless: a one-time code to this address, or a connected Google, Microsoft or GitHub account with the same email."
     >
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          const res = await authClient.changeEmail({
-            newEmail: String(new FormData(e.currentTarget).get("newEmail") ?? ""),
-            callbackURL: "/settings",
-          });
-          setBusy(false);
-          setR(
-            res.error
-              ? { ok: false, text: res.error.message ?? "Could not change the email" }
-              : { ok: true, text: "Check your inbox for a confirmation link." },
-          );
-        }}
-      >
-        <Field id="newEmail" label="New email" type="email" required autoComplete="email" />
-        <Msg r={r} />
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" loading={busy}>
-            Change email
-          </Button>
-          {!verified ? (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={async () => {
-                const res = await authClient.sendVerificationEmail({ email, callbackURL: "/settings" });
-                setR(
-                  res.error
-                    ? { ok: false, text: res.error.message ?? "Could not send" }
-                    : { ok: true, text: "Verification email sent." },
-                );
-              }}
-            >
-              Resend verification
-            </Button>
-          ) : null}
-        </div>
-      </form>
+      <p className="font-mono text-sm text-fg">{email}</p>
     </Section>
   );
 }
 
-function PasswordSection() {
-  const [busy, setBusy] = useState(false);
-  const [r, setR] = useState<Result>(null);
-  return (
-    <Section title="Password" description="Changing it signs you out of your other devices.">
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const form = e.currentTarget;
-          const fd = new FormData(form);
-          setBusy(true);
-          const res = await authClient.changePassword({
-            currentPassword: String(fd.get("currentPassword") ?? ""),
-            newPassword: String(fd.get("newPassword") ?? ""),
-            revokeOtherSessions: true,
-          });
-          setBusy(false);
-          if (res.error) setR({ ok: false, text: res.error.message ?? "Could not change the password" });
-          else {
-            setR({ ok: true, text: "Password changed." });
-            form.reset();
-          }
-        }}
-      >
-        <Field
-          id="currentPassword"
-          label="Current password"
-          type="password"
-          required
-          autoComplete="current-password"
-        />
-        <Field
-          id="newPassword"
-          label="New password"
-          type="password"
-          required
-          minLength={10}
-          autoComplete="new-password"
-          hint="At least 10 characters."
-        />
-        <Msg r={r} />
-        <Button type="submit" loading={busy} className="self-start">
-          Change password
-        </Button>
-      </form>
-    </Section>
-  );
-}
-
-function GithubSection() {
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [githubAccountId, setGithubAccountId] = useState("");
+function ConnectedSection({ providers }: { providers: ProviderId[] }) {
+  const [linked, setLinked] = useState<Record<string, string> | null>(null); // providerId -> accountId
   const [r, setR] = useState<Result>(null);
   useEffect(() => {
     authClient.listAccounts().then((res) => {
       const list = (res.data ?? []) as Array<{ providerId?: string; provider?: string; accountId?: string }>;
-      const gh = list.find((a) => (a.providerId ?? a.provider) === "github");
-      setGithubAccountId(gh?.accountId ?? "");
-      setConnected(Boolean(gh));
+      setLinked(Object.fromEntries(list.map((a) => [a.providerId ?? a.provider ?? "", a.accountId ?? ""])));
     });
   }, []);
   return (
-    <Section title="Connected accounts" description="Sign in with GitHub.">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-fg">
-          GitHub: {connected === null ? "checking…" : connected ? "connected" : "not connected"}
-        </span>
-        {connected === false ? (
-          <Button
-            variant="secondary"
-            onClick={() => authClient.linkSocial({ provider: "github", callbackURL: "/settings" })}
-          >
-            Connect GitHub
-          </Button>
-        ) : connected ? (
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              const res = await authClient.unlinkAccount({
-                providerId: "github",
-                accountId: githubAccountId,
-              } as Parameters<typeof authClient.unlinkAccount>[0]);
-              if (res.error)
-                setR({
-                  ok: false,
-                  text: res.error.message ?? "Could not disconnect (it may be your only sign-in method)",
-                });
-              else setConnected(false);
-            }}
-          >
-            Disconnect
-          </Button>
-        ) : null}
-      </div>
+    <Section title="Connected accounts" description="Sign in with any connected account.">
+      <ul className="flex flex-col gap-3">
+        {providers.map((p) => {
+          const accountId = linked?.[p];
+          return (
+            <li key={p} className="flex items-center justify-between gap-3">
+              <span className="text-sm text-fg">
+                {PROVIDER_LABEL[p]}:{" "}
+                {linked === null ? "checking…" : accountId ? "connected" : "not connected"}
+              </span>
+              {linked === null ? null : accountId ? (
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    const res = await authClient.unlinkAccount({ providerId: p, accountId } as Parameters<
+                      typeof authClient.unlinkAccount
+                    >[0]);
+                    if (res.error)
+                      setR({
+                        ok: false,
+                        text:
+                          res.error.message ?? "Could not disconnect (it may be your only sign-in method)",
+                      });
+                    else setLinked((l) => ({ ...(l ?? {}), [p]: "" }));
+                  }}
+                >
+                  Disconnect
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  onClick={() => authClient.linkSocial({ provider: p, callbackURL: "/settings" })}
+                >
+                  Connect {PROVIDER_LABEL[p]}
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
       <Msg r={r} />
     </Section>
   );
 }
-
 function SessionsSection() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);

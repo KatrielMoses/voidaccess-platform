@@ -78,7 +78,12 @@ export async function startInvestigation(
     // Serialise this user's run creation so the concurrency and daily caps cannot be raced past.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${"runs:" + user.id}, 0))`);
     const [row] = await tx
-      .select({ plan: users.plan, status: users.status, emailVerified: users.emailVerified })
+      .select({
+        plan: users.plan,
+        status: users.status,
+        emailVerified: users.emailVerified,
+        aupAcceptedAt: users.aupAcceptedAt,
+      })
       .from(users)
       .where(eq(users.id, user.id));
     // Authoritative values from the database, not the (possibly stale) session.
@@ -86,6 +91,12 @@ export async function startInvestigation(
       throw new RunError("account_inactive", "This account is not active.");
     if (!row.emailVerified)
       throw new RunError("unverified_email", "Verify your email address before starting an investigation.");
+    // Every sign-in method lands on /accept-terms first; this is the server-side guarantee behind that page.
+    if (!row.aupAcceptedAt)
+      throw new RunError(
+        "aup_required",
+        "Accept the Acceptable Use Policy before starting an investigation.",
+      );
 
     const [active] = await tx
       .select({ n: count() })

@@ -11,9 +11,13 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 const sent = vi.hoisted(() => [] as { template: string; to: string }[]);
+const codes = vi.hoisted(() => new Map<string, string>());
 vi.mock("@voidaccess/emails", async (orig) => ({
   ...(await orig<typeof import("@voidaccess/emails")>()),
-  sendEmail: vi.fn(async (template: string, to: string) => void sent.push({ template, to })),
+  sendEmail: vi.fn(async (template: string, to: string, vars?: { code?: string }) => {
+    sent.push({ template, to });
+    if (vars?.code) codes.set(to, vars.code);
+  }),
 }));
 
 const SITE_ORIGIN = "http://va.localhost:3700";
@@ -30,14 +34,13 @@ const post = (path: string, body: Record<string, unknown>) =>
       body: JSON.stringify(body),
     }),
   );
+/** Request a code and, if one was sent, sign in with it (the first sign-in creates the account). */
 const signUp = async (email: string) => {
-  const res = await post("/sign-up/email", {
-    name: "B",
-    email,
-    password: "a long password",
-    aupAccepted: true,
-  });
-  return { status: res.status, body: await res.text() };
+  const res = await post("/email-otp/send-verification-otp", { email, type: "sign-in" });
+  if (res.status !== 200) return { status: res.status, body: await res.text() };
+  const otp = codes.get(email.toLowerCase());
+  const done = await post("/sign-in/email-otp", { email, otp });
+  return { status: done.status, body: await done.text() };
 };
 const userByEmail = (email: string) =>
   db().withSystem("test.user", (tx) => tx.select().from(users).where(eq(users.email, email)), {
@@ -63,7 +66,7 @@ describe("H1-3: blocked e-mail domains", () => {
     expect(emailDomainCandidates("a@")).toEqual([]);
   });
 
-  it("email sign-up from a blocked domain, or any subdomain of it, gets one generic error and creates nothing", async () => {
+  it("email-code sign-up from a blocked domain, or any subdomain of it, gets one generic error and creates nothing", async () => {
     const emails = [
       `a-${tag}@${BLOCKED}`,
       `b-${tag}@mail.${BLOCKED}`,
@@ -88,10 +91,10 @@ describe("H1-3: blocked e-mail domains", () => {
     expect(ok3.status).toBe(200);
   });
 
-  it("magic-link sign-up: a new address on a blocked domain gets the same generic error; nothing is stored or sent", async () => {
+  it("a code request for a new address on a blocked domain gets the generic error; nothing is stored or sent", async () => {
     sent.length = 0;
     const email = `ml-${tag}@sub.${BLOCKED}`;
-    const res = await post("/sign-in/magic-link", { email });
+    const res = await post("/email-otp/send-verification-otp", { email, type: "sign-in" });
     expect(res.status).toBe(400);
     expect(((await res.json()) as { message: string }).message).toBe(SIGN_UP_REFUSED_MESSAGE);
     expect(sent).toEqual([]);
@@ -99,23 +102,18 @@ describe("H1-3: blocked e-mail domains", () => {
     expect(rows.some((v) => v.identifier.includes(email))).toBe(false);
   });
 
-  it("magic link for an unblocked new address still works, and an existing account on a since-blocked domain can still sign in", async () => {
-    sent.length = 0;
-    const fine = await post("/sign-in/magic-link", { email: `ml-ok-${tag}@fine-${tag}.example` });
-    expect(fine.status).toBe(200);
-    expect(sent.map((e) => e.template)).toEqual(["magicLink"]);
-
+  it("an existing account on a since-blocked domain can still get a code and sign in", async () => {
     const existing = `old-${tag}@${BLOCKED}`;
     await db().withSystem("test.old", (tx) =>
       tx.insert(users).values({ id: randomUUID(), name: "Old", email: existing, emailVerified: true }),
     );
     sent.length = 0;
-    const res = await post("/sign-in/magic-link", { email: existing });
+    const res = await signUp(existing);
     expect(res.status).toBe(200);
-    expect(sent).toEqual([{ template: "magicLink", to: existing }]);
+    expect(sent).toEqual([{ template: "signInCode", to: existing }]);
   });
 
-  it("the user-creation hook is a last line of defence for every path (e.g. GitHub, magic-link verification)", async () => {
+  it("the user-creation hook is a last line of defence for every path (e.g. Google, Microsoft, GitHub)", async () => {
     const ctx = await getAuth().$context;
     const email = `hook-${tag}@${BLOCKED}`;
     await expect(

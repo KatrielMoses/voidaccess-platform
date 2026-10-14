@@ -3,11 +3,10 @@ import { LogTransport, TEMPLATE_CATEGORY, setTransport, sendEmail, templates } f
 
 describe("emails", () => {
   it("renders plain-text templates with the link and signature", () => {
-    const t = templates.verifyEmail({ name: "Ada", url: "https://app.test/verify?t=1" });
-    expect(t.text).toContain("Hi Ada");
-    expect(t.text).toContain("https://app.test/verify?t=1");
-    expect(t.subject).toMatch(/Confirm/);
-    expect(templates.magicLink({ url: "u", minutes: 5 }).text).toContain("5 minutes");
+    const t = templates.signInCode({ code: "482913", minutes: 10 });
+    expect(t.text).toContain("482913");
+    expect(t.text).toContain("10 minutes");
+    expect(t.subject).toContain("482913");
   });
   it("renders the billing templates with every placeholder filled", () => {
     const out = [
@@ -39,9 +38,9 @@ describe("emails", () => {
   it("sends through the log transport", async () => {
     const log = new LogTransport(undefined);
     setTransport(log);
-    await sendEmail("passwordReset", "a@b.test", { name: "A", url: "https://x" });
+    await sendEmail("signInCode", "a@b.test", { code: "123456" });
     expect(log.outbox).toHaveLength(1);
-    expect(log.outbox[0]).toMatchObject({ to: "a@b.test", template: "passwordReset" });
+    expect(log.outbox[0]).toMatchObject({ to: "a@b.test", template: "signInCode" });
     setTransport(undefined);
   });
   it("lifecycle templates are founder-signed, carry the unsubscribe link, and fill every placeholder", () => {
@@ -85,7 +84,7 @@ describe("emails", () => {
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     });
     // transactional email never carries unsubscribe headers
-    await sendEmail("passwordReset", "a@b.test", { name: "A", url: "https://x" });
+    await sendEmail("signInCode", "a@b.test", { code: "123456" });
     expect(log.outbox[1]!.headers).toBeUndefined();
     setTransport(undefined);
   });

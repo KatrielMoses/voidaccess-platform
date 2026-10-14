@@ -3,6 +3,7 @@ export type RunErrorCode =
   | "invalid_query"
   | "depth_unavailable"
   | "unverified_email"
+  | "aup_required"
   | "account_inactive"
   | "insufficient_credits"
   | "rate_limited_concurrent"
@@ -18,6 +19,7 @@ const STATUS: Record<RunErrorCode, number> = {
   depth_unavailable: 400,
   invalid_body: 400,
   unverified_email: 403,
+  aup_required: 403,
   account_inactive: 403,
   csrf: 403,
   insufficient_credits: 402,

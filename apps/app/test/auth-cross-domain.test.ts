@@ -3,6 +3,7 @@ import { getAuth } from "@/lib/auth/auth";
 import { cookieDomainCovers, corsOrigins, trustedOrigins } from "@/lib/auth/origins";
 import { OPTIONS, POST } from "@/app/api/auth/[...all]/route";
 import { db } from "./helpers";
+import { lastSignInCode } from "./auth-helpers";
 import { eq } from "drizzle-orm";
 import { users } from "@voidaccess/db/schema";
 
@@ -61,35 +62,35 @@ describe("cross-domain auth config (guarantee 2)", () => {
     expect(self.headers.get("access-control-allow-origin")).toBeNull();
   });
 
-  it("a cross-origin sign-up through the real route sets CORS headers and the AUP/first-touch land in the row", async () => {
+  it("a cross-origin email-code sign-in through the real route sets CORS headers and creates the account", async () => {
     const email = `xd-${Date.now()}@test.local`;
-    const res = await POST(
-      new Request("http://localhost:3000/api/auth/sign-up/email", {
-        method: "POST",
-        headers: { "content-type": "application/json", origin: SITE_DEV, "x-forwarded-for": "10.9.9.9" },
-        body: JSON.stringify({
-          name: "Xd",
-          email,
-          password: "a long password",
-          aupAccepted: true,
-          callbackURL: "/welcome",
+    const post = (path: string, body: object) =>
+      POST(
+        new Request(`http://localhost:3000/api/auth${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: SITE_DEV, "x-forwarded-for": "10.9.9.9" },
+          body: JSON.stringify(body),
         }),
-      }),
-    );
+      );
+    const sent = await post("/email-otp/send-verification-otp", { email, type: "sign-in" });
+    expect(sent.status).toBe(200);
+    expect(sent.headers.get("access-control-allow-origin")).toBe(SITE_DEV);
+    expect(sent.headers.get("access-control-allow-credentials")).toBe("true");
+    const res = await post("/sign-in/email-otp", { email, otp: lastSignInCode(email) });
     expect(res.status).toBe(200);
     expect(res.headers.get("access-control-allow-origin")).toBe(SITE_DEV);
     const [u] = await db().withSystem("t", (tx) => tx.select().from(users).where(eq(users.email, email)), {
       audit: false,
     });
-    expect(u?.aupAcceptedAt).toBeInstanceOf(Date);
+    expect(u?.emailVerified).toBe(true);
   });
 
   it("callback URLs on untrusted origins are rejected (no open redirect)", async () => {
     const res = await getAuth().handler(
-      new Request("http://localhost:3000/api/auth/sign-in/magic-link", {
+      new Request("http://localhost:3000/api/auth/sign-in/social", {
         method: "POST",
         headers: { "content-type": "application/json", origin: SITE_DEV },
-        body: JSON.stringify({ email: "x@test.local", callbackURL: "https://evil.example/" }),
+        body: JSON.stringify({ provider: "github", callbackURL: "https://evil.example/" }),
       }),
     );
     expect(res.status).toBe(403);

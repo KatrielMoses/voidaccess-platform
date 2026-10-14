@@ -77,85 +77,92 @@ interface Captured {
   headers: Record<string, string>;
 }
 
-/** Mocks the app's sign-up endpoint (cross-origin, so it also answers the CORS preflight). */
-async function mockSignUp(page: Page): Promise<Captured[]> {
-  const calls: Captured[] = [];
-  const cors = { "access-control-allow-origin": "http://localhost:3701", "access-control-allow-credentials": "true", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" };
-  await page.route(`${APP}/api/auth/sign-up/email`, async (route: Route) => {
+const CORS = { "access-control-allow-origin": "http://localhost:3701", "access-control-allow-credentials": "true", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" };
+
+/** Mocks the app's two email-code endpoints (cross-origin, so they also answer the CORS preflight). */
+async function mockCodeSignIn(page: Page, opts: { codeOk?: boolean } = {}): Promise<{ send: Captured[]; verify: Captured[] }> {
+  const send: Captured[] = [];
+  const verify: Captured[] = [];
+  await page.route(`${APP}/api/auth/email-otp/send-verification-otp`, async (route: Route) => {
     const req = route.request();
-    if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
-    calls.push({ body: req.postDataJSON(), headers: req.headers() });
-    return route.fulfill({ status: 200, headers: cors, contentType: "application/json", body: JSON.stringify({ token: null, user: { id: "u1", email: "a@example.com", name: "Ada" } }) });
+    if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
+    send.push({ body: req.postDataJSON(), headers: req.headers() });
+    return route.fulfill({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ success: true }) });
   });
-  return calls;
+  await page.route(`${APP}/api/auth/sign-in/email-otp`, async (route: Route) => {
+    const req = route.request();
+    if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
+    verify.push({ body: req.postDataJSON(), headers: req.headers() });
+    if (opts.codeOk === false)
+      return route.fulfill({ status: 400, headers: CORS, contentType: "application/json", body: JSON.stringify({ message: "Invalid OTP", code: "INVALID_OTP" }) });
+    return route.fulfill({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ token: "t", user: { id: "u1", email: "ada@example.com", name: "" } }) });
+  });
+  // the successful sign-in navigates to the app: answer it so the test can assert the URL
+  await page.route(`${APP}/welcome`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<h1>app</h1>" }));
+  return { send, verify };
 }
 
-async function fillSignUp(page: Page) {
-  await page.getByLabel("Name").fill("Ada Lovelace");
-  await page.getByLabel("Email").fill("ada@example.com");
-  await page.getByLabel("Password").fill("correct horse battery");
-}
-
-test.describe("sign-up", () => {
-  test("submit is gated on the AUP checkbox; request carries aupAccepted + captcha header and no firstTouch without consent", async ({ page }) => {
+test.describe("sign-in with an email code (first sign-in creates the account)", () => {
+  test("email -> captcha-gated code request -> 6-digit code -> into the app; no firstTouch without consent", async ({ page }) => {
     await stubTurnstile(page);
-    const calls = await mockSignUp(page);
-    await page.goto("/sign-up?utm_source=e2e&ref=smoke");
-    await fillSignUp(page);
-
-    const submit = page.getByRole("button", { name: "Create account" });
-    await expect(page.getByTestId("turnstile")).toBeVisible();
-    await page.waitForTimeout(300); // token arrives
-    await expect(submit).toBeDisabled(); // AUP not accepted yet
+    const calls = await mockCodeSignIn(page);
+    await page.goto("/sign-in?utm_source=e2e&ref=smoke");
+    await expect(page.getByRole("button", { name: "Continue with GitHub" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Acceptable Use Policy" })).toHaveAttribute("href", "/acceptable-use");
 
-    await page.getByLabel(/I have read and accept/).check();
-    await expect(submit).toBeEnabled();
-    await submit.click();
+    await page.getByLabel("Email").fill("ada@example.com");
+    const send = page.getByRole("button", { name: "Email me a sign-in code" });
+    await expect(page.getByTestId("turnstile")).toBeVisible();
+    await expect(send).toBeEnabled(); // token arrived
+    await send.click();
 
-    await expect(page).toHaveURL(/\/check-email\?email=ada%40example\.com$/);
-    expect(calls).toHaveLength(1);
-    expect(calls[0]!.body).toMatchObject({ name: "Ada Lovelace", email: "ada@example.com", password: "correct horse battery", callbackURL: "/welcome", aupAccepted: true });
-    expect(calls[0]!.body).not.toHaveProperty("firstTouch");
-    expect(calls[0]!.headers["x-captcha-response"]).toBe("test-token");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Check your email");
+    expect(calls.send).toHaveLength(1);
+    expect(calls.send[0]!.body).toMatchObject({ email: "ada@example.com", type: "sign-in" });
+    expect(calls.send[0]!.headers["x-captcha-response"]).toBe("test-token");
+
+    await page.getByLabel("Sign-in code").fill("482913");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page).toHaveURL(`${APP}/welcome`);
+    expect(calls.verify[0]!.body).toMatchObject({ email: "ada@example.com", otp: "482913" });
+    expect(calls.send[0]!.body).not.toHaveProperty("firstTouch");
+    expect(calls.verify[0]!.body).not.toHaveProperty("firstTouch");
   });
 
-  test("after the visitor agrees to the privacy prompt, firstTouch is sent", async ({ page }) => {
+  test("after the visitor agrees to the privacy prompt, firstTouch is sent with the code", async ({ page }) => {
     await stubTurnstile(page);
-    const calls = await mockSignUp(page);
-    await page.goto("/sign-up?utm_source=e2e&ref=smoke");
+    const calls = await mockCodeSignIn(page);
+    await page.goto("/sign-in?utm_source=e2e&ref=smoke");
     await page.getByRole("button", { name: "Yes, remember" }).click();
-    await fillSignUp(page);
-    await page.getByLabel(/I have read and accept/).check();
-    await expect(page.getByRole("button", { name: "Create account" })).toBeEnabled();
-    await page.getByRole("button", { name: "Create account" }).click();
-    await expect(page).toHaveURL(/\/check-email/);
-    expect(calls[0]!.body.firstTouch).toMatchObject({ utm: { utm_source: "e2e" }, ref: "smoke", landing: "/sign-up" });
+    await page.getByLabel("Email").fill("ada@example.com");
+    await expect(page.getByRole("button", { name: "Email me a sign-in code" })).toBeEnabled();
+    await page.getByRole("button", { name: "Email me a sign-in code" }).click();
+    await page.getByLabel("Sign-in code").fill("482913");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page).toHaveURL(`${APP}/welcome`);
+    expect(calls.send[0]!.body.firstTouch).toMatchObject({ utm: { utm_source: "e2e" } });
+    expect(calls.verify[0]!.body.firstTouch).toMatchObject({ utm: { utm_source: "e2e" }, ref: "smoke", landing: "/sign-in" });
   });
 
-  test("a server rejection is shown and the user stays on the page", async ({ page }) => {
+  test("a wrong code is shown and the user stays on the code step", async ({ page }) => {
     await stubTurnstile(page);
-    await page.route(`${APP}/api/auth/sign-up/email`, (route) => {
-      const cors = { "access-control-allow-origin": "http://localhost:3701", "access-control-allow-credentials": "true", "access-control-allow-headers": "*" };
-      if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
-      return route.fulfill({ status: 400, headers: cors, contentType: "application/json", body: JSON.stringify({ message: "Captcha failed", code: "CAPTCHA" }) });
-    });
-    await page.goto("/sign-up");
-    await fillSignUp(page);
-    await page.getByLabel(/I have read and accept/).check();
-    await expect(page.getByRole("button", { name: "Create account" })).toBeEnabled();
-    await page.getByRole("button", { name: "Create account" }).click();
-    await expect(page.getByText("Captcha failed")).toBeVisible();
-    await expect(page).toHaveURL(/\/sign-up$/);
+    await mockCodeSignIn(page, { codeOk: false });
+    await page.goto("/sign-in");
+    await page.getByLabel("Email").fill("ada@example.com");
+    await expect(page.getByRole("button", { name: "Email me a sign-in code" })).toBeEnabled();
+    await page.getByRole("button", { name: "Email me a sign-in code" }).click();
+    await page.getByLabel("Sign-in code").fill("000000");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page.getByText("That code didn't work")).toBeVisible();
+    await expect(page.getByLabel("Sign-in code")).toBeVisible();
   });
 });
 
-test("reset-password without a token shows the expired state", async ({ page }) => {
-  await page.goto("/reset-password?error=INVALID_TOKEN");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Link expired");
-});
-
-test("verified page continues to the app", async ({ page }) => {
-  await page.goto("/verified");
-  await expect(page.getByRole("link", { name: "Continue" })).toHaveAttribute("href", `${APP}/welcome`);
+test("old auth pages redirect to sign-in, keeping next", async ({ page }) => {
+  for (const p of ["/sign-up", "/forgot-password", "/reset-password?token=x", "/check-email", "/verified"]) {
+    await page.goto(p);
+    await expect(page, p).toHaveURL(/\/sign-in$/);
+  }
+  await page.goto(`/sign-up?next=${encodeURIComponent(`${APP}/investigations`)}`);
+  await expect(page).toHaveURL(/\/sign-in\?next=/);
 });

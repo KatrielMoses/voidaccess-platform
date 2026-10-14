@@ -90,11 +90,8 @@ const composeLifecycle = (
 });
 
 export const templates = {
-  verifyEmail: (p: { name: string; url: string }) => compose(EMAIL_CONTENT.verifyEmail, p),
-  magicLink: (p: { url: string; minutes?: number }) =>
-    compose(EMAIL_CONTENT.magicLink, { url: p.url, minutes: String(p.minutes ?? 5) }),
-  passwordReset: (p: { name: string; url: string }) => compose(EMAIL_CONTENT.passwordReset, p),
-  changeEmail: (p: { name: string; url: string }) => compose(EMAIL_CONTENT.changeEmail, p),
+  signInCode: (p: { code: string; minutes?: number }) =>
+    compose(EMAIL_CONTENT.signInCode, { code: p.code, minutes: String(p.minutes ?? 10) }),
   resultsReady: (p: { name: string; query: string; resultsUrl: string }) =>
     compose(EMAIL_CONTENT.resultsReady, p),
   // ---- billing (P5) ----
@@ -151,10 +148,7 @@ export type TemplateName = keyof typeof templates;
  * A new template must be classified here (the TS record is exhaustive).
  */
 export const TEMPLATE_CATEGORY: Record<TemplateName, "transactional" | "lifecycle"> = {
-  verifyEmail: "transactional",
-  magicLink: "transactional",
-  passwordReset: "transactional",
-  changeEmail: "transactional",
+  signInCode: "transactional",
   resultsReady: "transactional",
   welcomePro: "transactional",
   creditAlert80: "transactional",

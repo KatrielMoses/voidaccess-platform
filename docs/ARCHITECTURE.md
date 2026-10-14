@@ -142,7 +142,7 @@ Users never reach the engine. The platform launches **one short-lived engine con
 - Next.js 15 App Router, React 19, TypeScript, Tailwind v4, Radix-based own components
 - sigma + graphology (WebGL graph, ported from the engine UI)
 - Drizzle ORM
-- Better Auth (email/password, magic link, GitHub OAuth, email verification, httpOnly cookie sessions; 2FA is P1)
+- Better Auth, passwordless: Google, Microsoft or GitHub OAuth, or a 6-digit email code (10 min, 5 attempts). No separate sign-up: the first sign-in creates the account. httpOnly cookie sessions; AUP accepted once on `/accept-terms` and enforced server-side at run start; 2FA is P1
 - Resend + React Email
 - Dodo SDK + webhooks
 - Vitest + Playwright (with a dedicated cross-tenant isolation suite)

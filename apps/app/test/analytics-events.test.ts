@@ -166,10 +166,10 @@ describe("emitters fire server-side", () => {
   const ctx = (id: string, format = "") =>
     ({ params: Promise.resolve({ id, format, bundleId: "" }) }) as never;
 
-  it("signup_started is recorded by the sign-up endpoint path, with attribution and no user", async () => {
+  it("signup_started is recorded when an email sign-in code is requested, with attribution and no user", async () => {
     const campaign = `p6-${randomUUID().slice(0, 8)}`;
     await authPOST(
-      new Request("http://localhost:3000/api/auth/sign-up/email", {
+      new Request("http://localhost:3000/api/auth/email-otp/send-verification-otp", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -177,10 +177,8 @@ describe("emitters fire server-side", () => {
           "x-forwarded-for": "10.9.9.9",
         },
         body: JSON.stringify({
-          name: "S",
           email: `${campaign}@test.local`,
-          password: "a long password",
-          aupAccepted: true,
+          type: "sign-in",
           firstTouch: { utm_campaign: campaign, ref: "AFF-P6" },
         }),
       }),
@@ -199,16 +197,16 @@ describe("emitters fire server-side", () => {
       name: "signup_started",
       userId: null,
       ref: "AFF-P6",
-      props: { method: "password" },
+      props: { method: "email_code" },
     });
-    // other auth paths (sign-in) are not a sign-up start
+    // other auth paths (entering the code) are not a sign-up start
     const before = await getDatabase().withSystem(
       "t",
       (tx) => tx.select().from(events).where(eq(events.name, "signup_started")),
       { audit: false },
     );
     await authPOST(
-      new Request("http://localhost:3000/api/auth/sign-in/email", {
+      new Request("http://localhost:3000/api/auth/sign-in/email-otp", {
         method: "POST",
         headers: { "content-type": "application/json", origin: "http://va.localhost:3700" },
         body: "{}",

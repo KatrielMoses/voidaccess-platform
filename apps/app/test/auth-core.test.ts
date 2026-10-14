@@ -3,10 +3,9 @@ import { describe, expect, it } from "vitest";
 import { PLANS } from "@voidaccess/config";
 import { creditLedger, getDatabase, users } from "@voidaccess/db";
 import { getLogTransport, getTransport } from "@voidaccess/emails";
-import { getAuth } from "@/lib/auth/auth";
+import { signInWithCode } from "./auth-helpers";
 import { parseAttribution } from "@/lib/auth/attribution";
 
-const headers = new Headers({ origin: "http://localhost:3000" });
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function until<T>(fn: () => Promise<T | undefined | false>, ms = 5000): Promise<T> {
@@ -20,17 +19,13 @@ async function until<T>(fn: () => Promise<T | undefined | false>, ms = 5000): Pr
 }
 
 describe("Better Auth wiring", () => {
-  it("sign-up creates a free user, grants the free credits exactly once, sends a verification email, and verification works", async () => {
+  it("the first email-code sign-in creates a verified free user with one grant and a referral code", async () => {
     getTransport(); // initialise the log transport
     const email = `ada-${Date.now()}@test.local`;
-    const res = await getAuth().api.signUpEmail({
-      body: { name: "Ada", email, password: "correct-horse-battery", aupAccepted: true } as never,
-      headers,
-    });
-    const id = res.user.id;
+    const res = await signInWithCode(email);
+    expect(res.status).toBe(200);
+    const id = res.json!.user!.id;
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
-
-    // after-create hook: free plan, one grant row, referral code
     const rows = await until(async () => {
       const r = await getDatabase().withSystem(
         "test.read",
@@ -46,59 +41,27 @@ describe("Better Auth wiring", () => {
       (tx) => tx.select().from(users).where(eq(users.id, id)),
       { audit: false },
     );
-    expect(u).toMatchObject({
-      plan: "free",
-      status: "active",
-      role: "user",
-      emailVerified: false,
-      aupAcceptedAt: expect.any(Date), // stored by the server from aupAccepted: true
-    });
+    expect(u).toMatchObject({ plan: "free", status: "active", role: "user", emailVerified: true });
     expect(u!.referralCode).toMatch(/^[0-9a-f]{10}$/);
-
-    // unverified users cannot sign in
-    await expect(
-      getAuth().api.signInEmail({ body: { email, password: "correct-horse-battery" }, headers }),
-    ).rejects.toThrow();
-
-    // verification email went through the log transport; following the link verifies the account
-    const mail = await until(async () =>
-      getLogTransport()?.outbox.find((m) => m.to === email && m.template === "verifyEmail"),
-    );
-    const token = new URL(mail.text.match(/https?:\/\/\S+/)![0]).searchParams.get("token")!;
-    await getAuth().api.verifyEmail({ query: { token }, headers });
-    const [v] = await getDatabase().withSystem(
-      "test.read",
-      (tx) => tx.select().from(users).where(eq(users.id, id)),
-      { audit: false },
-    );
-    expect(v!.emailVerified).toBe(true);
-    const signedIn = await getAuth().api.signInEmail({
-      body: { email, password: "correct-horse-battery" },
-      headers,
-    });
-    expect(signedIn.user.id).toBe(id);
+    // the code email went through the log transport
+    expect(getLogTransport()?.outbox.some((m) => m.to === email && m.template === "signInCode")).toBe(true);
   });
 
-  it("clients cannot set plan, role or status at sign-up", async () => {
+  it("clients cannot set plan, role or status when the first sign-in creates the account", async () => {
     const email = `evil-${Date.now()}@test.local`;
-    const res = await getAuth().api.signUpEmail({
-      body: {
-        name: "Eve",
-        email,
-        password: "correct-horse-battery",
-        plan: "pro_plus",
-        role: "admin",
-        aupAccepted: true,
-        status: "active",
-      } as never,
-      headers,
+    const res = await signInWithCode(email, {
+      plan: "pro_plus",
+      role: "admin",
+      status: "banned",
+      name: "Eve",
     });
+    expect(res.status).toBe(200);
     const [u] = await getDatabase().withSystem(
       "test.read",
-      (tx) => tx.select().from(users).where(eq(users.id, res.user.id)),
+      (tx) => tx.select().from(users).where(eq(users.id, res.json!.user!.id)),
       { audit: false },
     );
-    expect(u).toMatchObject({ plan: "free", role: "user" });
+    expect(u).toMatchObject({ plan: "free", role: "user", status: "active" });
   });
 });
 

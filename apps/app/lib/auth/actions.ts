@@ -7,8 +7,8 @@ export interface FormState {
   error?: string;
 }
 
-// Email sign-up lives on the site and goes straight to Better Auth, which enforces the AUP on the server
-// (lib/auth/auth.ts). This interstitial remains for users who arrived via magic link or OAuth.
+// Every sign-in method (email code, Google, Microsoft, GitHub) lands here before anything else until the user has
+// accepted the Acceptable Use Policy; the timestamp is stored server-side.
 export async function acceptAupAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   if (formData.get("aup") !== "on") redirect("/accept-terms?error=1");

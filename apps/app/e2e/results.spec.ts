@@ -1,20 +1,17 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { rawSensitiveList } from "@voidaccess/ingest/test-support";
-import { E2E_PASSWORD } from "./results-global-setup";
+import { RESULTS_EMAIL_LOG } from "../playwright.results.config";
+import { signInWithCode } from "./helpers";
 
 const S = JSON.parse(readFileSync(new URL("./.state/state.json", import.meta.url), "utf8")) as Record<
   string,
   string
 >;
-/** Signs in through Better Auth's real email/password endpoint; the session cookie lands in the page's context. */
+/** Signs in with an emailed code through the real auth API; the session cookie lands in the page's context. */
 const as = async (page: Page, user: string) => {
   await page.context().clearCookies();
-  const res = await page.request.post("/api/auth/sign-in/email", {
-    data: { email: `${user}@e2e.local`, password: E2E_PASSWORD },
-    headers: { origin: "http://localhost:3200" },
-  });
-  expect(res.ok(), `sign-in as ${user}`).toBeTruthy();
+  await signInWithCode(page, `${user}@e2e.local`, "E2E", RESULTS_EMAIL_LOG);
 };
 const base = (id: string) => `/investigations/${id}/results`;
 

@@ -14,13 +14,13 @@ export function AuthCard({ title, description, children }: { title: string; desc
   );
 }
 
-export function Field({ label, id, hint, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; id: string; hint?: string }) {
+export function Field({ label, id, hint, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; id: string; hint?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
-      <input id={id} name={id} aria-describedby={hint ? `${id}-hint` : undefined} className={input} {...props} />
+      <input id={id} name={id} aria-describedby={hint ? `${id}-hint` : undefined} className={className ? `${input} ${className}` : input} {...props} />
       {hint ? (
         <p id={`${id}-hint`} className="text-xs text-fg-secondary">
           {hint}

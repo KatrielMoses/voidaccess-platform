@@ -19,8 +19,9 @@ pnpm deploy                   # minimal site by default; SITE_MODE=full pnpm dep
 
 ## Minimal mode (`SITE_MODE=minimal`)
 
-Launch state of voidaccess.pro: only the auth pages (`/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`,
-`/check-email`, `/verified`), `/acceptable-use`, `/privacy`, `/terms`, a placeholder home and `robots.txt`. Everything
+Launch state of voidaccess.pro: only `/sign-in` (Google, Microsoft, GitHub or an emailed 6-digit code; the first
+sign-in creates the account; the old `/sign-up`, `/forgot-password`, `/reset-password`, `/check-email` and `/verified`
+URLs redirect to it), `/acceptable-use`, `/privacy`, `/terms`, a placeholder home and `robots.txt`. Everything
 else (marketing pages, waitlist, `/api/*`, `/llms*.txt`, `/og`, `/sitemap.xml`, `/pl/*`) answers 404 and the waitlist
 database code never runs, so no `DATABASE_URL`, `RESEND_API_KEY` or `IP_HASH_SALT` is needed.
 

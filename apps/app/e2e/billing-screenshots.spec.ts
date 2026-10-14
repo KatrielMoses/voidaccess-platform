@@ -1,13 +1,13 @@
 // Screenshots for the handoff: SCREENSHOTS=1 pnpm test:e2e:billing   (written to docs/screenshots/billing/)
 import { createHmac, randomUUID } from "node:crypto";
 import pg from "pg";
-import { hashPassword } from "better-auth/crypto";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { PLANS } from "@voidaccess/config";
+import { BILLING_EMAIL_LOG } from "../playwright.billing.config";
 import { WEBHOOK_SECRET, ownerUrl } from "./billing-global-setup";
+import { signInWithCode } from "./helpers";
 
 const OUT = new URL("../docs/screenshots/billing/", import.meta.url).pathname;
-const PASSWORD = "screenshots correct horse battery";
 test.skip(!process.env.SCREENSHOTS, "set SCREENSHOTS=1 to regenerate the billing screenshots");
 
 async function sql<T = Record<string, unknown>>(q: string, a: unknown[] = []): Promise<T[]> {
@@ -27,10 +27,6 @@ async function makeUser(name: string, plan = "free") {
     [id, name, `${id}@shots.local`, plan],
   );
   await sql(
-    `insert into accounts (id, account_id, provider_id, user_id, password) values ($1,$2::text,'credential',$3::uuid,$4)`,
-    [randomUUID(), id, id, await hashPassword(PASSWORD)],
-  );
-  await sql(
     `insert into credit_ledger (user_id, bucket, amount, reason, expires_at, idempotency_key) values ($1,'grant',$2,'grant', now() + interval '30 days', $3)`,
     [id, PLANS.free.monthlyCredits, `grant:${id}:seed`],
   );
@@ -44,11 +40,7 @@ async function makeUser(name: string, plan = "free") {
 
 async function signIn(page: Page, u: { email: string }) {
   await page.context().clearCookies();
-  const res = await page.request.post("/api/auth/sign-in/email", {
-    data: { email: u.email, password: PASSWORD },
-    headers: { origin: "http://localhost:3400" },
-  });
-  expect(res.ok()).toBeTruthy();
+  await signInWithCode(page, u.email, "Shots", BILLING_EMAIL_LOG);
 }
 
 async function webhook(request: APIRequestContext, type: string, data: Record<string, unknown>) {

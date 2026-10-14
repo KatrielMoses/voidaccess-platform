@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 import { expect, test, type Page } from "@playwright/test";
 import { OPS_ARCHIVE_STORE, OPS_CRON_SECRET, OPS_EMAIL_LOG } from "../playwright.ops.config";
-import { findEmail, signUpAndVerify, uniqueEmail } from "./helpers";
+import { findEmail, signInWithCode, signUpAndVerify, uniqueEmail } from "./helpers";
 import { ownerUrl } from "./ops-global-setup";
 import { setUserRole } from "../lib/admin/role";
 import { ADMIN_API, ADMIN_PAGES } from "../lib/admin/routes";
@@ -213,11 +213,7 @@ test.describe.serial("ops console", () => {
     // a second, signed-in session for the user
     const userCtx = await browser.newContext();
     const user = await userCtx.newPage();
-    const signedIn = await user.request.post("/api/auth/sign-in/email", {
-      data: { email: userEmail, password: "e2e correct horse battery" },
-      headers: { "x-captcha-response": "XXXX.DUMMY.TOKEN.XXXX" },
-    });
-    expect(signedIn.ok()).toBeTruthy();
+    await signInWithCode(user, userEmail, "Ordinary User", OPS_EMAIL_LOG);
     const bal = async () =>
       ((await (await user.request.get("/api/account/balance")).json()) as { total: number }).total;
     const before = await bal();

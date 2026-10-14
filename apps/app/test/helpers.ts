@@ -19,6 +19,8 @@ export async function makeUser(
     credits?: number;
     emailVerified?: boolean;
     status?: "active" | "suspended" | "banned";
+    /** false: the user has not accepted the Acceptable Use Policy yet. */
+    aupAccepted?: boolean;
   } = {},
 ): Promise<TestSessionUser> {
   const id = randomUUID();
@@ -30,7 +32,7 @@ export async function makeUser(
     role: "user",
     plan: o.plan ?? "pro",
     status: o.status ?? "active",
-    aupAcceptedAt: new Date(),
+    aupAcceptedAt: o.aupAccepted === false ? null : new Date(),
   };
   await db().withSystem("test.makeUser", (tx) =>
     tx.insert(users).values({
@@ -40,6 +42,7 @@ export async function makeUser(
       emailVerified: u.emailVerified,
       plan: u.plan,
       status: u.status,
+      aupAcceptedAt: u.aupAcceptedAt,
     }),
   );
   if ((o.credits ?? 1000) > 0) await adminGrant(id, o.credits ?? 1000, id, "t:" + id);

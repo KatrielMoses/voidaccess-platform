@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PLANS } from "@voidaccess/config";
 import { Badge } from "@voidaccess/ui";
-import { githubEnabled } from "@/lib/auth/auth";
+import { githubEnabled, googleEnabled, microsoftEnabled } from "@/lib/auth/auth";
 import { pageUser } from "@/lib/page-user";
 import { SettingsForms } from "./forms";
 
@@ -25,8 +25,11 @@ export default async function SettingsPage() {
       <SettingsForms
         name={user.name}
         email={user.email}
-        emailVerified={user.emailVerified}
-        githubEnabled={githubEnabled}
+        providers={[
+          ...(googleEnabled ? (["google"] as const) : []),
+          ...(microsoftEnabled ? (["microsoft"] as const) : []),
+          ...(githubEnabled ? (["github"] as const) : []),
+        ]}
       />
     </div>
   );

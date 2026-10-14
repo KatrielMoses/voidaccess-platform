@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
-import { APIError } from "better-auth/api";
 import {
   accounts,
   auditLog,
@@ -18,8 +17,8 @@ import {
 } from "@voidaccess/db/schema";
 import { deleteAccount } from "@/lib/account/delete";
 import * as deleteRoute from "@/app/api/account/delete/route";
-import { getAuth } from "@/lib/auth/auth";
 import { requireUser } from "@/lib/auth/session";
+import { signInWithCode } from "./auth-helpers";
 import { asUser, balanceOf, db, makeUser, sameOrigin } from "./helpers";
 import { makeRichUser } from "./account-fixtures";
 
@@ -119,22 +118,24 @@ describe("account deletion", () => {
     expect(rowB?.status).toBe("active");
   });
 
-  it("a deleted user can no longer sign in, even with the old password", async () => {
+  it("a deleted user's address signs in to a brand-new empty account, never the old one", async () => {
     const email = `del-${Date.now()}@test.local`;
-    const password = "correct horse battery";
-    const created = await getAuth().api.signUpEmail({
-      body: { name: "Del", email, password, aupAccepted: true } as never,
-    });
-    await db().withSystem(
-      "test.verify",
-      (tx) => tx.update(users).set({ emailVerified: true }).where(eq(users.id, created.user.id)),
-      { audit: false },
-    );
-    const ok = await getAuth().api.signInEmail({ body: { email, password } });
-    expect(ok.user.id).toBe(created.user.id);
+    const first = await signInWithCode(email);
+    expect(first.status).toBe(200);
+    const oldId = first.json!.user!.id;
 
-    await deleteAccount(created.user.id);
-    await expect(getAuth().api.signInEmail({ body: { email, password } })).rejects.toBeInstanceOf(APIError);
+    await deleteAccount(oldId);
+    const again = await signInWithCode(email);
+    expect(again.status).toBe(200);
+    expect(again.json?.user?.id).not.toBe(oldId);
+    const [old] = await db().withSystem(
+      "test.user",
+      (tx) => tx.select().from(users).where(eq(users.id, oldId)),
+      {
+        audit: false,
+      },
+    );
+    expect(old?.email).not.toBe(email); // anonymised
   });
 
   describe("POST /api/account/delete", () => {

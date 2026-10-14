@@ -82,18 +82,18 @@ describe("H1-2: auth limits hold across two auth instances sharing one database"
   const authB = createAuth(dbB);
   const signIn = (auth: typeof authA, ip: string) =>
     auth.handler(
-      new Request("http://localhost:3000/api/auth/sign-in/email", {
+      new Request("http://localhost:3000/api/auth/sign-in/email-otp", {
         method: "POST",
         headers: { "content-type": "application/json", origin: SITE_ORIGIN, "x-forwarded-for": ip },
-        body: JSON.stringify({ email: "nobody@test.local", password: "wrong password here" }),
+        body: JSON.stringify({ email: "nobody@test.local", otp: "000000" }),
       }),
     );
 
-  it("/sign-in/email allows 10 a minute per IP in total, whichever instance serves them, then 429s on both", async () => {
+  it("/sign-in/email-otp allows 10 a minute per IP in total, whichever instance serves them, then 429s on both", async () => {
     const ip = `10.77.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
     const statuses: number[] = [];
     for (let i = 0; i < 10; i++) statuses.push((await signIn(i % 2 ? authA : authB, ip)).status);
-    expect(statuses.every((s) => s !== 429)).toBe(true); // wrong credentials, but not rate limited
+    expect(statuses.every((s) => s !== 429)).toBe(true); // wrong code, but not rate limited
     const a = await signIn(authA, ip);
     const b = await signIn(authB, ip);
     expect(a.status).toBe(429);
@@ -108,7 +108,7 @@ describe("H1-2: auth limits hold across two auth instances sharing one database"
       [hashIp(ip)],
     );
     expect(ev).toHaveLength(2);
-    expect(ev[0]).toMatchObject({ source: "auth", path: "/sign-in/email", user_id: null });
+    expect(ev[0]).toMatchObject({ source: "auth", path: "/sign-in/email-otp", user_id: null });
     expect(ev[0]!.ip_hash).toMatch(/^[0-9a-f]{32}$/);
     const leaked = await owner<{ n: number }>(
       `select count(*)::int n from rate_limit_events e where e::text like $1`,
@@ -117,26 +117,21 @@ describe("H1-2: auth limits hold across two auth instances sharing one database"
     expect(leaked[0]!.n).toBe(0);
   });
 
-  it("/sign-up/email: 5 a minute per IP across instances", async () => {
+  it("/email-otp/send-verification-otp: 5 code requests a minute per IP across instances", async () => {
     const ip = `10.79.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
-    const signUp = (auth: typeof authA, n: number) =>
+    const requestCode = (auth: typeof authA, n: number) =>
       auth.handler(
-        new Request("http://localhost:3000/api/auth/sign-up/email", {
+        new Request("http://localhost:3000/api/auth/email-otp/send-verification-otp", {
           method: "POST",
           headers: { "content-type": "application/json", origin: SITE_ORIGIN, "x-forwarded-for": ip },
-          body: JSON.stringify({
-            name: "R",
-            email: `rl-${n}-${randomUUID()}@test.local`,
-            password: "a long password",
-            aupAccepted: true,
-          }),
+          body: JSON.stringify({ email: `rl-${n}-${randomUUID()}@test.local`, type: "sign-in" }),
         }),
       );
     const first = [];
-    for (let i = 0; i < 5; i++) first.push((await signUp(i % 2 ? authA : authB, i)).status);
+    for (let i = 0; i < 5; i++) first.push((await requestCode(i % 2 ? authA : authB, i)).status);
     expect(first).toEqual([200, 200, 200, 200, 200]);
-    expect((await signUp(authA, 6)).status).toBe(429);
-    expect((await signUp(authB, 7)).status).toBe(429);
+    expect((await requestCode(authA, 6)).status).toBe(429);
+    expect((await requestCode(authB, 7)).status).toBe(429);
   });
 });
 
