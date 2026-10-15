@@ -1,67 +1,375 @@
 @import "tailwindcss";
 @import "@voidaccess/ui/tokens.css";
 
+/*
+ * Base styles and the shared pieces of the design system (website-mockups/design.md). The home page is the static
+ * site itself (public/css/site.css); the classes below repeat its nav, footer, buttons and paper blocks so the other
+ * pages (sign-in, legal, 404) belong to the same system. Keep the values in step with site.css.
+ */
 @layer base {
   html {
-    background: var(--color-void);
-    color: var(--color-fg);
-    scroll-behavior: smooth;
+    background: var(--color-bg);
+    color: var(--color-paper);
     -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
   }
   body {
     min-height: 100dvh;
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
+    font: 400 17px/1.6 var(--font-sans);
+    background: var(--color-bg);
+    color: var(--color-paper);
+    overflow-x: clip;
   }
   :focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 3px;
+    outline: 1.5px solid var(--color-v-200);
+    outline-offset: 4px;
     border-radius: 4px;
   }
   ::selection {
-    background: var(--color-accent-dim);
+    background: var(--color-paper);
+    color: var(--color-ink);
   }
-  h1, h2, h3 {
-    font-family: var(--font-display);
-    letter-spacing: -0.02em;
+  h1,
+  h2,
+  h3 {
+    font-weight: 500;
     text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
   summary::-webkit-details-marker {
     display: none;
   }
 }
 
-/* Hero graph: draw-in animation. Final state is the natural state, so no JS and
-   prefers-reduced-motion both show the complete static frame. */
-@keyframes va-edge {
-  from { stroke-dashoffset: 1; opacity: 0; }
-  to { stroke-dashoffset: 0; opacity: 1; }
+@layer components {
+  /* design.md §5: 1280px container, 40px side padding (22px at <=960px), 68px nav (60px) */
+  .va-wrap {
+    --pad: 40px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 var(--pad);
+    position: relative;
+  }
+
+  /* ---------- nav (§6) ---------- */
+  .va-nav {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 50;
+    border-bottom: 1px solid transparent;
+    transition:
+      background 0.6s var(--ease-out),
+      border-color 0.6s,
+      transform 0.7s var(--ease-out);
+  }
+  .va-nav.solid {
+    background: rgb(15 15 18 / 0.78);
+    backdrop-filter: saturate(140%) blur(18px);
+    -webkit-backdrop-filter: saturate(140%) blur(18px);
+    border-color: var(--color-line);
+  }
+  .va-nav.hide {
+    transform: translateY(-101%);
+  }
+  .va-nav .va-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 68px;
+    gap: 44px;
+  }
+  .va-navr {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+  .va-main {
+    padding-top: 68px;
+  }
+
+  /* logo lockup: 28px PNG, 10px gap, General Sans 500 16px -0.01em */
+  .va-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font: 500 16px/1 var(--font-sans);
+    letter-spacing: -0.01em;
+    color: var(--color-paper);
+  }
+  .va-logo img {
+    width: 28px;
+    height: 28px;
+    display: block;
+    border-radius: 50%;
+  }
+
+  /* links with the drawn underline (0.55s) */
+  .va-ul {
+    position: relative;
+    font-size: 15px;
+    color: var(--color-dim);
+    transition: color 0.3s;
+  }
+  .va-ul::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -5px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: 100% 50%;
+    transition: transform 0.55s var(--ease-out);
+  }
+  .va-ul:hover {
+    color: var(--color-paper);
+  }
+  .va-ul:hover::after {
+    transform: scaleX(1);
+    transform-origin: 0 50%;
+  }
+  /* inline links in running text: always underlined, brighten on hover */
+  .va-tl {
+    color: var(--color-paper);
+    text-decoration: underline;
+    text-decoration-color: var(--color-line-3);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+    transition: text-decoration-color 0.3s;
+  }
+  .va-tl:hover {
+    text-decoration-color: var(--color-paper);
+  }
+
+  /* ---------- buttons (§6): 46px, 22px padding, 4px radius, General Sans 500 15px ---------- */
+  .va-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 46px;
+    padding: 0 22px;
+    border-radius: 4px;
+    font: 500 15px/1 var(--font-sans);
+    white-space: nowrap;
+    border: 1px solid transparent;
+    color: var(--color-paper);
+    cursor: pointer;
+    transition:
+      background 0.3s,
+      color 0.3s,
+      border-color 0.3s;
+  }
+  .va-btn > span {
+    transition: transform 0.3s var(--ease-out);
+  }
+  .va-btn:active > span {
+    transform: scale(0.96);
+  }
+  .va-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .va-btn-primary {
+    background: var(--color-v-600);
+    color: var(--color-paper);
+  }
+  .va-btn-primary:not(:disabled):hover {
+    background: var(--color-v-700);
+  }
+  .va-btn-light {
+    background: var(--color-paper);
+    color: var(--color-bg);
+  }
+  .va-btn-light:not(:disabled):hover {
+    background: #fff;
+  }
+  .va-btn-line {
+    border-color: rgb(243 241 236 / 0.5);
+  }
+  .va-btn-line:not(:disabled):hover {
+    border-color: var(--color-paper);
+    background: rgb(243 241 236 / 0.04);
+  }
+  .va-btn-block {
+    width: 100%;
+  }
+  /* arrow: slides out right while a second one slides in from the left (0.55s) */
+  .va-arr {
+    position: relative;
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    overflow: hidden;
+  }
+  .va-arr::before,
+  .va-arr::after {
+    content: "→";
+    position: absolute;
+    inset: 0;
+    line-height: 14px;
+    font-size: 15px;
+    transition: transform 0.55s var(--ease-out);
+  }
+  .va-arr::after {
+    transform: translateX(-120%);
+  }
+  .va-btn:not(:disabled):hover .va-arr::before {
+    transform: translateX(120%);
+  }
+  .va-btn:not(:disabled):hover .va-arr::after {
+    transform: none;
+  }
+
+  /* ---------- paper blocks: inputs (§3.2) ---------- */
+  .va-label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 15px;
+    line-height: 1.2;
+    color: var(--color-dim);
+  }
+  .va-input {
+    display: block;
+    width: 100%;
+    height: 54px;
+    padding: 0 18px;
+    border: 1px solid var(--color-paper);
+    border-radius: 6px;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font: 400 17px/1 var(--font-sans);
+    outline: 0;
+    transition: border-color 0.35s;
+  }
+  .va-input:hover {
+    border-color: var(--color-paper-2);
+  }
+  .va-input:focus,
+  .va-input:focus-visible {
+    border-color: var(--color-v-600);
+    outline: 0;
+  }
+  .va-input::placeholder {
+    color: var(--color-stone);
+  }
+  .va-input-code {
+    font: 400 22px/1 var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.32em;
+  }
+
+  /* ---------- headings ---------- */
+  .va-title {
+    font-size: clamp(40px, 4.8vw, 70px);
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .va-ac {
+    color: var(--color-v-200);
+  }
+  .va-lede {
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--color-dim);
+  }
+  .va-idx {
+    font: 400 13px/1 var(--font-mono);
+    color: var(--color-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .va-idx::before {
+    content: "";
+    width: 28px;
+    height: 1px;
+    background: var(--color-line-3);
+  }
+
+  /* ---------- footer (§6): 12 columns, 104px, top hairline ---------- */
+  .va-footer {
+    border-top: 1px solid var(--color-line);
+    font-size: 14px;
+    color: var(--color-dim);
+    background: var(--color-bg);
+    position: relative;
+    z-index: 2;
+  }
+  .va-footer .va-wrap {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    align-items: center;
+    height: 104px;
+  }
+  .va-footer .va-logo {
+    grid-column: 1/4;
+  }
+  .va-footer .va-fm {
+    grid-column: 4/9;
+    color: var(--color-mute);
+  }
+  .va-footer .va-fl {
+    grid-column: 9/13;
+    display: flex;
+    gap: 28px;
+    justify-content: flex-end;
+  }
+  .va-footer .va-ul {
+    font-size: 14px;
+  }
+
+  @media (max-width: 960px) {
+    .va-wrap {
+      --pad: 22px;
+    }
+    .va-nav .va-wrap {
+      height: 60px;
+    }
+    .va-main {
+      padding-top: 60px;
+    }
+    .va-btn {
+      height: 42px;
+      padding: 0 18px;
+    }
+    .va-btn.va-btn-block {
+      height: 46px;
+    }
+    .va-title {
+      font-size: clamp(36px, 10vw, 46px);
+    }
+    .va-lede {
+      font-size: 17px;
+    }
+    .va-footer .va-wrap {
+      height: auto;
+      padding-top: 36px;
+      padding-bottom: 104px;
+      row-gap: 20px;
+    }
+    .va-footer .va-logo,
+    .va-footer .va-fm,
+    .va-footer .va-fl {
+      grid-column: 1/13;
+    }
+    .va-footer .va-fl {
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+  }
 }
-@keyframes va-node {
-  from { opacity: 0; transform: scale(0.2); }
-  to { opacity: 1; transform: scale(1); }
-}
-@keyframes va-pulse {
-  0%, 100% { opacity: 0.35; transform: scale(1); }
-  50% { opacity: 0; transform: scale(2.4); }
-}
-.va-edge {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-  animation: va-edge 0.7s ease-out var(--d, 0s) backwards;
-}
-.va-node {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: va-node 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) var(--d, 0s) backwards;
-}
-.va-pulse {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: va-pulse 3.2s ease-out 2.6s infinite;
-}
+
 @media (prefers-reduced-motion: reduce) {
-  .va-edge, .va-node, .va-pulse { animation: none; }
-  .va-pulse { opacity: 0; }
-  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }

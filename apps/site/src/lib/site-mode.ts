@@ -1,5 +1,5 @@
 /**
- * Build-time site mode. `SITE_MODE=minimal` serves only the auth pages, the legal pages and a placeholder home;
+ * Build-time site mode. `SITE_MODE=minimal` serves only the home page, the auth pages and the legal pages;
  * every marketing route (and the waitlist with its database) answers 404. This is the single allowlist: the proxy,
  * the route-handler guards, robots, the layout and the not-found page all read it. Pure functions take the mode as
  * a parameter so they can be unit tested.
@@ -20,12 +20,18 @@ const MINIMAL_ALLOWED: ReadonlySet<string> = new Set([
   ...LEGAL_PATHS,
   "/robots.txt",
   // Static files from /public used by the pages above.
-  "/logo-96.png",
-  "/logo_circle.png",
+  "/site.webmanifest",
 ]);
+
+/**
+ * Folders in /public that hold the home page's static files (CSS, JS, vendor libraries, fonts, images). They contain
+ * only those files, so anything else under them is a plain 404 from the static file server.
+ */
+export const STATIC_DIRS = ["/assets/", "/css/", "/js/", "/vendor/", "/fonts/"] as const;
 
 /** Next internals must stay reachable (JS, CSS, fonts); they carry no content of their own. */
 const isInternal = (pathname: string) => pathname === "/_next" || pathname.startsWith("/_next/");
+const isStatic = (pathname: string) => !pathname.includes("..") && STATIC_DIRS.some((d) => pathname.startsWith(d));
 
 export function normalizePath(pathname: string): string {
   return pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
@@ -33,7 +39,7 @@ export function normalizePath(pathname: string): string {
 
 export function isAllowedPath(pathname: string, mode: SiteMode = SITE_MODE): boolean {
   if (mode === "full") return true;
-  if (isInternal(pathname)) return true;
+  if (isInternal(pathname) || isStatic(pathname)) return true;
   return MINIMAL_ALLOWED.has(normalizePath(pathname));
 }
 

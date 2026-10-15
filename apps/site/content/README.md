@@ -5,14 +5,14 @@ anything under `src/`.
 
 | File | Page |
 |---|---|
-| `home.ts` | Home (hero, pillars, steps, comparison, FAQ, final call to action) |
+| `home.ts` | Copy used by llms.txt and the structured data. The home page itself is the static site in `src/home/index.html` (copied from website-mockups/site; edit it there) |
 | `pricing.ts` | Pricing (plan blurbs, credit explainer, top-ups, founding rules, FAQ) |
 | `features.ts` | Features |
 | `trust.ts` | Trust |
 | `open-source.ts` | Open source |
 | `waitlist.ts` | Waitlist form, "check your email", "confirmed" page, and the confirmation email |
 | `terms.ts`, `privacy.ts`, `acceptable-use.ts` | Legal drafts (keep the "pending legal review" notice until counsel signs off) |
-| `placeholder-home.ts` | The placeholder home page, header and footer shown while the site runs in minimal mode (before launch) |
+| `chrome.ts` | The header and footer around the sign-in, legal and 404 pages (they match the home page, which is the static site in `src/home/`) |
 | `auth.ts` | Sign-in, sign-up, forgot/reset password, "check your email" and "email verified" pages |
 | `site.ts` | Menu, footer, button labels, 404 text |
 | `consent.ts` | The one privacy prompt |

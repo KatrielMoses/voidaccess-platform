@@ -11,7 +11,7 @@ export function ProviderButtons({ callbackURL }: { callbackURL: string }) {
   const [busy, setBusy] = useState<AuthProvider | null>(null);
   if (!AUTH_PROVIDERS.length) return null;
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-3">
       {AUTH_PROVIDERS.map((provider) => (
         <SecondaryButton
           key={provider}
@@ -38,10 +38,10 @@ export function ProviderButtons({ callbackURL }: { callbackURL: string }) {
 
 export function OrDivider() {
   return (
-    <p className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-fg-secondary" aria-hidden>
-      <span className="h-px flex-1 bg-border-dim" />
+    <p className="flex items-center gap-4 text-[15px] leading-none text-mute" aria-hidden>
+      <span className="h-px flex-1 bg-line" />
       {auth.or}
-      <span className="h-px flex-1 bg-border-dim" />
+      <span className="h-px flex-1 bg-line" />
     </p>
   );
 }

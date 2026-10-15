@@ -1,8 +1,42 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 const APP = "http://app.va.localhost:3600";
 
 const ALLOWED = ["/", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/check-email", "/verified", "/acceptable-use", "/privacy", "/terms", "/robots.txt"];
+/** The home page's own files (src/home/index.html references them; public/ holds them). */
+const STATIC: Record<string, RegExp> = {
+  "/site.webmanifest": /^application\/(manifest\+)?json/,
+  "/css/site.css": /^text\/css/,
+  "/vendor/lenis.css": /^text\/css/,
+  "/js/app.js": /javascript/,
+  "/js/motion.js": /javascript/,
+  "/js/terrain-gl.js": /javascript/,
+  "/js/terrain-math.js": /javascript/,
+  "/js/va-stack.js": /javascript/,
+  "/vendor/gsap.min.js": /javascript/,
+  "/vendor/ScrollTrigger.min.js": /javascript/,
+  "/vendor/SplitText.min.js": /javascript/,
+  "/vendor/ScrambleTextPlugin.min.js": /javascript/,
+  "/vendor/lenis.min.js": /javascript/,
+  "/vendor/three/three.module.min.js": /javascript/,
+  "/vendor/three/three.core.js": /javascript/,
+  "/fonts/GeneralSans-400.woff2": /^font\/woff2/,
+  "/fonts/GeneralSans-500.woff2": /^font\/woff2/,
+  "/fonts/GeneralSans-600.woff2": /^font\/woff2/,
+  "/fonts/GeistMono-400.woff2": /^font\/woff2/,
+  "/fonts/GeistMono-500.woff2": /^font\/woff2/,
+  "/assets/favicon.ico": /^image\/(x-icon|vnd\.microsoft\.icon)/,
+  "/assets/favicon-32.png": /^image\/png/,
+  "/assets/apple-touch-icon.png": /^image\/png/,
+  "/assets/icon-192.png": /^image\/png/,
+  "/assets/icon-512.png": /^image\/png/,
+  "/assets/logo.png": /^image\/png/,
+  "/assets/og.png": /^image\/png/,
+  "/assets/platform-graph.png": /^image\/png/,
+  "/assets/terminal-hero.png": /^image\/png/,
+};
 const BLOCKED = ["/features", "/pricing", "/trust", "/open-source", "/waitlist", "/waitlist/check-email", "/waitlist/confirmed", "/llms.txt", "/llms-full.txt", "/og", "/sitemap.xml", "/api/waitlist", "/api/waitlist/confirm", "/api/founding/seats", "/pl/event", "/pl/script.js"];
 
 test.describe("routes", () => {
@@ -11,6 +45,27 @@ test.describe("routes", () => {
       expect((await request.get(p)).status()).toBe(200);
     });
   }
+  for (const [p, type] of Object.entries(STATIC)) {
+    test(`GET ${p} is served as ${type.source}`, async ({ request }) => {
+      const res = await request.get(p);
+      expect(res.status()).toBe(200);
+      expect(res.headers()["content-type"]).toMatch(type);
+    });
+  }
+
+  test("/ is the static home page, byte for byte, and every file it references is served", async ({ request }) => {
+    const res = await request.get("/");
+    expect(res.headers()["content-type"]).toMatch(/^text\/html/);
+    const html = await res.text();
+    expect(html).toBe(readFileSync(path.join(import.meta.dirname, "../../src/home/index.html"), "utf8"));
+    const refs = new Set([...html.matchAll(/(?:href|src)="(\/[^"#]*)"/g)].map((m) => m[1]!).filter((u) => u !== "/"));
+    refs.add("/vendor/three/three.module.min.js"); // the importmap target
+    for (const ref of refs) {
+      expect(STATIC[ref], `${ref} is listed in STATIC`).toBeDefined();
+      expect((await request.get(ref)).status(), ref).toBe(200);
+    }
+  });
+
   for (const p of BLOCKED) {
     test(`GET ${p} is 404`, async ({ request }) => {
       expect((await request.get(p)).status()).toBe(404);
@@ -35,6 +90,22 @@ test.describe("routes", () => {
     expect(res.headers().location).toBe("https://voidaccess.pro/sign-in?next=x");
   });
 
+  test("the home page loads with a clean console", async ({ page }) => {
+    const problems: string[] = [];
+    page.on("console", (m) => {
+      if (m.type() === "error") problems.push(m.text());
+    });
+    page.on("pageerror", (e) => problems.push(e.message));
+    page.on("requestfailed", (r) => problems.push(`${r.url()} ${r.failure()?.errorText}`));
+    page.on("response", (r) => {
+      if (r.status() >= 400) problems.push(`${r.status()} ${r.url()}`);
+    });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(3000);
+    expect(problems).toEqual([]);
+  });
+
   test("auth pages are noindex", async ({ page }) => {
     for (const p of ["/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/check-email", "/verified"]) {
       await page.goto(p);
@@ -42,15 +113,15 @@ test.describe("routes", () => {
     }
   });
 
-  test("home placeholder and 404 page link only to pages that exist", async ({ page }) => {
+  test("home, sign-in, legal and 404 pages link only to pages that exist", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("VoidAccess Cloud: dark-web OSINT in your browser.");
-    await page.goto("/features");
-    for (const url of ["/", "/sign-in"]) {
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Flatten the noise\.\s*Follow the signal\.$/);
+    for (const url of ["/", "/sign-in", "/terms", "/privacy", "/acceptable-use", "/pricing"]) {
       await page.goto(url);
-      const hrefs = await page.locator("a[href^='/']").evaluateAll((els) => els.map((a) => a.getAttribute("href") as string));
+      const hrefs = await page.locator("a[href]").evaluateAll((els) => els.map((a) => a.getAttribute("href") as string));
       for (const href of new Set(hrefs)) {
-        if (href === "#main") continue;
+        // in-page anchors and external links (GitHub) are not pages of this site
+        if (href.startsWith("#") || /^[a-z]+:/i.test(href)) continue;
         const status = (await page.request.get(href)).status();
         expect(status, `${url} links to ${href}`).toBe(200);
       }

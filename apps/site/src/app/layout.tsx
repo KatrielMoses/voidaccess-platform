@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import Script from "next/script";
+import { preload } from "react-dom";
 import { Attribution } from "@/components/attribution";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
@@ -13,10 +13,9 @@ import { IS_MINIMAL } from "@/lib/site-mode";
 import { siteContent } from "@content/site";
 import "./globals.css";
 
-// Self-hosted by next/font with size-adjusted fallbacks, so swapping fonts doesn't shift layout.
-const display = Space_Grotesk({ subsets: ["latin"], variable: "--nf-display", display: "swap" });
-const body = Inter({ subsets: ["latin"], variable: "--nf-body", display: "optional" });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--nf-mono", display: "optional", preload: false });
+// Fonts are self-hosted from public/fonts (@font-face in @voidaccess/ui/tokens.css). Preload the three the pages use
+// first, as the home page does.
+const PRELOAD_FONTS = ["/fonts/GeneralSans-500.woff2", "/fonts/GeneralSans-400.woff2", "/fonts/GeistMono-400.woff2"];
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -24,24 +23,34 @@ export const metadata: Metadata = {
   description: siteContent.defaultDescription,
   applicationName: "VoidAccess",
   authors: [{ name: "Katriel Moses" }],
-  icons: { icon: "/logo-96.png", apple: "/logo-96.png" },
+  icons: {
+    icon: [
+      { url: "/assets/favicon.ico", sizes: "any" },
+      { url: "/assets/favicon-32.png", type: "image/png", sizes: "32x32" },
+    ],
+    apple: "/assets/apple-touch-icon.png",
+  },
+  manifest: "/site.webmanifest",
 };
 
-export const viewport: Viewport = { themeColor: "#080b11", colorScheme: "dark" };
+export const viewport: Viewport = { themeColor: "#0F0F12", colorScheme: "dark" };
 
 // Minimal mode serves no /pl proxy, so analytics stay off there.
 const PLAUSIBLE_ON = !IS_MINIMAL && process.env.NODE_ENV === "production" && process.env.PLAUSIBLE_DISABLED !== "1";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const stars = IS_MINIMAL ? null : ((await getStars()) ?? siteContent.githubStarsFallback);
+  for (const href of PRELOAD_FONTS) preload(href, { as: "font", type: "font/woff2", crossOrigin: "" });
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
-      <body>
-        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-fg-inverse">
+    <html lang="en">
+      <body className={IS_MINIMAL ? "flex flex-col" : undefined}>
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-sm focus:bg-paper focus:px-4 focus:py-2 focus:text-ink">
           Skip to content
         </a>
         {IS_MINIMAL ? <MinimalHeader /> : <Header stars={stars} />}
-        <main id="main">{children}</main>
+        <main id="main" className={IS_MINIMAL ? "va-main flex-1" : undefined}>
+          {children}
+        </main>
         {IS_MINIMAL ? <MinimalFooter /> : <Footer />}
         <Attribution />
         <JsonLd data={organizationLd()} />

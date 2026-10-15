@@ -18,7 +18,7 @@ export function Header({ stars }: { stars: number | null }) {
     <header className="sticky top-0 z-40 border-b border-border-dim bg-void/85 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8">
         <Link href="/" className="flex items-center gap-2.5 font-display text-lg font-bold" aria-label="VoidAccess home">
-          <Image src="/logo-96.png" alt="" width={28} height={28} unoptimized priority />
+          <Image src="/assets/logo.png" alt="" width={28} height={28} unoptimized priority />
           VoidAccess
         </Link>
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">

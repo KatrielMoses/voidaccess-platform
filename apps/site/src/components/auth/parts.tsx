@@ -1,28 +1,31 @@
 import Link from "next/link";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
-const input =
-  "w-full min-h-11 rounded-lg border border-border-strong bg-void px-3.5 py-2.5 text-fg placeholder:text-fg-secondary focus:border-accent";
-
-export function AuthCard({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+/**
+ * Building blocks for the sign-in page, in the design system (design.md): paper-block inputs, one filled violet
+ * button per view, outline buttons for everything else, and no status colours (errors are words, not red).
+ */
+export function AuthCard({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-md rounded-2xl border border-border-subtle bg-surface p-6 sm:p-8">
-      <h1 className="text-2xl font-bold">{title}</h1>
-      {description ? <p className="mt-2 text-sm leading-relaxed text-fg-secondary">{description}</p> : null}
-      <div className="mt-6 flex flex-col gap-4">{children}</div>
-    </div>
+    <section className="grid grid-cols-1 gap-y-12 pt-14 pb-28 min-[961px]:grid-cols-12 min-[961px]:pt-[132px] min-[961px]:pb-[168px]">
+      <div className="min-[961px]:col-span-6">
+        <h1 className="va-title">{title}</h1>
+        {description ? <p className="va-lede mt-6 max-w-[34ch]">{description}</p> : null}
+      </div>
+      <div className="flex flex-col gap-6 min-[961px]:col-start-8 min-[961px]:col-end-13 min-[961px]:pt-2">{children}</div>
+    </section>
   );
 }
 
 export function Field({ label, id, hint, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; id: string; hint?: string }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium">
+    <div>
+      <label htmlFor={id} className="va-label">
         {label}
       </label>
-      <input id={id} name={id} aria-describedby={hint ? `${id}-hint` : undefined} className={className ? `${input} ${className}` : input} {...props} />
+      <input id={id} name={id} aria-describedby={hint ? `${id}-hint` : undefined} className={className ? `va-input ${className}` : "va-input"} {...props} />
       {hint ? (
-        <p id={`${id}-hint`} className="text-xs text-fg-secondary">
+        <p id={`${id}-hint`} className="mt-2 text-[15px] text-mute">
           {hint}
         </p>
       ) : null}
@@ -33,7 +36,7 @@ export function Field({ label, id, hint, className, ...props }: InputHTMLAttribu
 export function FormError({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
-    <p role="alert" className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+    <p role="alert" className="rounded-sm border border-line-2 px-4 py-3 text-[15px] leading-normal text-paper">
       {message}
     </p>
   );
@@ -42,34 +45,33 @@ export function FormError({ message }: { message?: string | null }) {
 export function FormNotice({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
-    <p role="status" className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+    <p role="status" className="text-[15px] leading-normal text-dim">
       {message}
     </p>
   );
 }
 
-const btn =
-  "inline-flex min-h-11 w-full items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60";
-
+/** The view's one violet thing: filled v-600, v-700 on hover, with the design's arrow swap. */
 export function SubmitButton({ busy, disabled, children }: { busy?: boolean; disabled?: boolean; children: ReactNode }) {
   return (
-    <button type="submit" disabled={busy || disabled} className={`${btn} bg-accent text-fg-inverse hover:bg-white`}>
-      {children}
+    <button type="submit" disabled={busy || disabled} aria-busy={busy || undefined} className="va-btn va-btn-primary va-btn-block">
+      <span>{children}</span>
+      <span className="va-arr" aria-hidden="true" />
     </button>
   );
 }
 
-export function SecondaryButton({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function SecondaryButton({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button type="button" className={`${btn} border border-border-strong text-fg hover:border-accent-border hover:bg-accent-dim`} {...props}>
-      {children}
+    <button type="button" className={`va-btn va-btn-line va-btn-block ${className ?? ""}`} {...props}>
+      <span>{children}</span>
     </button>
   );
 }
 
 export function TextLink({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
   return (
-    <Link href={href} className={`text-sm text-accent underline underline-offset-4 ${className}`}>
+    <Link href={href} className={`va-tl ${className}`}>
       {children}
     </Link>
   );
