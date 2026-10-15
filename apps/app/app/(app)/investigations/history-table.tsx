@@ -65,9 +65,9 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Investigation</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Depth</TableHead>
-            <TableHead className="text-right">Credits</TableHead>
+            <TableHead className="max-[640px]:hidden">Date</TableHead>
+            <TableHead className="max-[640px]:hidden">Depth</TableHead>
+            <TableHead className="text-right max-[640px]:hidden">Credits</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">
               <span className="sr-only">Actions</span>
@@ -77,24 +77,28 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
         <TableBody>
           {rows.map((r) => (
             <TableRow key={r.id}>
-              <TableCell className="max-w-[16rem] min-w-40">
+              <TableCell className="max-w-[22rem] min-w-44">
                 <Link
                   href={`/investigations/${r.id}`}
-                  className="block truncate font-medium text-fg hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"
+                  className="block truncate text-[15px] font-medium text-paper decoration-line-3 underline-offset-4 hover:underline"
                   title={r.title}
                 >
                   {r.title}
                 </Link>
               </TableCell>
-              <TableCell className="whitespace-nowrap text-fg-secondary">
+              <TableCell className="font-mono text-[13px] whitespace-nowrap text-dim tabular-nums max-[640px]:hidden">
                 {fmt.format(new Date(r.createdAt))} UTC
               </TableCell>
-              <TableCell>{DEPTH_COPY[r.depth as keyof typeof DEPTH_COPY]?.label ?? r.depth}</TableCell>
-              <TableCell className="text-right font-mono tabular-nums">{r.creditsCharged}</TableCell>
+              <TableCell className="text-dim max-[640px]:hidden">
+                {DEPTH_COPY[r.depth as keyof typeof DEPTH_COPY]?.label ?? r.depth}
+              </TableCell>
+              <TableCell className="text-right font-mono text-[13px] tabular-nums">
+                {r.creditsCharged}
+              </TableCell>
               <TableCell>
                 <StatusBadge status={r.status} />
               </TableCell>
-              <TableCell className="text-right whitespace-nowrap">
+              <TableCell className="text-right whitespace-nowrap last:pr-0">
                 <Button
                   size="sm"
                   variant="ghost"
@@ -167,11 +171,11 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDeleting(null)}>
+            <Button variant="ghost" onClick={() => setDeleting(null)}>
               Keep it
             </Button>
             <Button
-              variant="danger"
+              variant="secondary"
               loading={busy}
               onClick={async () => {
                 if (!deleting) return;
@@ -179,7 +183,7 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
                 if (ok) setDeleting(null);
               }}
             >
-              Delete
+              Delete investigation
             </Button>
           </DialogFooter>
         </DialogContent>

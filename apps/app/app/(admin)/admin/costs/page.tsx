@@ -3,51 +3,68 @@ import { DEPTHS } from "@voidaccess/config";
 import { adminPage } from "@/lib/admin/guard";
 import { getCostReport, parseDays, parseDepth, PRO_USD_PER_CREDIT } from "@/lib/admin/queries";
 import type { CostGroup, CostRun } from "@/lib/admin/queries";
-import { Empty, Page, Section, Stat, T, Td } from "@/components/admin/ui";
+import { buttonVariants, cn } from "@voidaccess/ui";
+import { Empty, Page, Section, Stat, StatGrid, T, Td } from "@/components/admin/ui";
 import { fmtDate, int, pct, usd } from "@/components/admin/format";
 
-const marginClass = (m: number | null) =>
-  m === null ? "text-fg-secondary" : m < 0.75 ? "text-danger" : m < 0.8 ? "text-warning" : "text-success";
+/** Margin against the 80% rule, without hue: below 75% is boxed with ✕, below 80% is marked !, otherwise plain. */
+function Margin({ m, testId }: { m: number | null; testId?: string }) {
+  return (
+    <Td data-testid={testId}>
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 font-mono text-[13px] whitespace-nowrap tabular-nums",
+          m === null ? "text-mute" : m < 0.8 ? "text-paper" : "text-dim",
+          m !== null && m < 0.75 && "rounded-xs border border-line-3 px-1.5 py-0.5",
+        )}
+      >
+        {m !== null && m < 0.75 ? (
+          <span aria-hidden>✕</span>
+        ) : m !== null && m < 0.8 ? (
+          <span aria-hidden>!</span>
+        ) : null}
+        {pct(m)}
+      </span>
+    </Td>
+  );
+}
+const n = "font-mono text-[13px] whitespace-nowrap tabular-nums";
 
 const groupRows = (gs: CostGroup[], showPriceCheck: boolean) =>
   gs.map((g) => (
     <tr key={g.key}>
-      <Td className="font-medium">{g.key}</Td>
-      <Td>{g.runs}</Td>
-      <Td>{usd(g.costP50, 5)}</Td>
-      <Td>{usd(g.costP90, 5)}</Td>
-      <Td>{usd(g.costMax, 5)}</Td>
-      <Td>{usd(g.costTotal, 4)}</Td>
-      <Td>{int(g.creditsNetTotal)}</Td>
-      <Td className={marginClass(g.marginPro)}>{pct(g.marginPro)}</Td>
-      {showPriceCheck ? (
-        <Td className={marginClass(g.marginAtP90Pro)} data-testid={`p90-margin-${g.key}`}>
-          {pct(g.marginAtP90Pro)}
-        </Td>
-      ) : null}
+      <Td className={cn(n, "text-paper")}>{g.key}</Td>
+      <Td className={n}>{g.runs}</Td>
+      <Td className={n}>{usd(g.costP50, 5)}</Td>
+      <Td className={n}>{usd(g.costP90, 5)}</Td>
+      <Td className={n}>{usd(g.costMax, 5)}</Td>
+      <Td className={n}>{usd(g.costTotal, 4)}</Td>
+      <Td className={n}>{int(g.creditsNetTotal)}</Td>
+      <Margin m={g.marginPro} />
+      {showPriceCheck ? <Margin m={g.marginAtP90Pro} testId={`p90-margin-${g.key}`} /> : null}
     </tr>
   ));
 
 const runRows = (rs: CostRun[]) =>
   rs.map((r) => (
     <tr key={r.id}>
-      <Td className="font-mono text-xs">{r.id.slice(0, 8)}</Td>
-      <Td>{r.depth}</Td>
-      <Td>
+      <Td className={cn(n, "text-paper")}>{r.id.slice(0, 8)}</Td>
+      <Td className={cn(n, "text-dim")}>{r.depth}</Td>
+      <Td className={cn(n, "text-dim")}>
         {r.status}
         {r.failureReason ? ` (${r.failureReason})` : ""}
       </Td>
-      <Td>
+      <Td className={n}>
         {r.creditsNet}
         {r.creditsReserved !== r.creditsNet ? ` of ${r.creditsReserved}` : ""}
       </Td>
-      <Td>{usd(r.computeUsd, 5)}</Td>
-      <Td>{usd(r.llmUsd, 5)}</Td>
-      <Td className="font-medium">{usd(r.costUsd, 5)}</Td>
-      <Td>{usd(r.revenueProUsd, 4)}</Td>
-      <Td className={marginClass(r.marginPro)}>{pct(r.marginPro)}</Td>
-      <Td className={marginClass(r.marginList)}>{pct(r.marginList)}</Td>
-      <Td className="whitespace-nowrap">{fmtDate(r.at)}</Td>
+      <Td className={n}>{usd(r.computeUsd, 5)}</Td>
+      <Td className={n}>{usd(r.llmUsd, 5)}</Td>
+      <Td className={cn(n, "text-paper")}>{usd(r.costUsd, 5)}</Td>
+      <Td className={n}>{usd(r.revenueProUsd, 4)}</Td>
+      <Margin m={r.marginPro} />
+      <Margin m={r.marginList} />
+      <Td className={cn(n, "text-dim")}>{fmtDate(r.at)}</Td>
     </tr>
   ));
 const RUN_HEAD = [
@@ -82,29 +99,31 @@ export default async function AdminCosts({
       actions={
         <a
           href={`/api/admin/costs/export?${qs}`}
-          className="rounded-md border border-border-strong bg-raised px-3 py-1.5 text-sm hover:bg-overlay"
+          className={buttonVariants({ variant: "secondary" })}
           data-testid="csv-export"
         >
           Download CSV
         </a>
       }
     >
-      <nav className="flex flex-wrap gap-2 text-sm" aria-label="Filters">
+      <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[15px]" aria-label="Filters">
         {[7, 30, 90].map((d) => (
           <Link
             key={d}
             href={`/admin/costs?days=${d}&depth=${depth}`}
-            className={`rounded-md px-2.5 py-1 ${d === days ? "bg-raised text-fg" : "text-fg-secondary hover:text-fg"}`}
+            aria-current={d === days ? "true" : undefined}
+            className="ul-link"
           >
             {d} days
           </Link>
         ))}
-        <span className="text-fg-muted">|</span>
+        <span aria-hidden className="h-4 w-px bg-line-2" />
         {(["all", ...Object.keys(DEPTHS)] as const).map((dp) => (
           <Link
             key={dp}
             href={`/admin/costs?days=${days}&depth=${dp}`}
-            className={`rounded-md px-2.5 py-1 ${dp === depth ? "bg-raised text-fg" : "text-fg-secondary hover:text-fg"}`}
+            aria-current={dp === depth ? "true" : undefined}
+            className="ul-link"
           >
             {dp}
           </Link>
@@ -115,7 +134,7 @@ export default async function AdminCosts({
         <Empty>No measured runs in this range.</Empty>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatGrid>
             <Stat label="Measured runs" value={int(r.byDepth.reduce((a, g) => a + g.runs, 0))} />
             <Stat
               label="Total cost"
@@ -131,10 +150,10 @@ export default async function AdminCosts({
               testId="wasted"
             />
             <Stat label="Credits kept" value={int(r.byDepth.reduce((a, g) => a + g.creditsNetTotal, 0))} />
-          </div>
+          </StatGrid>
           <Section
             title="Per depth: the price check"
-            hint="Margin at p90 cost uses the depth's price in config and the Pro rate. Red is below 75%, amber below 80%."
+            hint="Margin at p90 cost uses the depth's price in config and the Pro rate. Below 75% is boxed and marked ✕, below 80% is marked !."
             testId="by-depth"
           >
             <T
@@ -169,7 +188,7 @@ export default async function AdminCosts({
               {groupRows(r.byDay, false)}
             </T>
           </Section>
-          <div className="grid gap-6">
+          <div className="grid gap-12">
             <Section title="Worst runs by cost" testId="worst-cost">
               <T head={RUN_HEAD}>{runRows(r.worstByCost)}</T>
             </Section>

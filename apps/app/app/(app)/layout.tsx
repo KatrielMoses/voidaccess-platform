@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         emailVerified={user.emailVerified}
       />
       <AlertBanner state={banner} />
-      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10">{children}</main>
+      <main className="va-wrap pt-14 pb-28 max-[960px]:pt-10 max-[960px]:pb-20">{children}</main>
     </>
   );
 }

@@ -31,29 +31,24 @@ export function AlertBanner({ state }: { state: BannerState }) {
       role="status"
       data-testid="alert-banner"
       data-level={state.level}
-      className={`border-b px-4 py-2 text-sm ${state.level === "credits_80" ? "border-warning/30 bg-warning/10 text-warning" : "border-danger/30 bg-danger/10 text-danger"}`}
+      className="border-b border-line bg-bg-2 text-[15px] text-paper"
     >
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-x-4 gap-y-1 sm:px-2">
-        <span className="font-medium">{message}</span>
-        <span className="flex items-center gap-3">
+      <div className="va-wrap flex flex-wrap items-center gap-x-5 gap-y-1.5 py-3">
+        <span aria-hidden className="font-mono text-[12px] text-paper">
+          !
+        </span>
+        <span className={state.level === "credits_80" ? "text-dim" : "text-paper"}>{message}</span>
+        <span className="flex items-center gap-4">
           {state.level === "past_due" ? (
-            <Link href="/billing" className="underline underline-offset-2">
+            <Link href="/billing" className="va-link">
               {copy.alerts.updatePayment}
             </Link>
           ) : (
             <>
-              <Link
-                href="/billing?from=alert#topups"
-                className="underline underline-offset-2"
-                data-testid="alert-topup"
-              >
+              <Link href="/billing?from=alert#topups" className="va-link" data-testid="alert-topup">
                 {copy.alerts.topUp}
               </Link>
-              <Link
-                href="/billing?from=alert"
-                className="underline underline-offset-2"
-                data-testid="alert-upgrade"
-              >
+              <Link href="/billing?from=alert" className="va-link" data-testid="alert-upgrade">
                 {copy.alerts.upgrade}
               </Link>
             </>
@@ -62,13 +57,15 @@ export function AlertBanner({ state }: { state: BannerState }) {
         <button
           type="button"
           aria-label={copy.alerts.dismiss}
-          className="ml-auto text-lg leading-none opacity-70 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-current"
+          className="ml-auto flex size-8 items-center justify-center rounded-xs text-mute transition-colors duration-300 hover:text-paper"
           onClick={() => {
             window.sessionStorage.setItem(`va:alert:${state.key}:${state.level}`, "1");
             setHidden(true);
           }}
         >
-          ×
+          <svg viewBox="0 0 12 12" className="size-3" aria-hidden>
+            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" />
+          </svg>
         </button>
       </div>
     </div>

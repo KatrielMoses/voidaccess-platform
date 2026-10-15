@@ -7,19 +7,15 @@ import { cn } from "../lib/cn";
 export const Tabs = T.Root;
 
 export function TabsList({ className, ...props }: React.ComponentProps<typeof T.List>) {
-  return (
-    <T.List
-      className={cn("inline-flex items-center gap-1 border-b border-border-subtle", className)}
-      {...props}
-    />
-  );
+  return <T.List className={cn("flex items-center gap-7 border-b border-line", className)} {...props} />;
 }
 
+/** Dim label; the active tab is paper with a 1px paper rule on the baseline. */
 export function TabsTrigger({ className, ...props }: React.ComponentProps<typeof T.Trigger>) {
   return (
     <T.Trigger
       className={cn(
-        "-mb-px border-b-2 border-transparent px-4 py-2 text-sm font-medium text-fg-secondary transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-accent data-[state=active]:border-accent data-[state=active]:text-fg",
+        "relative -mb-px h-11 border-b border-transparent text-[15px] text-dim transition-[color,border-color] duration-300 ease-out hover:text-paper data-[state=active]:border-paper data-[state=active]:text-paper",
         className,
       )}
       {...props}
@@ -28,10 +24,5 @@ export function TabsTrigger({ className, ...props }: React.ComponentProps<typeof
 }
 
 export function TabsContent({ className, ...props }: React.ComponentProps<typeof T.Content>) {
-  return (
-    <T.Content
-      className={cn("pt-4 focus-visible:outline-2 focus-visible:outline-accent", className)}
-      {...props}
-    />
-  );
+  return <T.Content className={cn("pt-6", className)} {...props} />;
 }

@@ -2,26 +2,42 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn";
 
+/**
+ * A mono label on a hairline (design.md §4: mono for labels and values). There is no hue: state is carried by the word,
+ * the weight of the line and, for genuinely live state only, a v-500 marker.
+ *
+ * - default: dim label, `line` border
+ * - strong: paper label, `line-2` border (current plan, always-on)
+ * - outline: paper label, `line-3` border (failed, needs attention: "boxed")
+ * - quiet: mute label, no border (cancelled, coming soon)
+ * - live: paper label with a v-500 marker (running). The one violet thing in its view.
+ */
+const plain = "border-line text-dim";
 export const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+  "inline-flex h-6 items-center gap-1.5 rounded-xs border px-2 font-mono text-[12px] leading-none font-normal whitespace-nowrap",
   {
     variants: {
       variant: {
-        default: "border-border-subtle bg-raised text-fg-secondary",
-        accent: "border-accent-border bg-accent-dim text-accent",
-        success: "border-success/30 bg-success/10 text-success",
-        warning: "border-warning/30 bg-warning/10 text-warning",
-        danger: "border-danger/30 bg-danger/10 text-danger",
-        neutral: "border-border-subtle bg-neutral/10 text-fg-secondary",
-        actor: "border-entity-actor/30 bg-entity-actor/10 text-entity-actor",
-        wallet: "border-entity-wallet/30 bg-entity-wallet/10 text-entity-wallet",
-        malware: "border-entity-malware/30 bg-entity-malware/10 text-entity-malware",
-        forum: "border-entity-forum/30 bg-entity-forum/10 text-entity-forum",
-        cve: "border-entity-cve/30 bg-entity-cve/10 text-entity-cve",
-        paste: "border-entity-paste/30 bg-entity-paste/10 text-entity-paste",
-        onion: "border-entity-onion/30 bg-entity-onion/10 text-entity-onion",
-        email: "border-entity-email/30 bg-entity-email/10 text-entity-email",
-        pgp: "border-entity-pgp/30 bg-entity-pgp/10 text-entity-pgp",
+        default: plain,
+        strong: "border-line-2 text-paper",
+        outline: "border-line-3 text-paper",
+        quiet: "border-transparent px-0 text-mute",
+        live: "border-line-2 text-paper before:size-1.5 before:rounded-full before:bg-v-500 before:content-['']",
+        // Legacy names, kept so existing callers compile. They map onto the hue-free styles above.
+        accent: "border-line-2 text-paper",
+        success: "border-line-2 text-paper",
+        warning: "border-line-2 text-dim",
+        danger: "border-line-3 text-paper",
+        neutral: "border-transparent px-0 text-mute",
+        actor: plain,
+        wallet: plain,
+        malware: plain,
+        forum: plain,
+        cve: plain,
+        paste: plain,
+        onion: plain,
+        email: plain,
+        pgp: plain,
       },
     },
     defaultVariants: { variant: "default" },
@@ -42,11 +58,10 @@ export const ENTITY_BADGE_VARIANTS = [
 ] as const satisfies readonly BadgeVariant[];
 export const STATUS_BADGE_VARIANTS = [
   "default",
-  "accent",
-  "success",
-  "warning",
-  "danger",
-  "neutral",
+  "strong",
+  "outline",
+  "quiet",
+  "live",
 ] as const satisfies readonly BadgeVariant[];
 
 export interface BadgeProps

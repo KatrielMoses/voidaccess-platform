@@ -23,9 +23,9 @@ export function Tooltip({
       <T.Portal>
         <T.Content
           side={side}
-          sideOffset={6}
+          sideOffset={8}
           className={cn(
-            "z-50 max-w-xs rounded-md border border-border-subtle bg-overlay px-2.5 py-1.5 text-xs text-fg shadow-lg shadow-black/40",
+            "z-50 max-w-xs rounded-sm border border-line bg-bar px-3 py-2 text-[15px] leading-[1.45] text-paper",
             className,
           )}
         >

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Badge, Checkbox } from "@voidaccess/ui";
+import { Row } from "@/components/page-header";
 
 export function NotificationForm({ productEmails }: { productEmails: boolean }) {
   const [on, setOn] = useState(productEmails);
@@ -25,40 +26,46 @@ export function NotificationForm({ productEmails }: { productEmails: boolean }) 
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="rounded-lg border border-border-subtle bg-surface p-5">
-        <div className="flex items-start gap-3">
+    <>
+      <Row title="Product email" note="Optional, and off with one click.">
+        <div className="flex items-start gap-3.5">
           <Checkbox
             id="product-emails"
             data-testid="product-emails"
             checked={on}
             onCheckedChange={(v) => void change(v === true)}
-            className="mt-0.5"
+            className="mt-[3px]"
           />
-          <label htmlFor="product-emails" className="flex flex-col gap-1">
-            <span className="font-medium">Product tips and tutorials</span>
-            <span className="text-sm text-fg-secondary">
+          <label htmlFor="product-emails" className="flex cursor-pointer flex-col gap-1.5">
+            <span className="text-[15px] font-medium text-paper">Product tips and tutorials</span>
+            <span className="max-w-[60ch] text-[15px] leading-[1.55] text-dim">
               A short welcome, a nudge if you haven&apos;t tried an investigation yet, and a note on what to
               do with your first results. Occasional product news later on. Every one has an unsubscribe link.
             </span>
           </label>
         </div>
-        <p className="mt-3 min-h-5 text-sm" role="status" aria-live="polite">
-          {state === "saved" ? <span className="text-success">Saved.</span> : null}
-          {state === "saving" ? <span className="text-fg-secondary">Saving…</span> : null}
-          {state === "error" ? <span className="text-danger">Could not save. Try again.</span> : null}
+        <p className="min-h-5 pl-8 font-mono text-[12.5px]" role="status" aria-live="polite">
+          {state === "saved" ? (
+            <span className="text-paper">
+              <span aria-hidden>✓ </span>Saved.
+            </span>
+          ) : null}
+          {state === "saving" ? <span className="text-dim">Saving…</span> : null}
+          {state === "error" ? (
+            <span className="text-paper">
+              <span aria-hidden>✕ </span>Could not save. Try again.
+            </span>
+          ) : null}
         </p>
-      </section>
-      <section className="rounded-lg border border-border-subtle bg-surface p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-medium">Usage alerts, receipts and account email</h2>
-          <Badge variant="accent">Always on</Badge>
-        </div>
-        <p className="mt-1 text-sm text-fg-secondary">
-          Credit usage alerts, results-ready messages, payment receipts and security emails are part of
-          running your account, so they can&apos;t be switched off.
-        </p>
-      </section>
-    </div>
+      </Row>
+      <Row
+        title="Usage alerts, receipts and account email"
+        note="Credit usage alerts, results-ready messages, payment receipts and security emails are part of running your account, so they can't be switched off."
+      >
+        <Badge variant="strong" className="self-start">
+          Always on
+        </Badge>
+      </Row>
+    </>
   );
 }

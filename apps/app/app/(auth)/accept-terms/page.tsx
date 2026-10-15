@@ -25,10 +25,10 @@ export default async function AcceptTermsPage({
       title="One more step"
       description="VoidAccess searches dark-web sources. You need to agree to the rules before you continue."
     >
-      <form action={acceptAupAction} className="flex flex-col gap-4">
+      <form action={acceptAupAction} className="flex flex-col gap-6">
         <AupCheckbox aupUrl={AUP_URL} />
         <FormError message={error ? "You must accept the Acceptable Use Policy to continue" : null} />
-        <Button type="submit" size="lg" className="w-full">
+        <Button type="submit" size="lg" className="self-start">
           Continue
         </Button>
       </form>

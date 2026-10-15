@@ -4,10 +4,6 @@ import { useState } from "react";
 import {
   Badge,
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Dialog,
   DialogClose,
   DialogContent,
@@ -22,6 +18,7 @@ import { FOUNDING, PLANS, TOPUP_EXPIRY_MONTHS, type PlanId } from "@voidaccess/c
 import { billingCopy as copy, fill } from "@/content/billing";
 import { dateFmt, centsToUsd, num, usd } from "@/lib/billing/format";
 import type { BillingView } from "@/lib/billing/view";
+import { Notice, Row, SectionTitle } from "@/components/page-header";
 
 type Interval = "month" | "year";
 interface Preview {
@@ -116,198 +113,198 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
   const price = (p: BillingView["plans"][number]) =>
     interval === "year" && p.annualUsd !== null ? p.annualUsd : p.monthlyUsd;
 
+  // One violet thing per view: the founding field when it is on offer, otherwise Pro's subscribe button.
+  const primaryPlan: PlanId | null = view.canClaimFounding || live ? null : "pro";
+
   return (
-    <div className="flex flex-col gap-8">
-      {checkout === "success" ? (
-        <p
-          role="status"
-          className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
-          data-testid="checkout-return"
-        >
-          Thanks! Your plan updates as soon as Dodo confirms the payment, usually within a minute.
-        </p>
-      ) : null}
-      {error ? (
-        <p
-          role="alert"
-          className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger"
-        >
-          {error}
-        </p>
-      ) : null}
-
-      {view.sub?.status === "past_due" ? (
-        <p
-          role="alert"
-          className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning"
-          data-testid="past-due"
-        >
-          {copy.subscription.pastDue}{" "}
-          <button
-            type="button"
-            onClick={() => simple("/api/billing/portal")}
-            className="underline underline-offset-2"
-          >
-            {copy.alerts.updatePayment}
-          </button>
-        </p>
-      ) : null}
-
-      {live ? (
-        <Card data-testid="subscription-panel">
-          <CardHeader>
-            <CardTitle>{copy.subscription.heading}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 text-sm">
-            <p>
-              <span className="font-medium">{PLANS[view.sub!.plan].name}</span>
-              {view.sub!.isFounding ? (
-                <Badge variant="accent" className="ml-2">
-                  Founding member
-                </Badge>
-              ) : null}{" "}
-              <span className="text-fg-secondary">
-                ({view.sub!.interval === "year" ? copy.annual : copy.monthly})
-              </span>
-            </p>
-            <p className="text-fg-secondary" data-testid="renewal-line">
-              {ending
-                ? fill(copy.subscription.endsOn, { date: dateFmt(ending) })
-                : fill(copy.subscription.renews, { date: dateFmt(view.sub!.currentPeriodEnd) })}
-            </p>
-            {view.sub!.pending ? (
-              <p className="text-warning" data-testid="pending-line">
-                {fill(copy.subscription.pendingDowngrade, {
-                  plan: PLANS[view.sub!.pending.plan].name,
-                  date: dateFmt(view.sub!.pending.at),
-                })}{" "}
-                <button
-                  type="button"
-                  onClick={() => simple("/api/billing/pending", "DELETE")}
-                  className="underline underline-offset-2"
-                >
-                  Undo
+    <div className="flex flex-col gap-14">
+      {checkout === "success" || error || view.sub?.status === "past_due" ? (
+        <div className="flex flex-col gap-3">
+          {checkout === "success" ? (
+            <Notice role="status" mark="✓" tone="quiet" data-testid="checkout-return">
+              <p className="text-paper">
+                Thanks! Your plan updates as soon as Dodo confirms the payment, usually within a minute.
+              </p>
+            </Notice>
+          ) : null}
+          {error ? (
+            <Notice role="alert" mark="✕">
+              <p>{error}</p>
+            </Notice>
+          ) : null}
+          {view.sub?.status === "past_due" ? (
+            <Notice role="alert" mark="!" data-testid="past-due">
+              <p>
+                {copy.subscription.pastDue}{" "}
+                <button type="button" onClick={() => simple("/api/billing/portal")} className="va-link">
+                  {copy.alerts.updatePayment}
                 </button>
               </p>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={busy === "/api/billing/portal"}
-                onClick={() => simple("/api/billing/portal")}
-                data-testid="portal"
-              >
-                {copy.subscription.portal}
-              </Button>
-              {ending ? (
-                <Button
-                  size="sm"
-                  loading={busy === "/api/billing/resume"}
-                  onClick={() => simple("/api/billing/resume")}
-                >
-                  {copy.subscription.resume}
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCancelOpen(true)}
-                  data-testid="cancel-open"
-                >
-                  {copy.subscription.cancel}
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-fg-secondary">{copy.subscription.portalHelp}</p>
-          </CardContent>
-        </Card>
+            </Notice>
+          ) : null}
+        </div>
       ) : null}
 
-      {view.founding.held ? (
-        <Card className="border-accent-border" data-testid="founder-panel">
-          <CardHeader>
-            <CardTitle>{copy.founding.yourSeat}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-1 text-sm">
-            <p>
-              {copy.founding.termEnds}: <span className="font-medium">{dateFmt(view.founding.termEnd)}</span>
-            </p>
-            <p
-              className={view.founding.status === "at_risk" ? "text-warning" : "text-success"}
-              data-testid="founder-status"
-            >
-              {view.founding.status === "at_risk"
-                ? `${copy.founding.status.at_risk}${view.founding.releasingOn ? ` (${dateFmt(view.founding.releasingOn)})` : ""}`
-                : copy.founding.status.renews}
-            </p>
-          </CardContent>
-        </Card>
+      {live || view.founding.held ? (
+        <div className="flex flex-col">
+          {live ? (
+            <Row title={copy.subscription.heading} testId="subscription-panel">
+              <div className="flex flex-col gap-2">
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <span className="text-[21px] font-medium tracking-[-0.02em]">
+                    {PLANS[view.sub!.plan].name}
+                  </span>
+                  <span className="font-mono text-[12.5px] text-dim">
+                    {view.sub!.interval === "year" ? copy.annual : copy.monthly}
+                  </span>
+                  {view.sub!.isFounding ? <Badge variant="strong">Founding member</Badge> : null}
+                </p>
+                <p className="text-[15px] text-dim" data-testid="renewal-line">
+                  {ending
+                    ? fill(copy.subscription.endsOn, { date: dateFmt(ending) })
+                    : fill(copy.subscription.renews, { date: dateFmt(view.sub!.currentPeriodEnd) })}
+                </p>
+                {view.sub!.pending ? (
+                  <p className="text-[15px] text-dim" data-testid="pending-line">
+                    {fill(copy.subscription.pendingDowngrade, {
+                      plan: PLANS[view.sub!.pending.plan].name,
+                      date: dateFmt(view.sub!.pending.at),
+                    })}{" "}
+                    <button
+                      type="button"
+                      onClick={() => simple("/api/billing/pending", "DELETE")}
+                      className="va-link"
+                    >
+                      Undo
+                    </button>
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2.5">
+                <Button
+                  variant="secondary"
+                  loading={busy === "/api/billing/portal"}
+                  onClick={() => simple("/api/billing/portal")}
+                  data-testid="portal"
+                >
+                  {copy.subscription.portal}
+                </Button>
+                {ending ? (
+                  <Button
+                    loading={busy === "/api/billing/resume"}
+                    onClick={() => simple("/api/billing/resume")}
+                  >
+                    {copy.subscription.resume}
+                  </Button>
+                ) : (
+                  <Button variant="ghost" onClick={() => setCancelOpen(true)} data-testid="cancel-open">
+                    {copy.subscription.cancel}
+                  </Button>
+                )}
+              </div>
+              <p className="text-[15px] text-mute">{copy.subscription.portalHelp}</p>
+            </Row>
+          ) : null}
+
+          {view.founding.held ? (
+            <Row title={copy.founding.yourSeat} testId="founder-panel">
+              <p className="text-[15px] text-dim">
+                {copy.founding.termEnds}:{" "}
+                <span className="font-mono text-[14px] text-paper">{dateFmt(view.founding.termEnd)}</span>
+              </p>
+              <p className="flex items-center gap-2 text-[15px] text-paper" data-testid="founder-status">
+                <span aria-hidden className="font-mono text-[12px]">
+                  {view.founding.status === "at_risk" ? "!" : "✓"}
+                </span>
+                {view.founding.status === "at_risk"
+                  ? `${copy.founding.status.at_risk}${view.founding.releasingOn ? ` (${dateFmt(view.founding.releasingOn)})` : ""}`
+                  : copy.founding.status.renews}
+              </p>
+            </Row>
+          ) : null}
+        </div>
       ) : null}
 
       {view.canClaimFounding || (!view.sub && view.seats.available <= 0) ? (
+        // The one violet field on the page (design.md §3.2): paper text, v-100 for secondary text, a paper button.
         <section
-          className="rounded-lg border border-accent-border bg-accent-dim p-5"
+          className="grid grid-cols-12 gap-x-6 gap-y-8 rounded-lg bg-v-600 p-10 text-paper max-[960px]:grid-cols-1 max-[960px]:p-6"
           data-testid="founding-banner"
           aria-labelledby="founding-h"
         >
-          <h2 id="founding-h" className="font-display text-xl font-semibold">
-            {fill(copy.founding.heading, { price: usd(FOUNDING.monthlyUsd) })}
-          </h2>
-          <p className="mt-1 text-sm text-fg-secondary">{FOUNDING.copy}</p>
-          <p className="mt-3 font-mono text-sm" data-testid="seat-counter">
-            {fill(copy.founding.counter, { available: view.seats.available, total: view.seats.total })}
-          </p>
-          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-fg-secondary">
-            {copy.founding.rules.map((r) => (
-              <li key={r}>
-                {fill(r, {
-                  seats: FOUNDING.seats,
-                  price: usd(FOUNDING.monthlyUsd),
-                  credits: num(FOUNDING.monthlyCredits),
-                  termMonths: FOUNDING.termMonths,
-                  renewalMonths: FOUNDING.renewalMinPaidMonthsInTrailing12,
-                  inactivityMonths: FOUNDING.inactivityReleaseMonths,
-                  noticeDays: FOUNDING.noticeDaysBeforeRelease,
-                  proPrice: usd(PLANS[FOUNDING.plan].monthlyUsd),
-                })}
+          <div className="col-span-5 flex flex-col gap-5 max-[960px]:col-span-1">
+            <h2
+              id="founding-h"
+              className="text-[clamp(28px,2.6vw,38px)] leading-[1.04] font-medium tracking-[-0.04em]"
+            >
+              {fill(copy.founding.heading, { price: usd(FOUNDING.monthlyUsd) })}
+            </h2>
+            <p className="text-[15px] leading-[1.55] text-v-100">{FOUNDING.copy}</p>
+            <p className="font-mono text-[13px] text-paper tabular-nums" data-testid="seat-counter">
+              {fill(copy.founding.counter, { available: view.seats.available, total: view.seats.total })}
+            </p>
+            {view.canClaimFounding ? (
+              <div className="mt-2 flex flex-col items-start gap-3">
+                <Button
+                  variant="paper"
+                  size="lg"
+                  loading={busy === "founding"}
+                  onClick={() =>
+                    go(
+                      "/api/billing/checkout",
+                      { kind: "subscription", plan: "pro", interval: "month", founding: true },
+                      "founding",
+                    )
+                  }
+                  data-testid="founding-cta"
+                >
+                  {copy.checkout.foundingCta}
+                </Button>
+                <p className="text-[15px] leading-[1.5] text-v-100">
+                  {fill(copy.checkout.foundingNotice, {
+                    price: usd(FOUNDING.monthlyUsd),
+                    line: FOUNDING.copy,
+                  })}
+                </p>
+              </div>
+            ) : (
+              <p className="text-[15px] text-paper">{copy.founding.soldOut}</p>
+            )}
+          </div>
+          <ol className="col-span-6 col-start-7 flex flex-col border-t border-paper/30 max-[960px]:col-span-1 max-[960px]:col-start-1">
+            {copy.founding.rules.map((r, i) => (
+              <li
+                key={r}
+                className="grid grid-cols-[36px_1fr] gap-2 border-b border-paper/30 py-3.5 text-[15px] leading-[1.5]"
+              >
+                <span className="pt-[3px] font-mono text-[12px] text-v-100">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span>
+                  {fill(r, {
+                    seats: FOUNDING.seats,
+                    price: usd(FOUNDING.monthlyUsd),
+                    credits: num(FOUNDING.monthlyCredits),
+                    termMonths: FOUNDING.termMonths,
+                    renewalMonths: FOUNDING.renewalMinPaidMonthsInTrailing12,
+                    inactivityMonths: FOUNDING.inactivityReleaseMonths,
+                    noticeDays: FOUNDING.noticeDaysBeforeRelease,
+                    proPrice: usd(PLANS[FOUNDING.plan].monthlyUsd),
+                  })}
+                </span>
               </li>
             ))}
-          </ul>
-          {view.canClaimFounding ? (
-            <div className="mt-4 flex flex-col items-start gap-2">
-              <Button
-                loading={busy === "founding"}
-                onClick={() =>
-                  go(
-                    "/api/billing/checkout",
-                    { kind: "subscription", plan: "pro", interval: "month", founding: true },
-                    "founding",
-                  )
-                }
-                data-testid="founding-cta"
-              >
-                {copy.checkout.foundingCta}
-              </Button>
-              <p className="text-xs text-fg-secondary">
-                {fill(copy.checkout.foundingNotice, { price: usd(FOUNDING.monthlyUsd), line: FOUNDING.copy })}
-              </p>
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-warning">{copy.founding.soldOut}</p>
-          )}
+          </ol>
         </section>
       ) : null}
 
-      <section aria-labelledby="plans-h" className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 id="plans-h" className="font-display text-xl font-semibold">
-            {copy.title}
-          </h2>
+      <section aria-labelledby="plans-h" className="flex flex-col gap-7">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <SectionTitle id="plans-h">{copy.title}</SectionTitle>
           <div
             role="group"
             aria-label="Billing period"
-            className="inline-flex rounded-md border border-border-subtle p-0.5 text-sm"
+            className="inline-flex h-10 items-center rounded-sm border border-line p-[3px]"
           >
             {(["month", "year"] as const).map((iv) => (
               <button
@@ -317,13 +314,15 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
                 onClick={() => setInterval(iv)}
                 data-testid={`interval-${iv}`}
                 className={cn(
-                  "rounded px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-accent",
-                  interval === iv ? "bg-accent text-fg-inverse" : "text-fg-secondary hover:text-fg",
+                  "inline-flex h-full items-center gap-2 rounded-xs px-3.5 text-[15px] transition-colors duration-300",
+                  interval === iv ? "bg-paper text-ink" : "text-dim hover:text-paper",
                 )}
               >
                 {iv === "month" ? copy.monthly : copy.annual}
                 {iv === "year" ? (
-                  <span className="ml-1.5 text-xs opacity-80">
+                  <span
+                    className={cn("font-mono text-[11.5px]", interval === iv ? "text-stone" : "text-mute")}
+                  >
                     {fill(copy.annualNote, { monthsFree: monthsFree("pro") })}
                   </span>
                 ) : null}
@@ -331,7 +330,7 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
             ))}
           </div>
         </div>
-        <ul className="grid gap-4 md:grid-cols-3">
+        <ul className="grid gap-px overflow-hidden rounded-lg border border-line bg-line md:grid-cols-3">
           {view.plans.map((p) => {
             const isCurrent =
               (p.id === "free"
@@ -342,94 +341,116 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
               (p.id === "free" && !live && view.plan === "free");
             const key = `${p.id}_${interval}`;
             return (
-              <li key={p.id}>
-                <Card
-                  className={cn("h-full", isCurrent && "border-accent-border")}
-                  data-testid={`plan-${p.id}`}
-                >
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>{p.name}</CardTitle>
-                      {isCurrent ? <Badge variant="accent">{copy.currentPlan}</Badge> : null}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex flex-1 flex-col gap-3">
-                    <p>
-                      <span className="font-display text-3xl font-semibold">{usd(price(p))}</span>
-                      <span className="text-sm text-fg-secondary">
-                        {p.id === "free" ? copy.perMonth : interval === "year" ? copy.perYear : copy.perMonth}
-                      </span>
+              <li
+                key={p.id}
+                className={cn("flex flex-col gap-6 p-7 max-[960px]:p-6", isCurrent ? "bg-bg-2" : "bg-bg")}
+                data-testid={`plan-${p.id}`}
+              >
+                <div className="flex min-h-6 items-center justify-between gap-3">
+                  <h3 className="text-[23px] leading-none font-medium tracking-[-0.025em]">{p.name}</h3>
+                  {isCurrent ? <Badge variant="strong">{copy.currentPlan}</Badge> : null}
+                </div>
+                <div className="flex flex-col gap-3">
+                  <p className="flex items-baseline gap-1.5">
+                    <span className="font-mono text-[32px] leading-none tracking-[-0.04em] tabular-nums">
+                      {usd(price(p))}
+                    </span>
+                    <span className="font-mono text-[13px] text-dim">
+                      {p.id === "free" ? copy.perMonth : interval === "year" ? copy.perYear : copy.perMonth}
+                    </span>
+                  </p>
+                  <p className="font-mono text-[13px] text-paper">
+                    {fill(copy.creditsLine, { credits: num(p.credits) })}
+                  </p>
+                </div>
+                <ul className="flex flex-1 flex-col border-t border-line text-[15px] leading-[1.45] text-dim">
+                  {!p.requiresCard ? <li className="border-b border-line py-2.5">{copy.noCard}</li> : null}
+                  {p.historyDays !== null ? (
+                    <li className="border-b border-line py-2.5">
+                      {fill(copy.historyDays, { days: p.historyDays })}
+                    </li>
+                  ) : null}
+                  {p.features.map((f) =>
+                    copy.features[f] ? (
+                      <li key={f} className="border-b border-line py-2.5">
+                        {copy.features[f]}
+                      </li>
+                    ) : null,
+                  )}
+                </ul>
+                {p.id === "free" || isCurrent ? null : live ? (
+                  <Button
+                    variant="secondary"
+                    loading={busy === `change-${p.id}`}
+                    onClick={() => startChange(p.id, interval)}
+                    data-testid={`change-${p.id}`}
+                  >
+                    {fill(copy.checkout.subscribe, { plan: p.name })}
+                  </Button>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <Button
+                      variant={primaryPlan === p.id ? "primary" : "secondary"}
+                      loading={busy === key}
+                      onClick={() =>
+                        go("/api/billing/checkout", { kind: "subscription", plan: p.id, interval }, key)
+                      }
+                      data-testid={`subscribe-${p.id}`}
+                    >
+                      {fill(copy.checkout.subscribe, { plan: p.name })}
+                    </Button>
+                    <p className="text-[15px] leading-[1.5] text-mute">
+                      {fill(copy.checkout.notice, {
+                        price: usd(price(p)),
+                        per: interval === "year" ? "per year" : "per month",
+                      })}
                     </p>
-                    <p className="font-mono text-sm text-accent">
-                      {fill(copy.creditsLine, { credits: num(p.credits) })}
-                    </p>
-                    <ul className="flex-1 space-y-1.5 text-sm text-fg-secondary">
-                      {!p.requiresCard ? <li>{copy.noCard}</li> : null}
-                      {p.historyDays !== null ? (
-                        <li>{fill(copy.historyDays, { days: p.historyDays })}</li>
-                      ) : null}
-                      {p.features.map((f) => (copy.features[f] ? <li key={f}>{copy.features[f]}</li> : null))}
-                    </ul>
-                    {p.id === "free" || isCurrent ? null : live ? (
-                      <Button
-                        variant="secondary"
-                        loading={busy === `change-${p.id}`}
-                        onClick={() => startChange(p.id, interval)}
-                        data-testid={`change-${p.id}`}
-                      >
-                        {fill(copy.checkout.subscribe, { plan: p.name })}
-                      </Button>
-                    ) : (
-                      <div className="flex flex-col gap-1.5">
-                        <Button
-                          loading={busy === key}
-                          onClick={() =>
-                            go("/api/billing/checkout", { kind: "subscription", plan: p.id, interval }, key)
-                          }
-                          data-testid={`subscribe-${p.id}`}
-                        >
-                          {fill(copy.checkout.subscribe, { plan: p.name })}
-                        </Button>
-                        <p className="text-xs text-fg-secondary">
-                          {fill(copy.checkout.notice, {
-                            price: usd(price(p)),
-                            per: interval === "year" ? "per year" : "per month",
-                          })}
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  </div>
+                )}
               </li>
             );
           })}
         </ul>
       </section>
 
-      <section aria-labelledby="topups-h" className="flex flex-col gap-3" id="topups">
-        <h2 id="topups-h" className="font-display text-xl font-semibold">
-          {copy.topups.heading}
-        </h2>
-        <p className="text-sm text-fg-secondary">{copy.topups.body}</p>
-        <div className="overflow-x-auto rounded-lg border border-border-subtle">
-          <table className="w-full min-w-[28rem] border-collapse text-left text-sm" data-testid="topup-table">
-            <thead className="bg-surface text-xs uppercase text-fg-secondary">
-              <tr>
-                <th className="px-4 py-2">{copy.topups.columns.pay}</th>
-                <th className="px-4 py-2">{copy.topups.columns.credits}</th>
-                <th className="px-4 py-2">{copy.topups.columns.bonus}</th>
-                <th className="px-4 py-2" />
+      <section aria-labelledby="topups-h" className="flex flex-col gap-6" id="topups">
+        <div className="flex flex-col gap-2">
+          <SectionTitle id="topups-h">{copy.topups.heading}</SectionTitle>
+          <p className="text-[15px] text-dim">{copy.topups.body}</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table
+            className="w-full min-w-[28rem] border-collapse text-left text-[15px]"
+            data-testid="topup-table"
+          >
+            <thead>
+              <tr className="border-b border-line">
+                <th className="h-11 pr-4 font-mono text-[12px] font-normal text-mute">
+                  {copy.topups.columns.pay}
+                </th>
+                <th className="h-11 px-4 font-mono text-[12px] font-normal text-mute">
+                  {copy.topups.columns.credits}
+                </th>
+                <th className="h-11 px-4 font-mono text-[12px] font-normal text-mute">
+                  {copy.topups.columns.bonus}
+                </th>
+                <th className="h-11 pl-4" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-dim">
+            <tbody>
               {view.topups.map((t) => (
-                <tr key={t.usd}>
-                  <th scope="row" className="px-4 py-2 font-mono">
+                <tr key={t.usd} className="border-b border-line transition-colors duration-300 hover:bg-bg-2">
+                  <th
+                    scope="row"
+                    className="py-3 pr-4 font-mono text-[14px] font-normal text-paper tabular-nums"
+                  >
                     {usd(t.usd)}
                   </th>
-                  <td className="px-4 py-2 font-mono">{num(t.credits)}</td>
-                  <td className="px-4 py-2 text-fg-secondary">{t.bonusPct > 0 ? `+${t.bonusPct}%` : "-"}</td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="px-4 py-3 font-mono text-[14px] tabular-nums">{num(t.credits)}</td>
+                  <td className="px-4 py-3 font-mono text-[13px] text-dim">
+                    {t.bonusPct > 0 ? `+${t.bonusPct}%` : "-"}
+                  </td>
+                  <td className="py-3 pl-4 text-right">
                     <Button
                       size="sm"
                       variant="secondary"
@@ -447,7 +468,7 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-fg-secondary">
+        <p className="text-[15px] text-mute">
           {fill(copy.topups.expiry, { expiryMonths: TOPUP_EXPIRY_MONTHS })}
         </p>
       </section>
@@ -473,13 +494,9 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
                 </DialogDescription>
               </DialogHeader>
               {change.preview.releasesFoundingSeat ? (
-                <p
-                  role="alert"
-                  className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning"
-                  data-testid="founding-warning"
-                >
-                  {fill(copy.change.foundingWarning, { price: usd(FOUNDING.monthlyUsd) })}
-                </p>
+                <Notice role="alert" mark="!" data-testid="founding-warning">
+                  <p>{fill(copy.change.foundingWarning, { price: usd(FOUNDING.monthlyUsd) })}</p>
+                </Notice>
               ) : null}
               <DialogFooter>
                 <DialogClose asChild>
@@ -500,7 +517,7 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
             <DialogTitle>{copy.subscription.cancel}</DialogTitle>
             <DialogDescription>{copy.subscription.cancelHelp}</DialogDescription>
           </DialogHeader>
-          <label className="flex flex-col gap-1.5 text-sm">
+          <label className="flex flex-col gap-2 text-[15px] text-dim">
             {copy.subscription.cancelReason}
             <Textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} />
           </label>
@@ -509,7 +526,7 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
               <Button variant="ghost">Keep my plan</Button>
             </DialogClose>
             <Button
-              variant="danger"
+              variant="secondary"
               loading={busy === "cancel"}
               onClick={cancel}
               data-testid="cancel-confirm"

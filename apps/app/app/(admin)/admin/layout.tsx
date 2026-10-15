@@ -1,50 +1,34 @@
 import Link from "next/link";
 import { adminPage } from "@/lib/admin/guard";
+import { Logo } from "@/components/logo";
+import { AdminNav } from "./nav";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin | VoidAccess", robots: { index: false, follow: false } };
-
-const NAV = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/abuse", label: "Abuse" },
-  { href: "/admin/costs", label: "Costs" },
-  { href: "/admin/archive", label: "Archive" },
-  { href: "/admin/founding", label: "Founding" },
-  { href: "/admin/blocked-domains", label: "Blocked domains" },
-];
 
 // Defence in depth: every page below also calls adminPage() itself, because a layout does not guard a page's own data fetching.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await adminPage();
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-border-subtle bg-void/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2 sm:px-6">
-          <Link href="/admin" className="font-display text-lg font-semibold tracking-tight">
-            Void<span className="text-accent">Access</span>{" "}
-            <span className="text-sm font-normal text-fg-secondary">admin</span>
-          </Link>
-          <nav aria-label="Admin" className="flex flex-wrap items-center gap-1">
-            {NAV.map((n) => (
-              <Link
-                key={n.href}
-                href={n.href}
-                className="rounded-md px-2.5 py-1.5 text-sm text-fg-secondary hover:bg-raised hover:text-fg"
-              >
-                {n.label}
-              </Link>
-            ))}
-          </nav>
-          <span className="ml-auto flex items-center gap-3 text-xs text-fg-secondary">
-            {admin.email}
-            <Link href="/investigations" className="hover:text-fg">
+      <header className="sticky top-0 z-30 border-b border-line bg-bg/[.78] backdrop-blur-[18px] backdrop-saturate-[1.4]">
+        <div className="va-wrap flex min-h-[68px] flex-wrap items-center gap-x-10 gap-y-0 max-[960px]:min-h-[60px]">
+          <Logo href="/admin" suffix="admin" className="h-[68px] max-[960px]:h-[60px]" />
+          <AdminNav />
+          <span className="ml-auto flex items-center gap-6 py-3 text-[15px] whitespace-nowrap max-[960px]:order-2">
+            <span
+              className="max-w-[200px] truncate font-mono text-[12px] text-mute max-[1360px]:hidden"
+              title={admin.email}
+            >
+              {admin.email}
+            </span>
+            <Link href="/investigations" className="ul-link">
               Back to app
             </Link>
           </span>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">{children}</main>
+      <main className="va-wrap pt-14 pb-28 max-[960px]:pt-10 max-[960px]:pb-20">{children}</main>
     </>
   );
 }

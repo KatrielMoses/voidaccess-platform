@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge, cn, type BadgeVariant } from "@voidaccess/ui";
+import { PageHeader, SectionTitle } from "@/components/page-header";
 
 export function Page({
   title,
@@ -13,14 +14,8 @@ export function Page({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">{title}</h1>
-          {subtitle ? <p className="mt-1 max-w-3xl text-sm text-fg-secondary">{subtitle}</p> : null}
-        </div>
-        {actions}
-      </header>
+    <div className="va-rise flex flex-col gap-12">
+      <PageHeader title={title} lede={subtitle} actions={actions} />
       {children}
     </div>
   );
@@ -38,16 +33,17 @@ export function Section({
   testId?: string;
 }) {
   return (
-    <section data-testid={testId} className="flex flex-col gap-3">
-      <div>
-        <h2 className="font-display text-lg font-semibold">{title}</h2>
-        {hint ? <p className="text-sm text-fg-secondary">{hint}</p> : null}
+    <section data-testid={testId} className="flex min-w-0 flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <SectionTitle className="text-[21px] tracking-[-0.02em]">{title}</SectionTitle>
+        {hint ? <p className="max-w-[72ch] text-[15px] leading-[1.55] text-dim">{hint}</p> : null}
       </div>
       {children}
     </section>
   );
 }
 
+/** A meter cell (design.md §6 pipeline meters): mono label, mono value with tabular numerals. Use inside <StatGrid>. */
 export function Stat({
   label,
   value,
@@ -60,15 +56,31 @@ export function Stat({
   testId?: string;
 }) {
   return (
-    <div data-testid={testId} className="rounded-lg border border-border-subtle bg-surface px-4 py-3">
-      <p className="text-xs tracking-wide text-fg-secondary uppercase">{label}</p>
-      <p className="mt-1 font-display text-2xl font-semibold tabular-nums">{value}</p>
-      {sub ? <p className="mt-0.5 text-xs text-fg-secondary">{sub}</p> : null}
+    <div data-testid={testId} className="flex flex-col gap-4 bg-bg p-6 max-[960px]:p-5">
+      <p className="font-mono text-[12px] leading-none text-mute">{label}</p>
+      <p className="font-mono text-[28px] leading-none tracking-[-0.04em] break-words text-paper tabular-nums max-[960px]:text-[20px]">
+        {value}
+      </p>
+      {sub ? <p className="font-mono text-[12px] leading-[1.4] text-dim">{sub}</p> : null}
     </div>
   );
 }
 
-/** Horizontal CSS bar, `value` of `max`. */
+/** Card grid by the 1px-gap-on-line technique, so every border is exactly one hairline. */
+export function StatGrid({ children, cols = 4 }: { children: React.ReactNode; cols?: 3 | 4 }) {
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line",
+        cols === 4 ? "md:grid-cols-4" : "md:grid-cols-3",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Horizontal bar, `value` of `max`: a hairline track with a paper fill. */
 export function Bar({
   value,
   max,
@@ -82,18 +94,18 @@ export function Bar({
 }) {
   const w = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-raised" role="img" aria-label={label}>
-      <div className={cn("h-full rounded-full bg-accent", className)} style={{ width: `${w}%` }} />
+    <div className="h-1 w-full bg-paper/[.08]" role="img" aria-label={label}>
+      <div className={cn("h-full bg-paper", className)} style={{ width: `${w}%` }} />
     </div>
   );
 }
 
-/** Stacked bar from segments. */
+/** Stacked bar from segments. Segments differ by paper opacity; only live work may use the v-500 signal. */
 export function Stack({ parts }: { parts: Array<{ label: string; n: number; className: string }> }) {
   const total = parts.reduce((a, p) => a + p.n, 0);
   return (
     <div
-      className="flex h-2.5 w-full overflow-hidden rounded-full bg-raised"
+      className="flex h-1.5 w-full gap-px overflow-hidden bg-paper/[.08]"
       role="img"
       aria-label={parts.map((p) => `${p.label} ${p.n}`).join(", ")}
     >
@@ -112,36 +124,38 @@ export function Stack({ parts }: { parts: Array<{ label: string; n: number; clas
 }
 
 const STATUS_VARIANT: Record<string, BadgeVariant> = {
-  active: "success",
-  suspended: "warning",
-  banned: "danger",
-  admin: "accent",
+  active: "strong",
+  suspended: "outline",
+  banned: "outline",
+  admin: "strong",
   user: "default",
-  completed: "success",
-  failed: "danger",
-  cancelled: "neutral",
-  open: "warning",
-  reviewed: "success",
-  dismissed: "neutral",
-  actioned: "accent",
+  completed: "strong",
+  failed: "outline",
+  cancelled: "quiet",
+  open: "outline",
+  reviewed: "default",
+  dismissed: "quiet",
+  actioned: "strong",
 };
+const STATUS_MARK: Record<string, string> = { suspended: "!", banned: "✕", failed: "✕", open: "!" };
 export const StateBadge = ({ value }: { value: string }) => (
-  <Badge variant={STATUS_VARIANT[value] ?? "default"}>{value}</Badge>
+  <Badge variant={STATUS_VARIANT[value] ?? "default"}>
+    {STATUS_MARK[value] ? <span aria-hidden>{STATUS_MARK[value]}</span> : null}
+    {value}
+  </Badge>
 );
 
 export const Empty = ({ children }: { children: React.ReactNode }) => (
-  <p className="rounded-lg border border-dashed border-border-subtle px-4 py-6 text-center text-sm text-fg-secondary">
-    {children}
-  </p>
+  <p className="border-y border-line py-7 text-[15px] text-dim">{children}</p>
 );
 
 export const UserLink = ({ id, children }: { id: string; children: React.ReactNode }) => (
-  <Link href={`/admin/users/${id}`} className="text-accent underline-offset-2 hover:underline">
+  <Link href={`/admin/users/${id}`} className="va-link">
     {children}
   </Link>
 );
 
-/** Table scaffolding with the app's tokens (plain elements: the ui Table wrapper adds nothing these need). */
+/** Hairline table with mono column labels in sentence case (plain elements, so the dense admin views stay compact). */
 export function T({
   head,
   children,
@@ -152,28 +166,36 @@ export function T({
   testId?: string;
 }) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-border-subtle">
-      <table data-testid={testId} className="w-full border-collapse text-left text-sm">
-        <thead className="bg-surface text-fg-secondary">
-          <tr>
-            {head.map((h) => (
+    <div className="relative w-full overflow-x-auto">
+      <table
+        data-testid={testId}
+        className="w-full border-collapse text-left text-[15px] [&>tbody>tr]:border-b [&>tbody>tr]:border-line [&>tbody>tr]:transition-colors [&>tbody>tr]:duration-300 [&>tbody>tr:hover]:bg-bg-2"
+      >
+        <thead>
+          <tr className="border-b border-line">
+            {head.map((h, i) => (
               <th
-                key={h}
+                key={`${h}-${i}`}
                 scope="col"
-                className="h-9 border-b border-border-subtle px-3 text-xs font-medium tracking-wide uppercase whitespace-nowrap"
+                className="h-11 px-3 font-mono text-[12px] font-normal whitespace-nowrap text-mute first:pl-0"
               >
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-border-dim">{children}</tbody>
+        <tbody>{children}</tbody>
       </table>
     </div>
   );
 }
 export const Td = ({ children, className, ...p }: React.TdHTMLAttributes<HTMLTableCellElement>) => (
-  <td className={cn("px-3 py-2 align-top", className)} {...p}>
+  <td className={cn("px-3 py-3 align-top first:pl-0", className)} {...p}>
     {children}
   </td>
+);
+
+/** Numbers in tables: mono, tabular. */
+export const Num = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <span className={cn("font-mono text-[13px] tabular-nums", className)}>{children}</span>
 );

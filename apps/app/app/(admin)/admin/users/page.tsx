@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button, Input } from "@voidaccess/ui";
 import { adminPage } from "@/lib/admin/guard";
 import { searchUsers } from "@/lib/admin/queries";
-import { Empty, Page, StateBadge, T, Td, UserLink } from "@/components/admin/ui";
+import { Empty, Num, Page, StateBadge, T, Td, UserLink } from "@/components/admin/ui";
 import { fmtDate, int } from "@/components/admin/format";
 
 export default async function AdminUsers({
@@ -17,7 +17,7 @@ export default async function AdminUsers({
   const href = (n: number) => `/admin/users?${new URLSearchParams({ ...(q ? { q } : {}), page: String(n) })}`;
   return (
     <Page title="Users" subtitle="Search by email (partial) or exact user id.">
-      <form method="get" className="flex max-w-xl gap-2" role="search">
+      <form method="get" className="flex max-w-xl gap-2.5" role="search">
         <Input
           name="q"
           defaultValue={q}
@@ -25,7 +25,9 @@ export default async function AdminUsers({
           aria-label="Search users"
           data-testid="user-search"
         />
-        <Button type="submit">Search</Button>
+        <Button type="submit" variant="secondary" size="lg">
+          Search
+        </Button>
       </form>
       {rows.length === 0 ? (
         <Empty>No users match.</Empty>
@@ -35,25 +37,43 @@ export default async function AdminUsers({
             <tr key={u.id}>
               <Td>
                 <UserLink id={u.id}>{u.email}</UserLink>
-                {!u.emailVerified ? <span className="ml-2 text-xs text-warning">unverified</span> : null}
+                {!u.emailVerified ? (
+                  <span className="ml-2.5 font-mono text-[12px] text-dim">! unverified</span>
+                ) : null}
               </Td>
-              <Td>{u.plan}</Td>
+              <Td>
+                <Num className="text-dim">{u.plan}</Num>
+              </Td>
               <Td>
                 <StateBadge value={u.status} />
               </Td>
               <Td>
                 <StateBadge value={u.role} />
               </Td>
-              <Td>{int(u.credits)}</Td>
-              <Td>{u.investigations}</Td>
-              <Td className="whitespace-nowrap">{fmtDate(u.createdAt)}</Td>
+              <Td>
+                <Num>{int(u.credits)}</Num>
+              </Td>
+              <Td>
+                <Num>{u.investigations}</Num>
+              </Td>
+              <Td className="whitespace-nowrap">
+                <Num className="text-dim">{fmtDate(u.createdAt)}</Num>
+              </Td>
             </tr>
           ))}
         </T>
       )}
-      <nav className="flex gap-4 text-sm" aria-label="Pages">
-        {p > 0 ? <Link href={href(p - 1)}>← Newer</Link> : null}
-        {hasMore ? <Link href={href(p + 1)}>Older →</Link> : null}
+      <nav className="flex gap-6 text-[15px]" aria-label="Pages">
+        {p > 0 ? (
+          <Link href={href(p - 1)} className="ul-link">
+            ← Newer
+          </Link>
+        ) : null}
+        {hasMore ? (
+          <Link href={href(p + 1)} className="ul-link">
+            Older →
+          </Link>
+        ) : null}
       </nav>
     </Page>
   );

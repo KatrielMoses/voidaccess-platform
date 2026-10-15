@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Button } from "@voidaccess/ui";
+import { Button, Textarea } from "@voidaccess/ui";
 import { adminPage } from "@/lib/admin/guard";
 import { AdminError } from "@/lib/admin/errors";
 import { openForAbuseReview } from "@/lib/admin/actions";
-import { Empty, Page, Section, StateBadge, T, Td, UserLink } from "@/components/admin/ui";
+import { Empty, Num, Page, Section, StateBadge, T, Td, UserLink } from "@/components/admin/ui";
 import { fmtDate } from "@/components/admin/format";
 
 /**
@@ -28,19 +28,11 @@ export default async function AbuseReview({
         subtitle="Opening results is an audited action. State why you need to see them."
       >
         <form method="get" className="flex max-w-xl flex-col gap-3" data-testid="review-form">
-          <label htmlFor="reason" className="text-sm font-medium">
+          <label htmlFor="reason" className="text-[15px] text-dim">
             Reason (kept in the audit log)
           </label>
-          <textarea
-            id="reason"
-            name="reason"
-            required
-            minLength={8}
-            maxLength={1000}
-            rows={3}
-            className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm"
-          />
-          <Button type="submit" className="self-start">
+          <Textarea id="reason" name="reason" required minLength={8} maxLength={1000} rows={3} />
+          <Button type="submit" className="mt-2 self-start">
             Open results
           </Button>
         </form>
@@ -57,13 +49,17 @@ export default async function AbuseReview({
   const inv = r.investigation;
   return (
     <Page title="Abuse review" subtitle={`Opened by you; reason recorded: “${reason.trim()}”`}>
-      <p className="text-sm">
-        <UserLink id={inv.userId}>Back to user</UserLink> · {fmtDate(inv.createdAt)} · {inv.depth} ·{" "}
+      <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px]">
+        <UserLink id={inv.userId}>Back to user</UserLink>
+        <span aria-hidden className="h-3 w-px bg-line-2" />
+        <Num className="text-dim">{fmtDate(inv.createdAt)}</Num>
+        <span aria-hidden className="h-3 w-px bg-line-2" />
+        <Num className="text-dim">{inv.depth}</Num>
         <StateBadge value={inv.status} />
       </p>
       <Section title="Query">
         <p
-          className="rounded-lg border border-border-subtle bg-surface p-4 break-words"
+          className="inline-flex min-h-[46px] items-center self-start rounded-sm bg-paper px-4 py-2.5 font-mono text-[14px] break-words text-ink"
           data-testid="review-query"
         >
           {inv.query}
@@ -71,7 +67,7 @@ export default async function AbuseReview({
       </Section>
       <Section title="Summary">
         {r.summaryMarkdown ? (
-          <pre className="max-h-96 overflow-auto rounded-lg border border-border-subtle bg-surface p-4 text-sm whitespace-pre-wrap">
+          <pre className="max-h-96 overflow-auto border-y border-line py-5 font-mono text-[13px] leading-[1.6] whitespace-pre-wrap text-dim">
             {r.summaryMarkdown}
           </pre>
         ) : (
@@ -85,12 +81,16 @@ export default async function AbuseReview({
         <T head={["Type", "Value", "Confidence"]}>
           {r.entities.map((e, i) => (
             <tr key={i}>
-              <Td className="font-mono text-xs">{e.type}</Td>
-              <Td className="font-mono text-xs break-all">
+              <Td>
+                <Num className="text-dim">{e.type}</Num>
+              </Td>
+              <Td className="font-mono text-[13px] break-all">
                 {e.display}
                 {e.sensitive ? " (masked)" : ""}
               </Td>
-              <Td>{e.confidence.toFixed(2)}</Td>
+              <Td>
+                <Num>{e.confidence.toFixed(2)}</Num>
+              </Td>
             </tr>
           ))}
         </T>
@@ -101,12 +101,12 @@ export default async function AbuseReview({
             <tr key={i}>
               <Td>{s.name}</Td>
               <Td>{s.kind}</Td>
-              <Td className="font-mono text-xs break-all">{s.url ?? "—"}</Td>
+              <Td className="font-mono text-[13px] break-all text-dim">{s.url ?? "—"}</Td>
             </tr>
           ))}
         </T>
       </Section>
-      <Link href={`/admin/users/${inv.userId}`} className="text-sm text-accent hover:underline">
+      <Link href={`/admin/users/${inv.userId}`} className="ul-link self-start text-[15px]">
         ← User
       </Link>
     </Page>

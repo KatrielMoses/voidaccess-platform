@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import Link from "next/link";
-import { Button, Card, CardContent, CardHeader, CardTitle, cn } from "@voidaccess/ui";
+import { Button, ButtonArrow, buttonVariants, cn } from "@voidaccess/ui";
 import { STAGES, type Stage } from "@voidaccess/config";
 import { COUNT_LABELS, STAGE_LABELS, failureCopy } from "@/content/stages";
 import { DEPTH_COPY } from "@/content/examples";
 import { StatusBadge } from "@/components/status-badge";
 import { FormError } from "@/components/field";
+import { Index } from "@/components/page-header";
 
 export interface RunSnapshot {
   id: string;
@@ -166,171 +167,215 @@ export function LiveProgress({ initial }: { initial: RunSnapshot }) {
   const depthLabel = DEPTH_COPY[initial.depth as keyof typeof DEPTH_COPY]?.label ?? initial.depth;
   const charged = initial.creditsReserved;
 
+  const doneCount = STAGES.filter((st) => {
+    const v = state.stages[st];
+    return v === "end" || v === "skipped" || (state.status === "completed" && !v);
+  }).length;
+
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="va-rise flex flex-col gap-14">
+      <header className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <StatusBadge status={state.status} />
-          <span className="text-sm text-fg-secondary">{depthLabel}</span>
-          <span className="text-sm text-fg-secondary">·</span>
+          <span aria-hidden className="h-3 w-px bg-line-2" />
+          <span className="font-mono text-[12.5px] text-dim">{depthLabel}</span>
+          <span aria-hidden className="h-3 w-px bg-line-2" />
           <span
-            className="font-mono text-sm text-fg-secondary tabular-nums"
+            className="font-mono text-[12.5px] text-dim tabular-nums"
             data-testid="elapsed"
             aria-label="Elapsed time"
           >
             {formatElapsed(end - start)}
           </span>
         </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight break-words sm:text-3xl">
+        <h1 className="max-w-[24ch] text-[clamp(32px,3.2vw,44px)] leading-[1.04] font-medium tracking-[-0.04em] break-words">
           {initial.title}
         </h1>
       </header>
 
       {state.status === "launching" || state.status === "reserved" ? (
-        <p className="text-sm text-fg-secondary" role="status" data-testid="run-launching">
+        <p className="-mt-8 text-[15px] text-dim" role="status" data-testid="run-launching">
           Starting a secure environment… This can take a minute or two.
         </p>
       ) : null}
 
       {state.status === "completed" ? (
-        <Card className="border-success/30" data-testid="run-completed">
-          <CardContent className="flex flex-col gap-3 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-fg">Your investigation is ready.</p>
-            <Link href={`/investigations/${initial.id}/results`}>
-              <Button>View results</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <section
+          className="flex flex-col gap-5 border-y border-line py-7 sm:flex-row sm:items-center sm:justify-between"
+          data-testid="run-completed"
+        >
+          <p className="text-[21px] leading-[1.2] font-medium tracking-[-0.02em]">
+            Your investigation is ready.
+          </p>
+          <Link href={`/investigations/${initial.id}/results`} className={buttonVariants({ size: "lg" })}>
+            <span className="inline-flex items-center gap-2.5">
+              View results
+              <ButtonArrow />
+            </span>
+          </Link>
+        </section>
       ) : null}
 
       {state.status === "failed" ? (
-        <Card className="border-danger/30" data-testid="run-failed">
-          <CardContent className="flex flex-col gap-2 pt-5">
-            <p className="text-fg">{failureCopy(state.failureReason)}</p>
-            <p className="text-sm text-fg-secondary">
-              You were refunded <span className="font-mono text-fg">{state.refunded}</span> credits
-              {charged > 0 && state.refunded >= charged ? " (all of it)" : ""}.
-            </p>
-            <Link href="/investigations/new" className="text-sm text-accent underline underline-offset-2">
-              Start another
-            </Link>
-          </CardContent>
-        </Card>
+        <section className="flex flex-col gap-3 border-y border-line py-7" data-testid="run-failed">
+          <p className="text-[21px] leading-[1.25] font-medium tracking-[-0.02em]">
+            {failureCopy(state.failureReason)}
+          </p>
+          <p className="text-[15px] text-dim">
+            You were refunded <span className="font-mono text-[14px] text-paper">{state.refunded}</span>{" "}
+            credits
+            {charged > 0 && state.refunded >= charged ? " (all of it)" : ""}.
+          </p>
+          <Link href="/investigations/new" className="va-link self-start text-[15px]">
+            Start another
+          </Link>
+        </section>
       ) : null}
 
       {state.status === "cancelled" ? (
-        <Card className="border-border-strong" data-testid="run-cancelled">
-          <CardContent className="flex flex-col gap-2 pt-5">
-            <p className="text-fg">You cancelled this investigation.</p>
-            <p className="text-sm text-fg-secondary">
-              Refunded{" "}
-              <span className="font-mono text-fg" data-testid="refunded">
-                {state.refunded}
-              </span>{" "}
-              of <span className="font-mono text-fg">{charged}</span> credits, the share for the stages that
-              hadn&apos;t run yet.
-            </p>
-            <Link href="/investigations/new" className="text-sm text-accent underline underline-offset-2">
-              Start another
-            </Link>
-          </CardContent>
-        </Card>
+        <section className="flex flex-col gap-3 border-y border-line py-7" data-testid="run-cancelled">
+          <p className="text-[21px] leading-[1.25] font-medium tracking-[-0.02em]">
+            You cancelled this investigation.
+          </p>
+          <p className="text-[15px] text-dim">
+            Refunded{" "}
+            <span className="font-mono text-[14px] text-paper" data-testid="refunded">
+              {state.refunded}
+            </span>{" "}
+            of <span className="font-mono text-[14px] text-paper">{charged}</span> credits, the share for the
+            stages that hadn&apos;t run yet.
+          </p>
+          <Link href="/investigations/new" className="va-link self-start text-[15px]">
+            Start another
+          </Link>
+        </section>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Progress</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="grid grid-cols-12 gap-x-6 gap-y-12 max-[960px]:grid-cols-1">
+        <section
+          aria-labelledby="progress-h"
+          className="col-span-7 flex flex-col gap-6 max-[960px]:col-span-1"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <Index>
+              <span id="progress-h">Progress</span>
+            </Index>
+            <p className="font-mono text-[12.5px] text-dim tabular-nums">
+              Stage{" "}
+              <span className="text-paper">
+                {String(Math.min(doneCount + (done ? 0 : 1), STAGES.length)).padStart(2, "0")}
+              </span>{" "}
+              of {String(STAGES.length).padStart(2, "0")}
+            </p>
+          </div>
+          {/* The ruler: a hairline track with a paper fill for the stages that have run. */}
+          <div aria-hidden className="relative h-px bg-line-2">
+            <div
+              className="absolute inset-y-0 left-0 bg-paper transition-[width] duration-700 ease-out"
+              style={{ width: `${(doneCount / STAGES.length) * 100}%` }}
+            />
+          </div>
           <ol className="flex flex-col" aria-label="Stages">
             {STAGES.map((stage, i) => {
               const s = state.stages[stage];
               const finished = s === "end" || s === "skipped" || (state.status === "completed" && !s);
               const current = !done && s === "start";
               const failed = s === "failed";
+              const pending = !finished && !current && !failed;
               return (
                 <li
                   key={stage}
                   aria-current={current ? "step" : undefined}
                   data-state={failed ? "failed" : finished ? "done" : current ? "current" : "pending"}
-                  className="flex gap-3"
+                  className="grid grid-cols-[44px_1fr_auto] items-baseline gap-x-3 border-b border-line py-4"
                 >
-                  <div className="flex flex-col items-center">
-                    <span
-                      aria-hidden
+                  <span
+                    className={cn(
+                      "font-mono text-[13px] tabular-nums transition-colors duration-[400ms]",
+                      pending ? "text-faint" : "text-dim",
+                      current && "text-paper",
+                    )}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <p
                       className={cn(
-                        "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs",
-                        finished && "border-success/40 bg-success/15 text-success",
-                        current && "border-accent bg-accent-dim text-accent",
-                        failed && "border-danger/40 bg-danger/15 text-danger",
-                        !finished && !current && !failed && "border-border-strong text-fg-muted",
+                        "text-[17px] leading-[1.3] font-medium tracking-[-0.01em] transition-colors duration-[400ms]",
+                        pending ? "text-mute" : "text-paper",
                       )}
                     >
-                      {finished ? (
-                        "✓"
-                      ) : failed ? (
-                        "!"
-                      ) : current ? (
-                        <span className="size-2 animate-pulse rounded-full bg-accent" />
-                      ) : (
-                        i + 1
-                      )}
-                    </span>
-                    {i < STAGES.length - 1 ? (
-                      <span aria-hidden className="my-1 w-px grow bg-border-subtle" />
-                    ) : null}
-                  </div>
-                  <div className={cn("pb-4", !finished && !current && !failed && "opacity-60")}>
-                    <p className={cn("text-sm font-medium", current ? "text-accent" : "text-fg")}>
                       {STAGE_LABELS[stage].label}
                       {current ? <span className="sr-only"> (in progress)</span> : null}
                       {s === "skipped" ? (
-                        <span className="ml-2 text-xs font-normal text-fg-muted">skipped</span>
+                        <span className="ml-2.5 font-mono text-[12px] font-normal text-mute">skipped</span>
                       ) : null}
                     </p>
-                    <p className="text-sm text-fg-secondary">{STAGE_LABELS[stage].detail}</p>
+                    <p className={cn("text-[15px] leading-[1.5]", pending ? "text-mute" : "text-dim")}>
+                      {STAGE_LABELS[stage].detail}
+                    </p>
                   </div>
+                  <span aria-hidden className="flex h-5 items-center font-mono text-[12px]">
+                    {finished ? (
+                      <span className="text-paper">✓</span>
+                    ) : failed ? (
+                      <span className="rounded-xs border border-line-3 px-1.5 py-0.5 text-paper">
+                        ✕ Failed
+                      </span>
+                    ) : current ? (
+                      <span className="flex items-center gap-2 text-paper">
+                        <span className="size-1.5 rounded-full bg-v-500" />
+                        Now
+                      </span>
+                    ) : null}
+                  </span>
                 </li>
               );
             })}
           </ol>
-        </CardContent>
-      </Card>
+        </section>
 
-      <section aria-label="Counts" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {COUNT_LABELS.map(([key, label]) => (
-          <div key={key} className="rounded-lg border border-border-subtle bg-surface p-4">
-            <p className="font-mono text-2xl font-medium tabular-nums text-fg" data-testid={`count-${key}`}>
-              {(state.counts[key] ?? 0).toLocaleString("en-US")}
-            </p>
-            <p className="text-xs text-fg-secondary">{label}</p>
-          </div>
-        ))}
-      </section>
-
-      {state.refined.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>We&apos;re searching for</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="flex flex-col gap-1.5 text-sm text-fg-secondary">
-              {state.refined.map((q) => (
-                <li
-                  key={q}
-                  className="rounded-md bg-raised px-3 py-1.5 font-mono text-xs break-words text-fg"
-                >
-                  {q}
-                </li>
+        <aside className="col-span-4 col-start-9 flex flex-col gap-12 max-[960px]:col-span-1 max-[960px]:col-start-1">
+          <section aria-label="Counts" className="flex flex-col gap-6">
+            <Index>Found</Index>
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line">
+              {COUNT_LABELS.map(([key, label]) => (
+                <div key={key} className="flex flex-col gap-3 bg-bg p-5">
+                  <p className="font-mono text-[12px] leading-none text-mute">{label}</p>
+                  <p
+                    className="font-mono text-[28px] leading-none tracking-[-0.04em] text-paper tabular-nums max-[960px]:text-[22px]"
+                    data-testid={`count-${key}`}
+                  >
+                    {(state.counts[key] ?? 0).toLocaleString("en-US")}
+                  </p>
+                </div>
               ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
+            </div>
+          </section>
+
+          {state.refined.length > 0 ? (
+            <section className="flex flex-col gap-5" aria-labelledby="refined-h">
+              <Index>
+                <span id="refined-h">We&apos;re searching for</span>
+              </Index>
+              <ul className="flex flex-col border-t border-line">
+                {state.refined.map((q) => (
+                  <li
+                    key={q}
+                    className="border-b border-line py-3 font-mono text-[13px] leading-[1.5] break-words text-paper"
+                  >
+                    {q}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </aside>
+      </div>
 
       {!done ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-fg-secondary">
+        <div className="flex flex-col gap-4 border-t border-line pt-7 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-[60ch] text-[15px] text-dim">
             You can leave this page. The investigation keeps running and we&apos;ll email you when it&apos;s
             ready.
           </p>
@@ -340,7 +385,7 @@ export function LiveProgress({ initial }: { initial: RunSnapshot }) {
             loading={cancelBusy}
             disabled={state.cancelRequested || state.status === "ingesting"}
           >
-            {state.cancelRequested ? "Cancelling…" : "Cancel"}
+            {state.cancelRequested ? "Cancelling…" : "Cancel investigation"}
           </Button>
         </div>
       ) : null}

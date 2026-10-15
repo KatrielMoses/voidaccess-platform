@@ -1,7 +1,7 @@
 "use client";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input } from "@voidaccess/ui";
+import { Button, Input, NativeSelect, Textarea } from "@voidaccess/ui";
 
 export interface ActionField {
   name: string;
@@ -25,7 +25,7 @@ export function ActionForm({
   submit,
   fields = [],
   hidden = {},
-  danger = false,
+  destructive = false,
   testId,
   open = false,
   success = "Done.",
@@ -36,7 +36,8 @@ export function ActionForm({
   submit: string;
   fields?: ActionField[];
   hidden?: Record<string, unknown>;
-  danger?: boolean;
+  /** Destructive actions (suspend, ban, remove) get the outline button; their wording says what happens. */
+  destructive?: boolean;
   testId: string;
   open?: boolean;
   success?: string;
@@ -77,34 +78,32 @@ export function ActionForm({
   return (
     <details
       open={open || undefined}
-      className="rounded-lg border border-border-subtle bg-surface"
+      className="group/af rounded-lg border border-line transition-[border-color,background-color] duration-300 open:border-line-2 open:bg-bg-2 hover:border-line-2"
       data-testid={`${testId}-details`}
     >
-      <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium select-none">{title}</summary>
-      <form
-        onSubmit={onSubmit}
-        data-testid={testId}
-        className="flex flex-col gap-3 border-t border-border-dim px-4 py-3"
-      >
+      <summary className="flex h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-[15px] text-paper select-none [&::-webkit-details-marker]:hidden">
+        {title}
+        <span
+          aria-hidden
+          className="font-mono text-[13px] text-mute transition-transform duration-300 ease-out group-open/af:rotate-45"
+        >
+          +
+        </span>
+      </summary>
+      <form onSubmit={onSubmit} data-testid={testId} className="flex flex-col gap-4 border-t border-line p-4">
         {fields.map((f) => (
-          <div key={f.name} className="flex flex-col gap-1">
-            <label htmlFor={`${id}-${f.name}`} className="text-xs font-medium text-fg-secondary">
+          <div key={f.name} className="flex flex-col gap-2">
+            <label htmlFor={`${id}-${f.name}`} className="text-[15px] text-dim">
               {f.label}
             </label>
             {f.type === "select" ? (
-              <select
-                id={`${id}-${f.name}`}
-                name={f.name}
-                required
-                defaultValue={f.defaultValue}
-                className="h-10 rounded-md border border-border-subtle bg-surface px-2 text-sm text-fg"
-              >
+              <NativeSelect id={`${id}-${f.name}`} name={f.name} required defaultValue={f.defaultValue}>
                 {f.options?.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             ) : (
               <Input
                 id={`${id}-${f.name}`}
@@ -119,33 +118,39 @@ export function ActionForm({
             )}
           </div>
         ))}
-        <div className="flex flex-col gap-1">
-          <label htmlFor={`${id}-reason`} className="text-xs font-medium text-fg-secondary">
+        <div className="flex flex-col gap-2">
+          <label htmlFor={`${id}-reason`} className="text-[15px] text-dim">
             Reason (required, kept in the audit log)
           </label>
-          <textarea
+          <Textarea
             id={`${id}-reason`}
             name="reason"
             required
             minLength={8}
             maxLength={1000}
             rows={2}
-            className="rounded-md border border-border-subtle bg-surface px-3 py-2 text-sm text-fg"
+            className="min-h-20"
           />
         </div>
         {state.kind === "error" ? (
-          <p role="alert" className="text-sm text-danger" data-testid={`${testId}-error`}>
+          <p role="alert" className="text-[15px] text-paper" data-testid={`${testId}-error`}>
+            <span aria-hidden className="font-mono text-[12px]">
+              ✕{" "}
+            </span>
             {state.text}
           </p>
         ) : null}
         {state.kind === "ok" ? (
-          <p role="status" className="text-sm text-success" data-testid={`${testId}-ok`}>
+          <p role="status" className="text-[15px] text-paper" data-testid={`${testId}-ok`}>
+            <span aria-hidden className="font-mono text-[12px]">
+              ✓{" "}
+            </span>
             {state.text}
           </p>
         ) : null}
         <Button
           type="submit"
-          variant={danger ? "danger" : "primary"}
+          variant={destructive ? "secondary" : "paper"}
           size="sm"
           loading={state.kind === "busy"}
           className="self-start"

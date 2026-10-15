@@ -5,7 +5,8 @@ import { adminPage } from "@/lib/admin/guard";
 import { AdminError } from "@/lib/admin/errors";
 import { getUserDetail } from "@/lib/admin/queries";
 import { ActionForm } from "@/components/admin/action-form";
-import { Empty, Page, Section, StateBadge, Stat, T, Td } from "@/components/admin/ui";
+import { Badge } from "@voidaccess/ui";
+import { Empty, Num, Page, Section, StateBadge, Stat, StatGrid, T, Td } from "@/components/admin/ui";
 import { fmtDate, int, usd } from "@/components/admin/format";
 
 export default async function AdminUser({ params }: { params: Promise<{ id: string }> }) {
@@ -31,18 +32,12 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
         <div className="flex flex-wrap items-center gap-2" data-testid="user-badges">
           <StateBadge value={u.status} />
           <StateBadge value={u.role} />
-          <span className="rounded-full border border-border-subtle px-2.5 py-0.5 text-xs">
-            {PLANS[u.plan].name}
-          </span>
-          {d.foundingSeat ? (
-            <span className="rounded-full border border-accent-border px-2.5 py-0.5 text-xs text-accent">
-              Founding #{d.foundingSeat}
-            </span>
-          ) : null}
+          <Badge>{PLANS[u.plan].name}</Badge>
+          {d.foundingSeat ? <Badge variant="strong">Founding #{d.foundingSeat}</Badge> : null}
         </div>
       }
     >
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <StatGrid>
         <Stat
           label="Signed up"
           value={fmtDate(u.createdAt, false)}
@@ -56,30 +51,30 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
           sub={`${d.credits.lots.length} lot(s)`}
         />
         <Stat label="Active sessions" value={d.activeSessions} />
-      </div>
+      </StatGrid>
 
       <Section title="Where they came from" hint="First-touch attribution captured at sign-up.">
         <dl
-          className="grid gap-x-6 gap-y-2 rounded-lg border border-border-subtle bg-surface p-4 text-sm sm:grid-cols-2"
+          className="grid gap-px overflow-hidden rounded-lg border border-line bg-line text-[15px] sm:grid-cols-2 [&>div]:flex [&>div]:flex-col [&>div]:gap-2 [&>div]:bg-bg [&>div]:p-5"
           data-testid="attribution"
         >
           <div>
-            <dt className="text-xs text-fg-secondary">Referral / affiliate code (ref)</dt>
-            <dd className="font-mono" data-testid="ref-code">
+            <dt className="font-mono text-[12px] text-mute">Referral / affiliate code (ref)</dt>
+            <dd className="font-mono text-[14px]" data-testid="ref-code">
               {ft?.ref ?? "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-fg-secondary">Their own referral code</dt>
-            <dd className="font-mono">{u.referralCode ?? "—"}</dd>
+            <dt className="font-mono text-[12px] text-mute">Their own referral code</dt>
+            <dd className="font-mono text-[14px]">{u.referralCode ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-fg-secondary">Landing page</dt>
-            <dd className="break-all">{ft?.landing ?? "—"}</dd>
+            <dt className="font-mono text-[12px] text-mute">Landing page</dt>
+            <dd className="font-mono text-[14px] break-all">{ft?.landing ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-fg-secondary">UTM</dt>
-            <dd className="break-all">
+            <dt className="font-mono text-[12px] text-mute">UTM</dt>
+            <dd className="font-mono text-[14px] break-all">
               {ft?.utm && Object.keys(ft.utm).length
                 ? Object.entries(ft.utm)
                     .map(([k, v]) => `${k}=${v}`)
@@ -94,13 +89,13 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
         title="Actions"
         hint="Every action needs a reason and is written to the audit log with your id."
       >
-        <div className="grid gap-3 md:grid-cols-2" data-testid="actions">
+        <div className="grid items-start gap-2.5 md:grid-cols-2" data-testid="actions">
           {u.status === "active" ? (
             <ActionForm
               testId="suspend"
               title="Suspend"
               submit="Suspend user"
-              danger
+              destructive
               endpoint={`${api}/status`}
               hidden={{ action: "suspend" }}
               success="User suspended."
@@ -120,7 +115,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
               testId="ban"
               title="Ban (also signs them out everywhere)"
               submit="Ban user"
-              danger
+              destructive
               endpoint={`${api}/status`}
               hidden={{ action: "ban" }}
               success="User banned."
@@ -161,7 +156,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
           />
         </div>
         {self ? (
-          <p className="text-xs text-fg-secondary">
+          <p className="text-[15px] text-dim">
             This is your own account: status changes are disabled for it.
           </p>
         ) : null}
@@ -182,15 +177,21 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
                 <Td>
                   <StateBadge value={i.status} />
                   {i.failureReason ? (
-                    <span className="ml-1 font-mono text-xs text-fg-secondary">{i.failureReason}</span>
+                    <span className="ml-2 font-mono text-[12px] text-dim">{i.failureReason}</span>
                   ) : null}
                 </Td>
-                <Td>{i.depth}</Td>
-                <Td>{i.credits}</Td>
-                <Td className="whitespace-nowrap">{fmtDate(i.createdAt)}</Td>
+                <Td>
+                  <Num className="text-dim">{i.depth}</Num>
+                </Td>
+                <Td>
+                  <Num>{i.credits}</Num>
+                </Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(i.createdAt)}</Num>
+                </Td>
                 <Td>
                   {i.status === "completed" ? (
-                    <Link href={`/admin/review/${i.id}`} className="text-accent hover:underline">
+                    <Link href={`/admin/review/${i.id}`} className="va-link whitespace-nowrap">
                       Open for abuse review
                     </Link>
                   ) : null}
@@ -201,7 +202,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
         )}
       </Section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-12 lg:grid-cols-2">
         <Section title="Subscriptions and payments" testId="billing">
           {d.subscriptions.length === 0 && d.payments.length === 0 ? (
             <Empty>No billing history.</Empty>
@@ -215,16 +216,20 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
                     {s.founding ? " · founding" : ""}
                     {s.cancelAt ? " · cancelling" : ""}
                   </Td>
-                  <Td className="whitespace-nowrap">{fmtDate(s.periodEnd, false)}</Td>
+                  <Td className="whitespace-nowrap">
+                    <Num className="text-dim">{fmtDate(s.periodEnd, false)}</Num>
+                  </Td>
                 </tr>
               ))}
               {d.payments.map((p) => (
                 <tr key={p.id}>
                   <Td>Payment ({p.kind})</Td>
-                  <Td>
+                  <Td className="font-mono text-[13px] tabular-nums">
                     {usd(p.amountCents / 100, 2)} {p.currency}
                   </Td>
-                  <Td className="whitespace-nowrap">{fmtDate(p.paidAt, false)}</Td>
+                  <Td className="whitespace-nowrap">
+                    <Num className="text-dim">{fmtDate(p.paidAt, false)}</Num>
+                  </Td>
                 </tr>
               ))}
             </T>
@@ -237,11 +242,15 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
             <T head={["Kind", "Status", "When"]}>
               {d.flags.map((f) => (
                 <tr key={f.id}>
-                  <Td className="font-mono text-xs">{f.kind}</Td>
+                  <Td>
+                    <Num>{f.kind}</Num>
+                  </Td>
                   <Td>
                     <StateBadge value={f.status} />
                   </Td>
-                  <Td className="whitespace-nowrap">{fmtDate(f.createdAt)}</Td>
+                  <Td className="whitespace-nowrap">
+                    <Num className="text-dim">{fmtDate(f.createdAt)}</Num>
+                  </Td>
                 </tr>
               ))}
             </T>
@@ -260,9 +269,15 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
           <T head={["When", "Actor", "Action", "Reason"]}>
             {d.trail.map((a) => (
               <tr key={a.id}>
-                <Td className="whitespace-nowrap">{fmtDate(a.at)}</Td>
-                <Td className="font-mono text-xs">{a.actor.slice(0, 13)}</Td>
-                <Td className="font-mono text-xs">{a.action}</Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(a.at)}</Num>
+                </Td>
+                <Td>
+                  <Num className="text-dim">{a.actor.slice(0, 13)}</Num>
+                </Td>
+                <Td>
+                  <Num>{a.action}</Num>
+                </Td>
                 <Td className="max-w-md break-words">
                   {typeof a.meta.reason === "string" ? a.meta.reason : ""}
                 </Td>
