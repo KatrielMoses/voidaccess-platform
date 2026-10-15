@@ -318,7 +318,7 @@ export function GraphView({ investigationId }: { investigationId: string }) {
     if (!sigma || !g || !g.hasNode(id)) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const pos = sigma.getNodeDisplayData(id);
-    if (pos) sigma.getCamera().animate({ x: pos.x, y: pos.y, ratio: 0.12 }, { duration: reduced ? 0 : 400 });
+    if (pos) sigma.getCamera().animate({ x: pos.x, y: pos.y, ratio: 0.3 }, { duration: reduced ? 0 : 400 });
     setSelected(id);
   }, []);
 
