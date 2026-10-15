@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Skeleton, Tooltip } from "@voidaccess/ui";
+import { Skeleton } from "@voidaccess/ui";
 import { EDGE_DISCLAIMER, edgeKindLabel, edgeTypeLabel } from "@/lib/results/entity-style";
 import { formatDate } from "@/lib/results/format";
 import type { EntityDetail, RelationshipView } from "@/lib/results/types";
 import { ArchivePanel } from "./archive-panel";
 import { CopyButton, CopyOnlyUrl } from "./copy-text";
 import { TypeBadge } from "./type-badge";
+import { TypeGlyph } from "./type-glyph";
+import { Field, H, InfoTip, MaskedMark, RULED, VALUE_LINK } from "./ui";
 
 export function useEntityDetail(invId: string, bundleId: string | null) {
   const [state, setState] = useState<{ key: string; data: EntityDetail | null; error: boolean } | null>(null);
@@ -55,14 +57,15 @@ export function EntityDetailView({
         <Skeleton className="h-32" />
       </div>
     );
-  if (error || !detail) return <p className="text-sm text-danger">Couldn&apos;t load this entity.</p>;
+  if (error || !detail) return <p className="text-[15px] text-paper">Couldn&apos;t load this entity.</p>;
 
   return (
-    <div className="flex flex-col gap-5 text-sm" data-testid="entity-detail">
-      <section className="flex flex-col gap-2">
+    <div className="flex flex-col gap-7 text-[14px]" data-testid="entity-detail">
+      <section className="flex flex-col gap-3">
+        <TypeBadge type={detail.type} />
         <div className="flex items-start gap-2">
           <code
-            className="min-w-0 flex-1 rounded bg-void px-2 py-1.5 font-mono text-sm break-all"
+            className="min-w-0 flex-1 font-mono text-[16px] leading-snug break-all text-v-200"
             data-testid="entity-value"
           >
             {detail.displayValue}
@@ -73,35 +76,28 @@ export function EntityDetailView({
           />
         </div>
         {detail.sensitive ? (
-          <p className="text-xs text-warning">
+          <p className="flex items-center gap-2 text-[13px] text-dim">
+            <MaskedMark />
             Masked: the raw value is stored encrypted and is never shown here.
           </p>
         ) : null}
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-          <div>
-            <dt className="text-xs text-fg-secondary">Type</dt>
-            <dd>
-              <TypeBadge type={detail.type} />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-fg-secondary">Confidence</dt>
-            <dd className="font-mono">{detail.confidence.toFixed(2)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-fg-secondary">First seen</dt>
-            <dd>{formatDate(detail.firstSeen, true)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-fg-secondary">Connections</dt>
-            <dd className="font-mono">{detail.degree}</dd>
-          </div>
+        <dl className="mt-1 grid grid-cols-3 gap-x-4 border-y border-line py-4">
+          <Field label="Confidence" mono>
+            {detail.confidence.toFixed(2)}
+          </Field>
+          <Field label="Connections" mono>
+            {detail.degree}
+          </Field>
+          <Field label="First seen">{formatDate(detail.firstSeen, true)}</Field>
         </dl>
         {detail.tags.length > 0 ? (
           <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
             {detail.tags.map((t) => (
-              <li key={t}>
-                <Badge>{t}</Badge>
+              <li
+                key={t}
+                className="rounded-xs border border-line px-1.5 py-1 font-mono text-[12px] leading-none text-dim"
+              >
+                {t}
               </li>
             ))}
           </ul>
@@ -109,73 +105,68 @@ export function EntityDetailView({
       </section>
 
       {detail.actors.length > 0 ? (
-        <section>
-          <h3 className="mb-1.5 font-medium">Belongs to actors</h3>
-          <ul className="flex flex-wrap gap-1.5">
+        <section className="flex flex-col gap-2.5">
+          <h3 className={H}>Belongs to actors</h3>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
             {detail.actors.map((a) => (
-              <li key={a.bundleId}>
-                <Badge variant="actor">{a.handle}</Badge>
+              <li key={a.bundleId} className="flex items-center gap-1.5 font-mono text-[13px] text-paper">
+                <TypeGlyph type="THREAT_ACTOR" className="text-paper/80" />
+                {a.handle}
               </li>
             ))}
           </ul>
         </section>
       ) : null}
 
-      <section>
-        <h3 className="mb-1.5 flex items-center gap-2 font-medium">
+      <section className="flex flex-col gap-3">
+        <h3 className={`${H} flex items-center gap-2`}>
           Relationships
-          <Tooltip content={EDGE_DISCLAIMER}>
-            <button
-              type="button"
-              aria-label="About relationships"
-              className="flex size-5 items-center justify-center rounded-full border border-border-strong text-xs text-fg-secondary"
-            >
-              i
-            </button>
-          </Tooltip>
+          <InfoTip content={EDGE_DISCLAIMER} label="About relationships" />
         </h3>
         {detail.relationships.length === 0 ? (
-          <p className="text-fg-secondary">No relationships recorded.</p>
+          <p className="text-dim">No relationships recorded.</p>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-5">
             {groupRelationships(detail.relationships).map(([type, list]) => (
               <div key={type}>
-                <p className="mb-1 flex items-center gap-2 text-xs text-fg-secondary">
-                  <span className="font-medium tracking-wide uppercase">{edgeTypeLabel(type)}</span>
-                  <Badge variant={type === "CO_APPEARED_ON" ? "neutral" : "accent"}>
-                    {edgeKindLabel(type)}
-                  </Badge>
-                  <span className="font-mono">{list.length}</span>
+                <p className="mb-1.5 flex items-center gap-2 font-mono text-[12px] text-mute">
+                  <span className="text-dim">{edgeTypeLabel(type)}</span>
+                  {edgeKindLabel(type) !== edgeTypeLabel(type) ? (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span>{edgeKindLabel(type)}</span>
+                    </>
+                  ) : null}
+                  <span className="ml-auto tabular-nums">{list.length}</span>
                 </p>
-                <ul className="flex flex-col gap-1.5">
+                <ul className={RULED}>
                   {list.slice(0, 25).map((r, i) => (
-                    <li
-                      key={`${r.other.bundleId}-${i}`}
-                      className="rounded border border-border-dim bg-surface px-2.5 py-1.5"
-                    >
-                      <div className="flex items-center justify-between gap-2">
+                    <li key={`${r.other.bundleId}-${i}`} className="py-2">
+                      <div className="flex items-center justify-between gap-3">
                         {onOpenEntity ? (
                           <button
                             type="button"
                             onClick={() => onOpenEntity(r.other.bundleId)}
-                            className="min-w-0 truncate text-left font-mono text-xs text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+                            className={VALUE_LINK}
                           >
                             {r.other.displayValue}
                           </button>
                         ) : (
-                          <span className="min-w-0 truncate font-mono text-xs">{r.other.displayValue}</span>
+                          <span className="min-w-0 truncate font-mono text-[13px] text-paper">
+                            {r.other.displayValue}
+                          </span>
                         )}
-                        <TypeBadge type={r.other.type} />
+                        <TypeBadge type={r.other.type} className="shrink-0" />
                       </div>
                       {r.evidence.length > 0 ? (
-                        <p className="mt-1 text-xs text-fg-secondary">
+                        <p className="mt-1 text-[13px] text-dim">
                           Evidence: {r.evidence.map((e) => e.name).join(", ")}
                         </p>
                       ) : null}
                     </li>
                   ))}
                   {list.length > 25 ? (
-                    <li className="text-xs text-fg-secondary">…and {list.length - 25} more</li>
+                    <li className="py-2 text-[13px] text-dim">…and {list.length - 25} more</li>
                   ) : null}
                 </ul>
               </div>
@@ -186,17 +177,20 @@ export function EntityDetailView({
 
       <ArchivePanel investigationId={invId} entityKey={bundleId} compact />
 
-      <section>
-        <h3 className="mb-1.5 font-medium">Sources ({detail.sources.length})</h3>
+      <section className="flex flex-col gap-3">
+        <h3 className={H}>
+          Sources{" "}
+          <span className="font-mono text-[12px] text-mute tabular-nums">{detail.sources.length}</span>
+        </h3>
         {detail.sources.length === 0 ? (
-          <p className="text-fg-secondary">No sources recorded.</p>
+          <p className="text-dim">No sources recorded.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className={RULED}>
             {detail.sources.map((s) => (
-              <li key={s.bundleId} className="rounded border border-border-dim bg-surface p-2.5">
-                <p className="font-medium">{s.name}</p>
+              <li key={s.bundleId} className="py-3">
+                <p className="font-medium text-paper">{s.name}</p>
                 {s.excerpt ? (
-                  <p className="mt-1 text-xs whitespace-pre-wrap text-fg-secondary">{s.excerpt}</p>
+                  <p className="mt-1 text-[13px] whitespace-pre-wrap text-dim">{s.excerpt}</p>
                 ) : null}
                 {s.url ? (
                   <div className="mt-2">

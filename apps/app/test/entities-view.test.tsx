@@ -117,8 +117,6 @@ describe("GraphControls", () => {
       ["CVE_NUMBER", 3],
       ["ONION_URL", 5],
     ] as [string, number][],
-    communityColors: false,
-    onCommunityColors: vi.fn(),
     big: true,
     truncated: 42,
     totalNodes: 5000,
@@ -129,7 +127,6 @@ describe("GraphControls", () => {
     onExportSvg: vi.fn(),
     exporting: false,
     tableHref: "/t",
-    cssColor: () => "#fff",
   };
   it("toggles type chips, confidence, typed-only and show-all through onChange", async () => {
     const onChange = vi.fn();

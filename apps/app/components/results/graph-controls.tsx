@@ -1,16 +1,17 @@
 "use client";
 
-import { Button, Checkbox, Tooltip } from "@voidaccess/ui";
+import { Button, Checkbox } from "@voidaccess/ui";
 import { EDGE_DISCLAIMER, typeLabel, typeStyle } from "@/lib/results/entity-style";
 import { archiveCopy } from "@/lib/archive/copy";
+import { ARCHIVE_GLYPH } from "@/lib/results/glyphs";
 import { BIG_GRAPH_TOP, type GraphFilterState } from "@/lib/results/graph-model";
+import { ShapeGlyph } from "./type-glyph";
+import { InfoTip, UL } from "./ui";
 
 export interface GraphControlsProps {
   filters: GraphFilterState;
   onChange: (next: GraphFilterState) => void;
   types: [string, number][];
-  communityColors: boolean;
-  onCommunityColors: (v: boolean) => void;
   big: boolean;
   truncated: number;
   totalNodes: number;
@@ -21,7 +22,6 @@ export interface GraphControlsProps {
   onExportSvg: () => void;
   exporting: boolean;
   tableHref: string;
-  cssColor: (type: string) => string;
   /** archive context overlay (off by default) */
   archive?: {
     on: boolean;
@@ -34,9 +34,11 @@ export interface GraphControlsProps {
     nodes: number;
     truncated: boolean;
     failed: boolean;
-    color: string;
   };
 }
+
+const SELECT =
+  "h-8 rounded-sm border border-line bg-bg px-2 font-mono text-[13px] text-paper transition-colors duration-300 hover:border-line-2";
 
 export function GraphControls(p: GraphControlsProps) {
   const { filters, onChange } = p;
@@ -47,10 +49,11 @@ export function GraphControls(p: GraphControlsProps) {
     onChange({ ...filters, hiddenTypes: hidden });
   };
   return (
-    <div className="flex flex-col gap-4 text-sm" data-testid="graph-controls">
+    <div className="flex flex-col gap-4 text-[14px]" data-testid="graph-controls">
       <div role="group" aria-label="Filter by entity type" className="flex flex-wrap gap-2">
         {p.types.map(([t, n]) => {
           const on = !filters.hiddenTypes.has(t);
+          const s = typeStyle(t);
           return (
             <button
               key={t}
@@ -58,24 +61,18 @@ export function GraphControls(p: GraphControlsProps) {
               aria-pressed={on}
               data-testid={`type-chip-${t}`}
               onClick={() => toggleType(t)}
-              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs focus-visible:outline-2 focus-visible:outline-accent ${on ? "border-border-strong text-fg" : "border-border-dim text-fg-muted line-through"}`}
+              className={`flex h-8 items-center gap-2 rounded-sm border px-2.5 text-[13px] transition-colors duration-300 ${on ? "border-line-2 text-paper hover:border-line-3" : "border-line text-mute line-through decoration-line-3 hover:text-dim"}`}
             >
-              <span
-                aria-hidden
-                className="size-2 rounded-full"
-                style={{
-                  background: on ? p.cssColor(t) : "transparent",
-                  border: `1px solid ${p.cssColor(t)}`,
-                }}
-              />
-              {typeStyle(t).label || typeLabel(t)} <span className="font-mono">{n}</span>
+              <ShapeGlyph shape={s.glyph.shape} className={on ? "text-paper/80" : "text-faint"} />
+              {s.label || typeLabel(t)}{" "}
+              <span className="font-mono text-[12px] text-mute tabular-nums">{n}</span>
             </button>
           );
         })}
       </div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <label className="flex items-center gap-2">
-          <span className="text-fg-secondary">Min confidence</span>
+        <label className="flex items-center gap-3">
+          <span className="text-dim">Min confidence</span>
           <input
             type="range"
             min={0}
@@ -85,11 +82,13 @@ export function GraphControls(p: GraphControlsProps) {
             aria-label="Minimum confidence"
             data-testid="min-confidence"
             onChange={(e) => onChange({ ...filters, minConfidence: Number(e.target.value) })}
-            className="accent-[var(--color-accent)]"
+            className="w-32 accent-paper"
           />
-          <span className="w-9 font-mono text-xs">{filters.minConfidence.toFixed(2)}</span>
+          <span className="w-9 font-mono text-[13px] text-paper tabular-nums">
+            {filters.minConfidence.toFixed(2)}
+          </span>
         </label>
-        <label className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-paper">
           <Checkbox
             checked={filters.typedOnly}
             onCheckedChange={(c) => onChange({ ...filters, typedOnly: c === true })}
@@ -97,27 +96,10 @@ export function GraphControls(p: GraphControlsProps) {
             data-testid="typed-only"
           />
           Typed relationships only
-          <Tooltip content={EDGE_DISCLAIMER}>
-            <button
-              type="button"
-              aria-label="About relationships"
-              className="flex size-5 items-center justify-center rounded-full border border-border-strong text-xs text-fg-secondary"
-            >
-              i
-            </button>
-          </Tooltip>
-        </label>
-        <label className="flex items-center gap-2">
-          <Checkbox
-            checked={p.communityColors}
-            onCheckedChange={(c) => p.onCommunityColors(c === true)}
-            aria-label="Colour by community"
-            data-testid="community-colors"
-          />
-          Colour by community
+          <InfoTip content={EDGE_DISCLAIMER} label="About relationships" />
         </label>
         {p.big ? (
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-paper">
             <Checkbox
               checked={filters.showAll}
               onCheckedChange={(c) => onChange({ ...filters, showAll: c === true })}
@@ -130,10 +112,10 @@ export function GraphControls(p: GraphControlsProps) {
       </div>
       {p.archive ? (
         <div
-          className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border border-border-dim bg-surface px-3 py-2"
+          className="flex flex-wrap items-center gap-x-6 gap-y-3 border-y border-line py-3"
           data-testid="archive-controls"
         >
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-paper">
             <Checkbox
               checked={p.archive.on}
               onCheckedChange={(c) => p.archive!.onToggle(c === true)}
@@ -144,19 +126,19 @@ export function GraphControls(p: GraphControlsProps) {
           </label>
           {p.archive.on ? (
             <>
-              <label className="flex items-center gap-2 text-fg-secondary">
+              <label className="flex items-center gap-2 text-dim">
                 {archiveCopy.graph.hops}
                 <select
                   value={p.archive.hops}
                   onChange={(e) => p.archive!.onHops(e.target.value === "2" ? 2 : 1)}
                   data-testid="archive-hops"
-                  className="h-8 rounded border border-border-subtle bg-void px-2 text-fg"
+                  className={SELECT}
                 >
                   <option value={1}>{archiveCopy.graph.hop1}</option>
                   <option value={2}>{archiveCopy.graph.hop2}</option>
                 </select>
               </label>
-              <label className="flex items-center gap-2 text-fg-secondary">
+              <label className="flex items-center gap-2 text-dim">
                 {archiveCopy.graph.minTier}
                 <select
                   value={p.archive.minTier}
@@ -164,7 +146,7 @@ export function GraphControls(p: GraphControlsProps) {
                     p.archive!.onMinTier(e.target.value as "unconfirmed" | "corroborated" | "feed_validated")
                   }
                   data-testid="archive-min-tier"
-                  className="h-8 rounded border border-border-subtle bg-void px-2 text-fg"
+                  className={SELECT}
                 >
                   <option value="unconfirmed">{archiveCopy.tierLabel.unconfirmed}</option>
                   <option value="corroborated">{archiveCopy.tierLabel.corroborated}</option>
@@ -172,11 +154,11 @@ export function GraphControls(p: GraphControlsProps) {
                 </select>
               </label>
               <span
-                className="flex items-center gap-1.5 text-xs text-fg-secondary"
+                className="flex items-center gap-2 text-[13px] text-dim"
                 data-testid="archive-status"
                 aria-live="polite"
               >
-                <span aria-hidden className="size-2.5 rounded-full" style={{ background: p.archive.color }} />
+                <ShapeGlyph shape={ARCHIVE_GLYPH.shape} className="text-paper/80" />
                 {archiveCopy.graph.legend}
                 {p.archive.loading
                   ? " …"
@@ -192,10 +174,16 @@ export function GraphControls(p: GraphControlsProps) {
         </div>
       ) : null}
       {p.big && !filters.showAll ? (
-        <p role="status" className="text-xs text-warning">
-          Large graph: showing the top {BIG_GRAPH_TOP.toLocaleString("en-US")} of{" "}
-          {p.totalNodes.toLocaleString("en-US")} nodes by connections ({p.truncated.toLocaleString("en-US")}{" "}
-          hidden). Turn on “Show all nodes” to see everything.
+        <p role="status" className="flex items-baseline gap-2 text-[13px] text-dim">
+          <span aria-hidden className="font-mono text-paper">
+            ▲
+          </span>
+          <span>
+            <span className="font-medium text-paper">Large graph:</span> showing the top{" "}
+            {BIG_GRAPH_TOP.toLocaleString("en-US")} of {p.totalNodes.toLocaleString("en-US")} nodes by
+            connections ({p.truncated.toLocaleString("en-US")} hidden). Turn on “Show all nodes” to see
+            everything.
+          </span>
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
@@ -220,13 +208,10 @@ export function GraphControls(p: GraphControlsProps) {
         >
           Export SVG
         </Button>
-        <a
-          href={p.tableHref}
-          className="text-sm text-accent underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-accent"
-        >
+        <a href={p.tableHref} className={`${UL} ml-2 text-[14px]`}>
           View as table
         </a>
-        <span className="ml-auto font-mono text-xs text-fg-secondary" data-testid="graph-counts">
+        <span className="ml-auto font-mono text-[12px] text-mute tabular-nums" data-testid="graph-counts">
           {p.visibleNodes.toLocaleString("en-US")} nodes · {p.visibleEdges.toLocaleString("en-US")} edges
         </span>
       </div>

@@ -28,8 +28,8 @@ export function ResultsNav({
     sources: counts.sources,
   };
   return (
-    <nav aria-label="Results sections" className="-mx-1 overflow-x-auto border-b border-border-subtle">
-      <ul className="flex min-w-max items-center gap-1 px-1">
+    <nav aria-label="Results sections" className="-mx-1 overflow-x-auto border-b border-line">
+      <ul className="flex min-w-max items-center gap-7 px-1">
         {TABS.map((t) => {
           const href = `/investigations/${id}/results/${t.slug}`;
           const active = pathname === href;
@@ -39,15 +39,15 @@ export function ResultsNav({
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "-mb-px flex items-center gap-2 border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-accent",
-                  active && "border-accent text-fg",
+                  // the 1px underline draws from the left in 0.55s (design.md §6 navigation)
+                  "relative flex items-baseline gap-2 py-3.5 text-[15px] text-dim transition-colors duration-300 hover:text-paper",
+                  "after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-right after:scale-x-0 after:bg-current after:transition-transform after:duration-[550ms] after:ease-out hover:after:origin-left hover:after:scale-x-100",
+                  active && "text-paper after:origin-left after:scale-x-100",
                 )}
               >
                 {t.label}
                 {count[t.slug] !== undefined ? (
-                  <span className="rounded-full bg-raised px-1.5 text-xs text-fg-secondary">
-                    {count[t.slug]}
-                  </span>
+                  <span className="font-mono text-[12px] text-mute tabular-nums">{count[t.slug]}</span>
                 ) : null}
               </Link>
             </li>

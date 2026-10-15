@@ -12,7 +12,7 @@ export default async function EntitiesPage({ params }: { params: Promise<{ id: s
   const inv = userId ? await getInvestigation(userId, id) : null;
   if (!inv) notFound();
   return (
-    <Suspense fallback={<p className="text-sm text-fg-secondary">Loading entities…</p>}>
+    <Suspense fallback={<p className="font-mono text-[13px] text-mute">Loading entities…</p>}>
       <EntitiesView investigationId={id} typeCounts={inv.summary.entityCounts} />
     </Suspense>
   );

@@ -14,9 +14,9 @@ export function StarPrompt({ href }: { href: string }) {
     <aside
       data-testid="star-prompt"
       aria-label="Support VoidAccess"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface px-4 py-3 text-sm"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-5 py-3.5 text-[14px]"
     >
-      <p className="text-fg-secondary">
+      <p className="text-dim">
         Found this useful? The engine is open source, and a star on GitHub helps other people find it.
       </p>
       <div className="flex items-center gap-2">

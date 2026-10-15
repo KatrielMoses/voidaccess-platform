@@ -8,10 +8,13 @@ export function CopyButton({
   text,
   label = "Copy",
   className,
+  tab = false,
 }: {
   text: string;
   label?: string;
   className?: string;
+  /** the small "Copy" tab at the end of a copy chip (design.md §6) */
+  tab?: boolean;
 }) {
   const [done, setDone] = useState(false);
   return (
@@ -30,7 +33,10 @@ export function CopyButton({
         }
       }}
       className={cn(
-        "inline-flex h-7 shrink-0 items-center rounded border border-border-subtle px-2 text-xs text-fg-secondary hover:bg-raised hover:text-fg focus-visible:outline-2 focus-visible:outline-accent",
+        "inline-flex min-w-[3.75rem] shrink-0 items-center justify-center px-2 font-mono text-[12px] text-dim transition-colors duration-300 hover:text-paper",
+        tab
+          ? "rounded-r-[3px] border-l border-line bg-paper/[0.06]"
+          : "h-7 rounded-xs border border-line hover:border-line-2",
         className,
       )}
     >
@@ -42,14 +48,14 @@ export function CopyButton({
 /** Text that is never a link, with a copy button: used for source URLs, including .onion addresses. */
 export function CopyOnlyUrl({ url }: { url: string }) {
   return (
-    <span className="flex items-start gap-2">
+    <span className="flex items-stretch rounded-sm border border-line">
       <code
-        className="min-w-0 flex-1 break-all rounded bg-void px-2 py-1 font-mono text-xs text-fg-secondary"
+        className="min-w-0 flex-1 px-2.5 py-1.5 font-mono text-[12.5px] leading-snug break-all text-dim"
         data-testid="source-url"
       >
         {url}
       </code>
-      <CopyButton text={url} label="Copy source URL" />
+      <CopyButton text={url} label="Copy source URL" tab />
     </span>
   );
 }

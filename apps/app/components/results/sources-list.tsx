@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Input } from "@voidaccess/ui";
+import { Input } from "@voidaccess/ui";
 import type { SourceView } from "@/lib/results/types";
 import { formatDate } from "@/lib/results/format";
 import { CopyOnlyUrl } from "./copy-text";
@@ -39,7 +39,7 @@ export function SourcesList({ sources }: { sources: SourceView[] }) {
   }, [filtered]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
         <Input
           aria-label="Search source excerpts"
@@ -55,43 +55,54 @@ export function SourcesList({ sources }: { sources: SourceView[] }) {
               type="button"
               aria-pressed={kind === k}
               onClick={() => setKind(k)}
-              className={`rounded-full border px-3 py-1 text-xs focus-visible:outline-2 focus-visible:outline-accent ${kind === k ? "border-accent-border bg-accent-dim text-accent" : "border-border-subtle text-fg-secondary hover:text-fg"}`}
+              className={`flex h-8 items-center gap-2 rounded-sm border px-2.5 text-[13px] transition-colors duration-300 ${kind === k ? "border-line-3 bg-paper/[0.06] text-paper" : "border-line text-dim hover:border-line-2 hover:text-paper"}`}
             >
-              {k === "all" ? "All" : (KIND_LABEL[k] ?? k)} <span className="font-mono">{n}</span>
+              {k === "all" ? "All" : (KIND_LABEL[k] ?? k)}{" "}
+              <span className="font-mono text-[12px] text-mute tabular-nums">{n}</span>
             </button>
           ))}
         </div>
       </div>
-      <p className="text-sm text-fg-secondary" aria-live="polite">
+      <p className="text-[14px] text-dim" aria-live="polite">
         {filtered.length} of {sources.length} sources. Excerpts are text only; no pages, images or media are
         loaded.
       </p>
       {groups.map(([k, list]) => (
         <section key={k} aria-labelledby={`kind-${k}`} className="flex flex-col gap-3">
-          <h2 id={`kind-${k}`} className="font-display text-lg font-semibold">
-            {KIND_LABEL[k] ?? k} <span className="font-mono text-sm text-fg-secondary">{list.length}</span>
+          <h2
+            id={`kind-${k}`}
+            className="flex items-baseline gap-3 text-[22px] leading-tight font-medium tracking-[-0.02em]"
+          >
+            {KIND_LABEL[k] ?? k}{" "}
+            <span className="font-mono text-[13px] font-normal tracking-normal text-mute tabular-nums">
+              {list.length}
+            </span>
           </h2>
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col divide-y divide-line border-y border-line">
             {list.map((s) => (
               <li
                 key={s.bundleId}
-                className="rounded-lg border border-border-subtle bg-surface p-4"
+                className="grid gap-x-8 gap-y-2 py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
                 data-testid="source-item"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">{s.name}</span>
-                  <Badge variant="neutral">{formatDate(s.fetchedAt, true)}</Badge>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[15px] font-medium text-paper">{s.name}</span>
+                  <span className="font-mono text-[12px] text-mute tabular-nums">
+                    {formatDate(s.fetchedAt, true)}
+                  </span>
                 </div>
-                {s.excerpt ? (
-                  <p className="mt-2 text-sm whitespace-pre-wrap text-fg-secondary">{s.excerpt}</p>
-                ) : (
-                  <p className="mt-2 text-sm text-fg-muted">No excerpt kept.</p>
-                )}
-                {s.url ? (
-                  <div className="mt-3">
-                    <CopyOnlyUrl url={s.url} />
-                  </div>
-                ) : null}
+                <div className="min-w-0">
+                  {s.excerpt ? (
+                    <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-dim">{s.excerpt}</p>
+                  ) : (
+                    <p className="font-mono text-[12px] text-mute">No excerpt kept.</p>
+                  )}
+                  {s.url ? (
+                    <div className="mt-3">
+                      <CopyOnlyUrl url={s.url} />
+                    </div>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>

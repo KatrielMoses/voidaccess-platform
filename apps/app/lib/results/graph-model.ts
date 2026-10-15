@@ -114,24 +114,51 @@ export function seedPositions(data: GraphData): Map<string, { x: number; y: numb
   return out;
 }
 
-export function communityColor(community: number | null): string {
-  if (community === null) return "#6e7681";
-  const hue = (community * 137.508) % 360;
-  return `hsl(${hue.toFixed(0)} 62% 62%)`;
-}
-
 export const nodeSize = (degree: number) => Math.min(3 + Math.sqrt(degree) * 1.5, 16);
 
-/** Token fallbacks (values from packages/ui tokens.css) used if a CSS variable isn't present at runtime. */
-export const TOKEN_FALLBACK: Record<string, string> = {
-  "--color-entity-actor": "#e05c5c",
-  "--color-entity-wallet": "#9b9fee",
-  "--color-entity-malware": "#d08770",
-  "--color-entity-forum": "#79b8ff",
-  "--color-entity-cve": "#f0e68c",
-  "--color-entity-paste": "#56b6c2",
-  "--color-entity-onion": "#9ecbff",
-  "--color-entity-email": "#c9a35a",
-  "--color-entity-pgp": "#73d397",
-  "--color-neutral": "#6e7681",
-};
+/**
+ * The graph's palette (design.md §3, §7): the field, paper hairlines and one violet signal. No entity hues;
+ * entity kinds are shapes (lib/results/glyphs.ts).
+ */
+export const FIELD = "#0f0f12";
+const PAPER = [243, 241, 236] as const;
+const V500 = [106, 117, 239] as const;
+export const V200 = "#c9ccf3";
+export const PAPER_HEX = "#f3f1ec";
+export const V500_HEX = "#6a75ef";
+
+/**
+ * Node colour: paper whose alpha is the node's intensity. The glyph program mixes it into the field, so the node
+ * stays opaque and hides the edges behind it.
+ */
+export const nodeColor = (intensity: number) => `rgba(243,241,236,${intensity.toFixed(3)})`;
+export const SIGNAL_NODE = "rgba(106,117,239,1)";
+
+/** Importance by connections: hubs read as bright paper, leaves recede (0.5 to 1). */
+export const nodeIntensity = (degree: number, maxDegree: number) =>
+  0.5 + 0.5 * Math.sqrt(Math.min(1, degree / Math.max(1, maxDegree)));
+
+/** Sigma's WebGL layers blend premultiplied colour, so translucent edge colours are premultiplied here. */
+const pm = (rgb: readonly [number, number, number], a: number) =>
+  `rgba(${Math.round(rgb[0] * a)},${Math.round(rgb[1] * a)},${Math.round(rgb[2] * a)},${a})`;
+
+export const EDGE = {
+  cooccurrence: pm(PAPER, 0.16),
+  typed: pm(PAPER, 0.36),
+  archive: pm(PAPER, 0.24),
+  /** edges outside the hovered or selected node's neighbourhood */
+  muted: pm(PAPER, 0.035),
+  /** the signal: edges of the hovered or selected node */
+  signal: pm(V500, 0.95),
+  signalSoft: pm(V500, 0.6),
+} as const;
+
+/** Unselected nodes outside the focus neighbourhood fall back to this intensity. */
+export const MUTED_INTENSITY = 0.16;
+
+/** Label colours: dim by default, paper for the neighbourhood, lavender for the focused node. */
+export const LABEL = {
+  base: "rgba(243,241,236,0.66)",
+  near: "rgba(243,241,236,0.86)",
+  focus: V200,
+} as const;

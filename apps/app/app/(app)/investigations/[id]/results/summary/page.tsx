@@ -1,22 +1,46 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@voidaccess/ui";
 import { getSessionUserId } from "@/lib/dev-session";
 import { formatDuration } from "@/lib/results/format";
 import { getInvestigation } from "@/lib/results/queries";
 import { SafeMarkdown } from "@/components/results/markdown";
 import { TypeBadge } from "@/components/results/type-badge";
 import { ArchivePanel } from "@/components/results/archive-panel";
+import { MaskedMark } from "@/components/results/ui";
 
 export const dynamic = "force-dynamic";
 
+/** A meter (design.md §6 pipeline meters): mono label, Geist Mono value with tabular numerals. */
 function Stat({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
-    <div className="rounded-lg border border-border-subtle bg-surface px-4 py-3">
-      <dt className="text-xs tracking-wide text-fg-secondary uppercase">{label}</dt>
-      <dd className="mt-1 font-display text-2xl font-semibold">{value}</dd>
-      {hint ? <p className="text-xs text-fg-secondary">{hint}</p> : null}
+    <div className="flex flex-col gap-3 bg-bg px-5 py-5">
+      <dt className="font-mono text-[12px] text-mute">{label}</dt>
+      <dd className="font-mono text-[24px] leading-none tracking-[-0.04em] text-paper tabular-nums sm:text-[28px]">
+        {value}
+      </dd>
+      {hint ? <p className="-mt-1 font-mono text-[12px] text-mute">{hint}</p> : null}
     </div>
+  );
+}
+
+function Notes({ title, items, mark }: { title: string; items: string[]; mark?: string }) {
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-[22px] leading-tight font-medium tracking-[-0.025em]">{title}</h2>
+      <ol className="flex flex-col divide-y divide-line border-y border-line">
+        {items.map((f, i) => (
+          <li
+            key={i}
+            className="grid grid-cols-[2.5rem_1fr] gap-2 py-3.5 text-[16px] leading-[1.55] text-paper"
+          >
+            <span className="pt-[3px] font-mono text-[12px] text-mute tabular-nums">
+              {mark ?? String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="min-w-0 [overflow-wrap:anywhere]">{f}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
@@ -34,19 +58,20 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
   const maxCount = types[0]?.[1] ?? 1;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-12">
       {fallback || empty ? (
-        <div
-          role="note"
-          className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
-        >
+        <div role="note" className="border-l border-line-3 pl-4 text-[15px] text-dim">
+          <span className="font-medium text-paper">Note. </span>
           {empty
             ? "The AI summary is empty for this run. The entities, graph and sources below are still complete."
             : "This is a fallback summary: the AI step couldn't finish, so this text was assembled from the extracted findings. The entities, graph and sources are unaffected."}
         </div>
       ) : null}
 
-      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6" aria-label="Run statistics">
+      <dl
+        className="grid grid-cols-2 gap-px border border-line bg-line md:grid-cols-3 lg:grid-cols-6"
+        aria-label="Run statistics"
+      >
         <Stat label="Entities" value={stats?.entities ?? 0} />
         <Stat label="Actors" value={stats?.actors ?? 0} />
         <Stat label="Sources" value={summary.sourceCount} />
@@ -59,85 +84,62 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
         <Stat label="Confidence" value={summary.confidence} hint={`from ${summary.sourceCount} sources`} />
       </dl>
 
-      <ArchivePanel investigationId={id} />
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-        <div className="flex flex-col gap-6">
-          {summary.keyFindings.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Key findings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc space-y-2 pl-5 text-sm marker:text-accent">
-                  {summary.keyFindings.map((f, i) => (
-                    <li key={i}>{f}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ) : null}
+      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-16">
+        <div className="flex min-w-0 flex-col gap-12">
+          {summary.keyFindings.length > 0 ? <Notes title="Key findings" items={summary.keyFindings} /> : null}
           {summary.riskNotes.length > 0 ? (
-            <Card className="border-warning/30">
-              <CardHeader>
-                <CardTitle>Risk notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc space-y-2 pl-5 text-sm marker:text-warning">
-                  {summary.riskNotes.map((f, i) => (
-                    <li key={i}>{f}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+            <Notes title="Risk notes" items={summary.riskNotes} mark="▲" />
           ) : null}
           {!empty ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Intelligence summary</CardTitle>
-              </CardHeader>
-              <CardContent data-testid="summary-markdown">
+            <section className="flex flex-col gap-5">
+              <h2 className="text-[22px] leading-tight font-medium tracking-[-0.025em]">
+                Intelligence summary
+              </h2>
+              <div data-testid="summary-markdown" className="border-t border-line pt-6">
                 <SafeMarkdown>{summary.markdown}</SafeMarkdown>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           ) : null}
         </div>
 
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle>Entities by type</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="flex flex-col gap-2">
-              {types.map(([type, n]) => (
-                <li key={type}>
-                  <Link
-                    href={`/investigations/${id}/results/entities?types=${encodeURIComponent(type)}`}
-                    className="group flex flex-col gap-1 rounded px-1 py-1 hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
-                  >
-                    <span className="flex items-center justify-between gap-2">
-                      <TypeBadge type={type} />
-                      <span className="font-mono text-sm">{n}</span>
-                    </span>
-                    <span aria-hidden className="h-1 rounded bg-raised">
-                      <span
-                        className="block h-1 rounded bg-accent/60"
-                        style={{ width: `${Math.max(3, (n / maxCount) * 100)}%` }}
-                      />
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            {stats && stats.sensitiveEntities > 0 ? (
-              <p className="mt-4 text-xs text-fg-secondary">
-                <Badge variant="warning">{stats.sensitiveEntities} masked</Badge> Credentials and personal
-                data are masked everywhere.
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
+        <aside aria-labelledby="by-type" className="flex h-fit flex-col gap-4">
+          <h2 id="by-type" className="text-[17px] font-medium tracking-[-0.015em]">
+            Entities by type
+          </h2>
+          <ul className="flex flex-col">
+            {types.map(([type, n]) => (
+              <li key={type}>
+                <Link
+                  href={`/investigations/${id}/results/entities?types=${encodeURIComponent(type)}`}
+                  className="group flex flex-col gap-2 py-2.5 transition-colors duration-300 hover:bg-bg-2"
+                >
+                  <span className="flex items-center justify-between gap-2 px-1">
+                    <TypeBadge type={type} className="group-hover:text-paper" />
+                    <span className="font-mono text-[13px] text-paper tabular-nums">{n}</span>
+                  </span>
+                  <span aria-hidden className="mx-1 block h-px bg-line">
+                    <span
+                      className="block h-px bg-paper/60"
+                      style={{ width: `${Math.max(3, (n / maxCount) * 100)}%` }}
+                    />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {stats && stats.sensitiveEntities > 0 ? (
+            <p className="flex flex-col items-start gap-2 text-[13px] text-dim">
+              <MaskedMark />
+              <span>
+                <span className="font-mono text-paper tabular-nums">{stats.sensitiveEntities}</span> values
+                are masked. Credentials and personal data are masked everywhere.
+              </span>
+            </p>
+          ) : null}
+        </aside>
       </div>
+
+      <ArchivePanel investigationId={id} />
     </div>
   );
 }

@@ -1,11 +1,8 @@
-import { entityCategory, type EntityType } from "@voidaccess/engine-client";
-import type { BadgeVariant } from "@voidaccess/ui";
+import { glyphFor, type Glyph } from "./glyphs";
 
-/** Maps an entity type onto the shared entity colour tokens (badge variant + CSS variable for the graph). */
 export interface TypeStyle {
-  variant: BadgeVariant;
-  cssVar: string;
   label: string;
+  glyph: Glyph;
 }
 
 const LABELS: Record<string, string> = {
@@ -44,37 +41,9 @@ export const typeLabel = (type: string) =>
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
+/** An entity type's label and glyph. No colour: kinds are told apart by text and shape (design.md §3). */
 export function typeStyle(type: string): TypeStyle {
-  const label = typeLabel(type);
-  if (type === "ONION_URL") return { variant: "onion", cssVar: "--color-entity-onion", label };
-  if (type === "PASTE_URL") return { variant: "paste", cssVar: "--color-entity-paste", label };
-  let cat: ReturnType<typeof entityCategory>;
-  try {
-    cat = entityCategory(type as EntityType);
-  } catch {
-    cat = "other";
-  }
-  switch (cat) {
-    case "threat":
-      return { variant: "actor", cssVar: "--color-entity-actor", label };
-    case "malware":
-      return { variant: "malware", cssVar: "--color-entity-malware", label };
-    case "vulnerability":
-      return { variant: "cve", cssVar: "--color-entity-cve", label };
-    case "crypto":
-      return { variant: "wallet", cssVar: "--color-entity-wallet", label };
-    case "network":
-      return { variant: "forum", cssVar: "--color-entity-forum", label };
-    case "credential":
-    case "identity":
-      return { variant: "email", cssVar: "--color-entity-email", label };
-    case "messaging":
-      return { variant: "pgp", cssVar: "--color-entity-pgp", label };
-    case "org":
-      return { variant: "paste", cssVar: "--color-entity-paste", label };
-    default:
-      return { variant: "neutral", cssVar: "--color-neutral", label };
-  }
+  return { label: typeLabel(type), glyph: glyphFor(type) };
 }
 
 export const EDGE_COOCCURRENCE = "CO_APPEARED_ON";

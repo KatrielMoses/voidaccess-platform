@@ -4,9 +4,11 @@ import type Graph from "graphology";
 import type Sigma from "sigma";
 import { useEffect, useState, type RefObject } from "react";
 import type { ArchiveGraph } from "@voidaccess/archive";
+import { ARCHIVE_GLYPH } from "@/lib/results/glyphs";
+import { nodeColor } from "@/lib/results/graph-model";
 
-export const ARCHIVE_NODE_COLOR = "#d9a441";
-export const ARCHIVE_EDGE_COLOR = "rgba(217,164,65,0.75)";
+/** Archive nodes are dashed rings in quieter paper: context from earlier findings, not this run. */
+const ARCHIVE_INTENSITY = 0.55;
 export type MinTier = "unconfirmed" | "corroborated" | "feed_validated";
 
 function hash01(s: string): number {
@@ -92,7 +94,9 @@ export function useArchiveOverlay(opts: {
             size: n.hop === 1 ? 6 : 4.5,
             label: n.label,
             etype: n.type,
-            color: ARCHIVE_NODE_COLOR,
+            color: nodeColor(ARCHIVE_INTENSITY),
+            intensity: ARCHIVE_INTENSITY,
+            shape: ARCHIVE_GLYPH.shape,
             archive: true,
             tier: n.tier,
             hop: n.hop,
