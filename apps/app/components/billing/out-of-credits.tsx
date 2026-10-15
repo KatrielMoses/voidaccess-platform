@@ -6,6 +6,7 @@ import { TOPUPS } from "@voidaccess/config";
 import { Button } from "@voidaccess/ui";
 import { billingCopy as copy, fill } from "@/content/billing";
 import { num, usd } from "@/lib/billing/format";
+import { Notice } from "@/components/page-header";
 
 /** Replaces the plain insufficient-credits message: the cheapest top-up that covers the shortfall, plus an upgrade link. */
 export function OutOfCredits({ balance, needed }: { balance: number; needed: number }) {
@@ -31,30 +32,29 @@ export function OutOfCredits({ balance, needed }: { balance: number; needed: num
   }
 
   return (
-    <div
-      role="alert"
-      data-testid="out-of-credits"
-      className="flex flex-col gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-3 text-sm text-warning"
-    >
+    <Notice role="alert" mark="!" data-testid="out-of-credits">
       <p className="font-medium">
         {copy.outOfCredits.title}.{" "}
-        {fill(copy.outOfCredits.body, { needed: num(needed), balance: num(balance) })}
+        <span className="font-normal text-dim">
+          {fill(copy.outOfCredits.body, { needed: num(needed), balance: num(balance) })}
+        </span>
       </p>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button size="sm" loading={busy} onClick={buy} data-testid="out-of-credits-topup">
+      <div className="flex flex-wrap items-center gap-4">
+        <Button size="sm" variant="secondary" loading={busy} onClick={buy} data-testid="out-of-credits-topup">
           {fill(copy.outOfCredits.cheapest, { usd: usd(tier.usd) })}
         </Button>
-        <Link
-          href="/billing?from=out_of_credits"
-          className="underline underline-offset-2"
-          data-testid="out-of-credits-upgrade"
-        >
+        <Link href="/billing?from=out_of_credits" className="va-link" data-testid="out-of-credits-upgrade">
           {copy.outOfCredits.upgrade}
         </Link>
       </div>
       {failed ? (
-        <p className="text-danger">Couldn&apos;t start checkout. Try again from the billing page.</p>
+        <p className="text-paper">
+          <span aria-hidden className="font-mono text-[12px]">
+            ✕{" "}
+          </span>
+          Couldn&apos;t start checkout. Try again from the billing page.
+        </p>
       ) : null}
-    </div>
+    </Notice>
   );
 }

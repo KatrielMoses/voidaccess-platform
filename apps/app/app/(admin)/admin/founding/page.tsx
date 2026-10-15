@@ -1,7 +1,7 @@
 import { FOUNDING } from "@voidaccess/config";
 import { adminPage } from "@/lib/admin/guard";
 import { getFounding } from "@/lib/admin/queries";
-import { Empty, Page, Section, Stat, T, Td, UserLink } from "@/components/admin/ui";
+import { Empty, Num, Page, Section, Stat, StatGrid, T, Td, UserLink } from "@/components/admin/ui";
 import { fmtDate } from "@/components/admin/format";
 
 export default async function AdminFounding() {
@@ -12,11 +12,11 @@ export default async function AdminFounding() {
       title="Founding seats"
       subtitle={`${FOUNDING.seats} seats at $${FOUNDING.monthlyUsd}/mo. Renewal needs ${FOUNDING.renewalMinPaidMonthsInTrailing12} paid months in the last ${FOUNDING.termMonths}; ${FOUNDING.inactivityReleaseMonths} months without an investigation releases the seat.`}
     >
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <StatGrid cols={3}>
         <Stat label="Held" value={f.held.length} testId="founding-held" />
         <Stat label="Available" value={f.available} testId="founding-available" />
         <Stat label="Capacity" value={f.seats} />
-      </div>
+      </StatGrid>
       <Section title="Holders" testId="founding-holders">
         {f.held.length === 0 ? (
           <Empty>No seats held yet.</Empty>
@@ -34,16 +34,24 @@ export default async function AdminFounding() {
           >
             {f.held.map((h) => (
               <tr key={h.seatNo}>
-                <Td>#{h.seatNo}</Td>
+                <Td>
+                  <Num>#{h.seatNo}</Num>
+                </Td>
                 <Td>
                   <UserLink id={h.userId}>{h.email}</UserLink>
                 </Td>
-                <Td className="whitespace-nowrap">{fmtDate(h.termStart, false)}</Td>
-                <Td className="whitespace-nowrap">{fmtDate(h.anniversaryAt, false)}</Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(h.termStart, false)}</Num>
+                </Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(h.anniversaryAt, false)}</Num>
+                </Td>
                 <Td>
                   {h.paidMonths12} of {FOUNDING.renewalMinPaidMonthsInTrailing12} needed
                 </Td>
-                <Td className="whitespace-nowrap">{fmtDate(h.lastInvestigationAt, false)}</Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(h.lastInvestigationAt, false)}</Num>
+                </Td>
                 <Td>
                   {h.pendingNotice
                     ? `${h.pendingNotice.kind} on ${fmtDate(h.pendingNotice.scheduledFor, false)}`
@@ -59,8 +67,12 @@ export default async function AdminFounding() {
           <T head={["Seat", "Released", "Reason"]}>
             {f.released.map((r) => (
               <tr key={r.seatNo}>
-                <Td>#{r.seatNo}</Td>
-                <Td>{fmtDate(r.releasedAt, false)}</Td>
+                <Td>
+                  <Num>#{r.seatNo}</Num>
+                </Td>
+                <Td>
+                  <Num className="text-dim">{fmtDate(r.releasedAt, false)}</Num>
+                </Td>
                 <Td>{r.reason ?? "—"}</Td>
               </tr>
             ))}

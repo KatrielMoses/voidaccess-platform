@@ -3,6 +3,7 @@ import { PLANS } from "@voidaccess/config";
 import { Badge } from "@voidaccess/ui";
 import { githubEnabled, googleEnabled, microsoftEnabled } from "@/lib/auth/auth";
 import { pageUser } from "@/lib/page-user";
+import { PageHeader, Row } from "@/components/page-header";
 import { SettingsForms } from "./forms";
 
 export const metadata = { title: "Settings | VoidAccess" };
@@ -10,27 +11,26 @@ export const metadata = { title: "Settings | VoidAccess" };
 export default async function SettingsPage() {
   const user = await pageUser();
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <header className="flex flex-wrap items-center gap-3">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Settings</h1>
-        <Badge variant="accent">{PLANS[user.plan].name} plan</Badge>
-      </header>
-      <Link
-        href="/settings/notifications"
-        className="rounded-lg border border-border-subtle bg-surface px-5 py-4 text-sm hover:border-border-strong"
-      >
-        <span className="font-medium text-fg">Notifications</span>
-        <span className="mt-0.5 block text-fg-secondary">Choose which emails you get.</span>
-      </Link>
-      <SettingsForms
-        name={user.name}
-        email={user.email}
-        providers={[
-          ...(googleEnabled ? (["google"] as const) : []),
-          ...(microsoftEnabled ? (["microsoft"] as const) : []),
-          ...(githubEnabled ? (["github"] as const) : []),
-        ]}
-      />
+    <div className="va-rise flex flex-col gap-12">
+      <PageHeader title="Settings" actions={<Badge variant="strong">{PLANS[user.plan].name} plan</Badge>} />
+      <div className="flex flex-col">
+        <SettingsForms
+          name={user.name}
+          email={user.email}
+          providers={[
+            ...(googleEnabled ? (["google"] as const) : []),
+            ...(microsoftEnabled ? (["microsoft"] as const) : []),
+            ...(githubEnabled ? (["github"] as const) : []),
+          ]}
+          notifications={
+            <Row title="Notifications" note="Choose which emails you get.">
+              <Link href="/settings/notifications" className="ul-link self-start text-[15px]">
+                Email preferences →
+              </Link>
+            </Row>
+          }
+        />
+      </div>
     </div>
   );
 }

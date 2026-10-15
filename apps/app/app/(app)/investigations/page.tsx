@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { Badge, Button, EmptyState } from "@voidaccess/ui";
+import {
+  Button,
+  ButtonArrow,
+  EmptyState,
+  NativeSelect,
+  buttonVariants,
+  cn,
+  inputClass,
+} from "@voidaccess/ui";
+import { PageHeader } from "@/components/page-header";
 import { pageUser } from "@/lib/page-user";
 import { RunError } from "@/lib/runs/errors";
 import { listInvestigations } from "@/lib/runs/service";
@@ -56,36 +65,37 @@ export default async function HistoryPage({
     return `/investigations${s ? `?${s}` : ""}`;
   };
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">History</h1>
-        <Link href="/investigations/new">
-          <Button>New investigation</Button>
-        </Link>
-      </header>
+    <div className="va-rise flex flex-col gap-10">
+      <PageHeader
+        title="History"
+        lede="Every investigation you have run, newest first."
+        actions={
+          <Link href="/investigations/new" className={cn(buttonVariants(), "group/btn")}>
+            <span className="inline-flex items-center gap-2.5">
+              New investigation
+              <ButtonArrow />
+            </span>
+          </Link>
+        }
+      />
 
-      <form method="get" role="search" className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <form method="get" role="search" className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
         <input
           type="search"
           name="q"
           defaultValue={q}
           aria-label="Search investigations"
           placeholder="Search by title or query"
-          className="h-10 w-full rounded-md border border-border-subtle bg-surface px-3 text-sm text-fg placeholder:text-fg-muted hover:border-border-strong focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-accent-border sm:max-w-sm"
+          className={cn(inputClass, "h-[46px] sm:max-w-md")}
         />
-        <select
-          name="status"
-          defaultValue={status}
-          aria-label="Filter by status"
-          className="h-10 rounded-md border border-border-subtle bg-surface px-3 text-sm text-fg hover:border-border-strong focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-accent-border"
-        >
+        <NativeSelect name="status" defaultValue={status} aria-label="Filter by status" className="sm:w-52">
           {FILTERS.map((f) => (
             <option key={f.value} value={f.value}>
               {f.label}
             </option>
           ))}
-        </select>
-        <Button type="submit" variant="secondary">
+        </NativeSelect>
+        <Button type="submit" variant="secondary" size="lg">
           Search
         </Button>
       </form>
@@ -96,8 +106,8 @@ export default async function HistoryPage({
             title="Nothing matches"
             description="Try a different search or clear the filter."
             action={
-              <Link href="/investigations">
-                <Button variant="secondary">Clear</Button>
+              <Link href="/investigations" className={buttonVariants({ variant: "secondary" })}>
+                Clear
               </Link>
             }
           />
@@ -106,8 +116,8 @@ export default async function HistoryPage({
             title="No investigations yet"
             description="Your investigations will show up here."
             action={
-              <Link href="/investigations/new">
-                <Button>Start one</Button>
+              <Link href="/investigations/new" className={buttonVariants({ variant: "secondary" })}>
+                Start one
               </Link>
             }
           />
@@ -117,20 +127,20 @@ export default async function HistoryPage({
       )}
 
       {pages > 1 ? (
-        <nav aria-label="Pagination" className="flex items-center justify-between text-sm text-fg-secondary">
+        <nav aria-label="Pagination" className="flex items-center justify-between text-[15px]">
           {page > 1 ? (
-            <Link href={href(page - 1)} className="text-accent underline underline-offset-2">
-              Newer
+            <Link href={href(page - 1)} className="ul-link">
+              ← Newer
             </Link>
           ) : (
             <span />
           )}
-          <Badge>
+          <span className="font-mono text-[12px] text-mute tabular-nums">
             Page {page} of {pages}
-          </Badge>
+          </span>
           {page < pages ? (
-            <Link href={href(page + 1)} className="text-accent underline underline-offset-2">
-              Older
+            <Link href={href(page + 1)} className="ul-link">
+              Older →
             </Link>
           ) : (
             <span />

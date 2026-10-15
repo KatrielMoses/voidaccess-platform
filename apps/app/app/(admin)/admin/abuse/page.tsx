@@ -2,7 +2,7 @@ import { adminPage } from "@/lib/admin/guard";
 import { getAbuseQueue } from "@/lib/admin/queries";
 import { ABUSE_BLOCKED_THRESHOLD, ABUSE_WINDOW_DAYS } from "@/lib/admin/constants";
 import { ActionForm } from "@/components/admin/action-form";
-import { Empty, Page, Section, T, Td, UserLink } from "@/components/admin/ui";
+import { Empty, Num, Page, Section, T, Td, UserLink } from "@/components/admin/ui";
 import { fmtDate } from "@/components/admin/format";
 
 const review = (kind: "flag" | "run" | "user", id: string) => (
@@ -39,8 +39,12 @@ export default async function AdminAbuse() {
                 <Td>
                   <UserLink id={u.userId}>{u.email}</UserLink>
                 </Td>
-                <Td>{u.blocked}</Td>
-                <Td className="whitespace-nowrap">{fmtDate(u.lastAt)}</Td>
+                <Td>
+                  <Num>{u.blocked}</Num>
+                </Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(u.lastAt)}</Num>
+                </Td>
                 <Td className="min-w-64">{review("user", u.userId)}</Td>
               </tr>
             ))}
@@ -63,7 +67,9 @@ export default async function AdminAbuse() {
                   <UserLink id={r.userId}>{r.email}</UserLink>
                 </Td>
                 <Td className="max-w-md break-words">{r.query}</Td>
-                <Td className="whitespace-nowrap">{fmtDate(r.createdAt)}</Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(r.createdAt)}</Num>
+                </Td>
                 <Td className="min-w-64">{review("run", r.id)}</Td>
               </tr>
             ))}
@@ -85,11 +91,15 @@ export default async function AdminAbuse() {
                 <Td>
                   {f.userId ? <UserLink id={f.userId}>{f.email ?? f.userId.slice(0, 8)}</UserLink> : "—"}
                 </Td>
-                <Td className="font-mono text-xs">{f.kind}</Td>
-                <Td className="max-w-sm font-mono text-xs break-words">
+                <Td>
+                  <Num>{f.kind}</Num>
+                </Td>
+                <Td className="max-w-sm font-mono text-[12px] break-words text-dim">
                   {JSON.stringify(f.detail).slice(0, 200)}
                 </Td>
-                <Td className="whitespace-nowrap">{fmtDate(f.createdAt)}</Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(f.createdAt)}</Num>
+                </Td>
                 <Td className="min-w-64">{review("flag", f.id)}</Td>
               </tr>
             ))}
@@ -111,8 +121,12 @@ export default async function AdminAbuse() {
                 <Td>
                   <UserLink id={r.userId}>{r.email ?? r.userId.slice(0, 8)}</UserLink>
                 </Td>
-                <Td>{r.hits}</Td>
-                <Td className="whitespace-nowrap">{fmtDate(r.lastAt)}</Td>
+                <Td>
+                  <Num>{r.hits}</Num>
+                </Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(r.lastAt)}</Num>
+                </Td>
               </tr>
             ))}
           </T>

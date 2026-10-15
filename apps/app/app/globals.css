@@ -15,7 +15,10 @@
     color: var(--color-paper);
     font: 400 15px/1.6 var(--font-sans);
   }
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-weight: 500;
     text-wrap: balance;
   }
@@ -32,11 +35,107 @@
     border-radius: 4px;
   }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+/* Motion (design.md §8): expo.out entrances, no bounce, nothing that loops for decoration. */
+@keyframes va-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes va-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes va-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 14px));
+  }
+}
+@keyframes va-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes va-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@layer components {
+  /* Page container: 1280px, 40px sides (22px at ≤960px). */
+  .va-wrap {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding-inline: 40px;
+  }
+  @media (max-width: 960px) {
+    .va-wrap {
+      padding-inline: 22px;
+    }
+  }
+
+  /* Nav-style link: dim, with a 1px underline that draws from the left in 0.55s (design.md §6). */
+  .ul-link {
+    position: relative;
+    color: var(--color-dim);
+    transition: color 0.3s;
+  }
+  .ul-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -5px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: 100% 50%;
+    transition: transform 0.55s var(--ease-out);
+  }
+  .ul-link:hover,
+  .ul-link[aria-current] {
+    color: var(--color-paper);
+  }
+  .ul-link:hover::after,
+  .ul-link[aria-current]::after {
+    transform: scaleX(1);
+    transform-origin: 0 50%;
+  }
+
+  /* Inline text link inside prose: paper, with a quiet underline that firms up on hover. */
+  .va-link {
+    color: var(--color-paper);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+    text-decoration-color: var(--color-line-3);
+    transition:
+      text-decoration-color 0.3s,
+      color 0.3s;
+  }
+  .va-link:hover {
+    text-decoration-color: var(--color-paper);
+  }
+
+  /* Entrance for page content: rise 16px through expo.out. */
+  .va-rise {
+    animation: va-rise 0.9s var(--ease-out) both;
   }
 }

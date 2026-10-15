@@ -3,12 +3,13 @@ import { OutOfCredits } from "@/components/billing/out-of-credits";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Input, cn } from "@voidaccess/ui";
+import { ButtonArrow, buttonVariants, cn } from "@voidaccess/ui";
 import { DEFAULT_DEPTH, DEPTHS, type Depth } from "@voidaccess/config";
 import { DEPTH_COPY, EXAMPLE_QUERIES } from "@/content/examples";
 import { QUERY_MAX_LENGTH, QUERY_MIN_LENGTH } from "@/lib/limits";
 import { authClient } from "@/lib/auth/client";
 import { FormError } from "@/components/field";
+import { Notice } from "@/components/page-header";
 
 const LAUNCHED = (Object.keys(DEPTHS) as Depth[]).filter((d) => DEPTHS[d].launched);
 
@@ -74,33 +75,67 @@ export function QueryForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-5" aria-label="New investigation">
-      <div className="flex flex-col gap-2">
-        <label htmlFor="query" className="text-sm font-medium text-fg">
+    <form onSubmit={submit} className="flex flex-col gap-8" aria-label="New investigation">
+      <div className="flex flex-col gap-4">
+        <label htmlFor="query" className="text-[15px] text-dim">
           What do you want to investigate?
         </label>
-        <Input
-          id="query"
-          name="query"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="A threat actor, malware family, CVE, brand or domain"
-          minLength={QUERY_MIN_LENGTH}
-          maxLength={QUERY_MAX_LENGTH}
-          required
-          autoFocus={autoFocus}
-          autoComplete="off"
-          className="h-12 text-base"
-        />
+        {/* The hunt field (design.md §6): a 64px paper block, stone icon, ink 17px input, the violet action inside. */}
+        <div className="flex h-16 items-center rounded-lg border border-paper bg-paper pr-[7px] pl-6 transition-[border-color] duration-[350ms] hover:border-paper-2 focus-within:border-v-600 max-[640px]:h-auto max-[640px]:flex-col max-[640px]:items-stretch max-[640px]:gap-2.5 max-[640px]:border-0 max-[640px]:bg-transparent max-[640px]:p-0">
+          <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            className="mr-3.5 size-[17px] flex-none text-stone max-[640px]:hidden"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.6-3.6" />
+          </svg>
+          <input
+            id="query"
+            name="query"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="A threat actor, malware family, CVE, brand or domain"
+            minLength={QUERY_MIN_LENGTH}
+            maxLength={QUERY_MAX_LENGTH}
+            required
+            autoFocus={autoFocus}
+            autoComplete="off"
+            className="h-[62px] min-w-0 flex-1 border-0 bg-transparent font-sans text-[17px] text-ink outline-none placeholder:text-stone max-[640px]:h-[58px] max-[640px]:rounded-lg max-[640px]:border max-[640px]:border-paper max-[640px]:bg-paper max-[640px]:px-4 max-[640px]:focus:border-v-600"
+          />
+          <button
+            type="submit"
+            disabled={busy || blocked || query.trim().length < QUERY_MIN_LENGTH}
+            aria-busy={busy || undefined}
+            className={cn(
+              buttonVariants({ variant: "primary" }),
+              "h-[50px] flex-none px-6 max-[640px]:h-[46px] max-[640px]:w-full",
+            )}
+          >
+            <span className="inline-flex items-center gap-2.5 transition-transform duration-300 ease-out group-active/btn:scale-[.96]">
+              {busy ? (
+                <span
+                  aria-hidden
+                  className="size-3.5 animate-spin rounded-full border-[1.5px] border-current border-t-transparent"
+                />
+              ) : null}
+              Start investigation
+              <ButtonArrow />
+            </span>
+          </button>
+        </div>
         {showExamples ? (
-          <div className="flex flex-wrap items-center gap-2" aria-label="Example queries">
-            <span className="text-xs text-fg-muted">Try:</span>
+          <div className="flex flex-wrap items-center gap-2.5" aria-label="Example queries">
+            <span className="mr-1 text-[15px] text-mute">Try</span>
             {EXAMPLE_QUERIES.map((ex) => (
               <button
                 key={ex.query}
                 type="button"
                 onClick={() => setQuery(ex.query)}
-                className="rounded-full border border-border-subtle bg-raised px-3 py-1 text-xs text-fg-secondary transition-colors hover:border-accent-border hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
+                className="inline-flex h-9 items-center rounded-sm border border-line px-3.5 font-mono text-[13px] text-paper transition-[border-color,background-color] duration-300 hover:border-line-2 hover:bg-paper/[.04]"
                 title={ex.label}
               >
                 {ex.query}
@@ -111,17 +146,15 @@ export function QueryForm({
       </div>
 
       {fixedDepth ? null : (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium text-fg">Depth</legend>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <fieldset className="flex flex-col gap-4">
+          <legend className="mb-4 text-[15px] text-dim">Depth</legend>
+          <div className="grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2">
             {LAUNCHED.map((d) => (
               <label
                 key={d}
                 className={cn(
-                  "flex cursor-pointer items-start gap-3 rounded-lg border bg-surface p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent",
-                  depth === d
-                    ? "border-accent bg-accent-dim"
-                    : "border-border-subtle hover:border-border-strong",
+                  "flex cursor-pointer items-start gap-3.5 p-5 transition-[background-color] duration-[600ms] ease-out has-[:focus-visible]:outline-[1.5px] has-[:focus-visible]:-outline-offset-4 has-[:focus-visible]:outline-v-200 has-[:focus-visible]:outline-solid",
+                  depth === d ? "bg-bg-2" : "bg-bg hover:bg-bg-2/60",
                 )}
               >
                 <input
@@ -130,18 +163,18 @@ export function QueryForm({
                   value={d}
                   checked={depth === d}
                   onChange={() => setDepth(d)}
-                  className="mt-1 accent-[#9b9fee]"
+                  className="mt-[3px] size-4 flex-none cursor-pointer appearance-none rounded-full border border-line-3 transition-[border-width,border-color] duration-300 checked:border-[5px] checked:border-paper focus-visible:outline-none"
                 />
-                <span className="flex flex-1 flex-col gap-0.5">
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className="font-medium text-fg">
+                <span className="flex flex-1 flex-col gap-1.5">
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="text-[17px] font-medium tracking-[-0.01em] text-paper">
                       {DEPTH_COPY[d as keyof typeof DEPTH_COPY].label}
                     </span>
-                    <span className="font-mono text-sm text-accent tabular-nums">
+                    <span className="font-mono text-[13px] text-dim tabular-nums">
                       {DEPTHS[d].credits} credits
                     </span>
                   </span>
-                  <span className="text-sm text-fg-secondary">
+                  <span className="text-[15px] leading-[1.5] text-dim">
                     {DEPTH_COPY[d as keyof typeof DEPTH_COPY].blurb}
                   </span>
                 </span>
@@ -152,10 +185,7 @@ export function QueryForm({
       )}
 
       {!emailVerified ? (
-        <div
-          role="alert"
-          className="flex flex-col gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm text-warning"
-        >
+        <Notice role="alert" mark="!">
           <p>Confirm your email before you start an investigation. We sent a link to {email}.</p>
           <button
             type="button"
@@ -164,44 +194,34 @@ export function QueryForm({
               await authClient.sendVerificationEmail({ email, callbackURL: "/welcome" });
               setResent(true);
             }}
-            className="self-start underline underline-offset-2 disabled:no-underline disabled:opacity-70"
+            className="va-link self-start disabled:no-underline disabled:opacity-70"
           >
             {resent ? "Sent again" : "Send the link again"}
           </button>
-        </div>
+        </Notice>
       ) : tooLow ? (
-        <div
-          role="alert"
-          className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm text-warning"
-        >
-          This needs {price} credits and you have {balance}.{" "}
-          <Link href="/billing" className="underline underline-offset-2">
-            Top up
-          </Link>{" "}
-          or{" "}
-          <Link href="/billing" className="underline underline-offset-2">
-            upgrade your plan
-          </Link>
-          .
-        </div>
+        <Notice role="alert" mark="!">
+          <p>
+            This needs {price} credits and you have {balance}.{" "}
+            <Link href="/billing" className="va-link">
+              Top up
+            </Link>{" "}
+            or{" "}
+            <Link href="/billing" className="va-link">
+              upgrade your plan
+            </Link>
+            .
+          </p>
+        </Notice>
       ) : null}
 
       <ErrorBlock error={error} />
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-fg-secondary">
-          Costs <span className="font-mono text-fg tabular-nums">{price}</span> credits. Cancel any time and
-          get back the part of the cost for stages that haven&apos;t run. If it fails, you get all of it back.
-        </p>
-        <Button
-          type="submit"
-          size="lg"
-          loading={busy}
-          disabled={blocked || query.trim().length < QUERY_MIN_LENGTH}
-        >
-          Start investigation
-        </Button>
-      </div>
+      <p className="max-w-[64ch] text-[15px] leading-[1.55] text-dim">
+        Costs <span className="font-mono text-[13.5px] text-paper tabular-nums">{price}</span> credits. Cancel
+        any time and get back the part of the cost for stages that haven&apos;t run. If it fails, you get all
+        of it back.
+      </p>
     </form>
   );
 }

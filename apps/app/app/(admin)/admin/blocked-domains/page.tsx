@@ -1,7 +1,7 @@
 import { adminPage } from "@/lib/admin/guard";
 import { listBlockedDomains } from "@/lib/admin/queries";
 import { ActionForm } from "@/components/admin/action-form";
-import { Empty, Page, Section, T, Td } from "@/components/admin/ui";
+import { Empty, Num, Page, Section, T, Td } from "@/components/admin/ui";
 import { fmtDate } from "@/components/admin/format";
 
 export default async function AdminBlockedDomains() {
@@ -29,10 +29,16 @@ export default async function AdminBlockedDomains() {
           <T head={["Domain", "Reason", "Added by", "Added", "Unblock"]}>
             {domains.map((d) => (
               <tr key={d.domain}>
-                <Td className="font-mono">{d.domain}</Td>
+                <Td>
+                  <Num className="text-[14px] text-paper">{d.domain}</Num>
+                </Td>
                 <Td className="max-w-sm break-words">{d.reason}</Td>
-                <Td className="font-mono text-xs">{d.createdBy?.slice(0, 13) ?? "—"}</Td>
-                <Td className="whitespace-nowrap">{fmtDate(d.createdAt, false)}</Td>
+                <Td>
+                  <Num className="text-dim">{d.createdBy?.slice(0, 13) ?? "—"}</Num>
+                </Td>
+                <Td className="whitespace-nowrap">
+                  <Num className="text-dim">{fmtDate(d.createdAt, false)}</Num>
+                </Td>
                 <Td className="min-w-72">
                   <ActionForm
                     testId={`unblock-${d.domain}`}

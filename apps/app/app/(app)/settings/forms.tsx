@@ -3,11 +3,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -20,6 +15,7 @@ import {
 import { authClient } from "@/lib/auth/client";
 import { SIGN_IN_URL } from "@/lib/site";
 import { Field, FormError, FormNotice } from "@/components/field";
+import { Row } from "@/components/page-header";
 
 type Result = { ok: boolean; text: string } | null;
 
@@ -38,13 +34,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">{children}</CardContent>
-    </Card>
+    <Row title={title} note={description}>
+      {children}
+    </Row>
   );
 }
 
@@ -59,16 +51,19 @@ export function SettingsForms({
   name,
   email,
   providers,
+  notifications,
 }: {
   name: string;
   email: string;
   providers: ProviderId[];
+  notifications?: React.ReactNode;
 }) {
   return (
     <>
       <ProfileSection name={name} />
       <EmailSection email={email} />
       {providers.length ? <ConnectedSection providers={providers} /> : null}
+      {notifications}
       <SessionsSection />
       <ExportSection />
       <DeleteSection email={email} />
@@ -83,7 +78,7 @@ function ProfileSection({ name }: { name: string }) {
   return (
     <Section title="Profile">
       <form
-        className="flex flex-col gap-4"
+        className="flex max-w-[460px] flex-col gap-4"
         onSubmit={async (e) => {
           e.preventDefault();
           setBusy(true);
@@ -115,7 +110,9 @@ function EmailSection({ email }: { email: string }) {
       title="Email"
       description="Sign-in is passwordless: a one-time code to this address, or a connected Google, Microsoft or GitHub account with the same email."
     >
-      <p className="font-mono text-sm text-fg">{email}</p>
+      <p className="inline-flex h-9 items-center self-start rounded-sm border border-line px-3.5 font-mono text-[13px] text-paper">
+        {email}
+      </p>
     </Section>
   );
 }
@@ -131,18 +128,38 @@ function ConnectedSection({ providers }: { providers: ProviderId[] }) {
   }, []);
   return (
     <Section title="Connected accounts" description="Sign in with any connected account.">
-      <ul className="flex flex-col gap-3">
+      <ul className="flex flex-col border-t border-line">
         {providers.map((p) => {
           const accountId = linked?.[p];
           return (
-            <li key={p} className="flex items-center justify-between gap-3">
-              <span className="text-sm text-fg">
-                {PROVIDER_LABEL[p]}:{" "}
-                {linked === null ? "checking…" : accountId ? "connected" : "not connected"}
+            <li
+              key={p}
+              className="flex min-h-16 items-center justify-between gap-3 border-b border-line py-3"
+            >
+              <span className="flex flex-col gap-1">
+                <span className="text-[15px] font-medium text-paper">{PROVIDER_LABEL[p]}</span>
+                <span className="flex items-center gap-2 font-mono text-[12px] text-dim">
+                  {linked === null ? (
+                    "checking…"
+                  ) : accountId ? (
+                    <>
+                      <span aria-hidden className="text-paper">
+                        ✓
+                      </span>
+                      connected
+                    </>
+                  ) : (
+                    <>
+                      <span aria-hidden className="size-1.5 rounded-full border border-current" />
+                      not connected
+                    </>
+                  )}
+                </span>
               </span>
               {linked === null ? null : accountId ? (
                 <Button
                   variant="secondary"
+                  size="sm"
                   onClick={async () => {
                     const res = await authClient.unlinkAccount({ providerId: p, accountId } as Parameters<
                       typeof authClient.unlinkAccount
@@ -161,6 +178,7 @@ function ConnectedSection({ providers }: { providers: ProviderId[] }) {
               ) : (
                 <Button
                   variant="secondary"
+                  size="sm"
                   onClick={() => authClient.linkSocial({ provider: p, callbackURL: "/settings" })}
                 >
                   Connect {PROVIDER_LABEL[p]}
@@ -220,15 +238,12 @@ function DeleteSection({ email }: { email: string }) {
   const [error, setError] = useState<string | null>(null);
   const match = typed.trim().toLowerCase() === email.toLowerCase();
   return (
-    <Card className="border-danger/30">
-      <CardHeader>
-        <CardTitle>Delete account</CardTitle>
-        <CardDescription>
-          This removes your investigations, results and sign-in details for good. Credit history is kept in
-          anonymous form for accounting. It can&apos;t be undone.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Row
+      title="Delete account"
+      note="This removes your investigations, results and sign-in details for good. Credit history is kept in anonymous form for accounting. It can't be undone."
+      className="border-b"
+    >
+      <div>
         <Dialog
           open={open}
           onOpenChange={(o) => {
@@ -239,14 +254,14 @@ function DeleteSection({ email }: { email: string }) {
             }
           }}
         >
-          <Button variant="danger" onClick={() => setOpen(true)}>
+          <Button variant="secondary" onClick={() => setOpen(true)}>
             Delete my account
           </Button>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete your account?</DialogTitle>
               <DialogDescription>
-                Type <span className="font-mono text-fg">{email}</span> to confirm.
+                Type <span className="font-mono text-[14px] text-paper">{email}</span> to confirm.
               </DialogDescription>
             </DialogHeader>
             <label htmlFor="confirm-delete" className="sr-only">
@@ -259,15 +274,17 @@ function DeleteSection({ email }: { email: string }) {
               autoComplete="off"
               placeholder={email}
             />
-            <div className="mt-3">
-              <FormError message={error} />
-            </div>
+            {error ? (
+              <div className="mt-3">
+                <FormError message={error} />
+              </div>
+            ) : null}
             <DialogFooter>
-              <Button variant="secondary" onClick={() => setOpen(false)}>
+              <Button variant="ghost" onClick={() => setOpen(false)}>
                 Keep my account
               </Button>
               <Button
-                variant="danger"
+                variant="secondary"
                 disabled={!match}
                 loading={busy}
                 onClick={async () => {
@@ -291,7 +308,7 @@ function DeleteSection({ email }: { email: string }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </CardContent>
-    </Card>
+      </div>
+    </Row>
   );
 }

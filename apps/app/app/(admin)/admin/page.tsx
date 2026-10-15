@@ -2,7 +2,7 @@ import { PLANS } from "@voidaccess/config";
 import { adminPage } from "@/lib/admin/guard";
 import { getOverview } from "@/lib/admin/queries";
 import { DODO_DASHBOARD_URL, FIRST_INVESTIGATION_WINDOW_HOURS } from "@/lib/admin/constants";
-import { Bar, Empty, Page, Section, Stack, Stat, T, Td } from "@/components/admin/ui";
+import { Bar, Empty, Num, Page, Section, Stack, Stat, StatGrid, T, Td } from "@/components/admin/ui";
 import { int, pct, usd } from "@/components/admin/format";
 
 export default async function AdminOverview() {
@@ -18,7 +18,7 @@ export default async function AdminOverview() {
   const planName = (p: string) => PLANS[p as keyof typeof PLANS]?.name ?? p;
   return (
     <Page title="Overview" subtitle="Funnel, runs, credits and revenue. Times are UTC.">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <StatGrid>
         <Stat
           label="Signups, 7 days"
           value={int(o.signups.d7)}
@@ -35,12 +35,7 @@ export default async function AdminOverview() {
           label="MRR (subscriptions)"
           value={usd(o.subscriptions.mrrUsd, 2)}
           sub={
-            <a
-              href={DODO_DASHBOARD_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent hover:underline"
-            >
+            <a href={DODO_DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="va-link">
               Open Dodo dashboard
             </a>
           }
@@ -52,7 +47,7 @@ export default async function AdminOverview() {
           sub={`${o.founding.available} available`}
           testId="stat-founding"
         />
-      </div>
+      </StatGrid>
 
       <Section
         title={`#1 metric: first investigation within ${FIRST_INVESTIGATION_WINDOW_HOURS} hours`}
@@ -63,9 +58,9 @@ export default async function AdminOverview() {
           <Empty>No signups in this period.</Empty>
         ) : (
           <>
-            <p className="text-sm text-fg-secondary">
+            <p className="text-[15px] text-dim">
               This week:{" "}
-              <span className="font-medium text-fg" data-testid="metric-current">
+              <span className="font-mono text-[15px] text-paper tabular-nums" data-testid="metric-current">
                 {pct(cur?.rate ?? null)}
               </span>
               {cur
@@ -75,12 +70,22 @@ export default async function AdminOverview() {
             <T head={["Signup week (Mon)", "Verified", "Window closed", "Completed in 24 h", "Rate", ""]}>
               {o.cohorts.map((c) => (
                 <tr key={c.weekStart}>
-                  <Td>{c.weekStart}</Td>
-                  <Td>{int(c.verified)}</Td>
-                  <Td>{int(c.matured)}</Td>
-                  <Td>{int(c.converted)}</Td>
-                  <Td className="font-medium">{pct(c.rate)}</Td>
-                  <Td className="w-40">
+                  <Td>
+                    <Num className="text-dim">{c.weekStart}</Num>
+                  </Td>
+                  <Td>
+                    <Num>{int(c.verified)}</Num>
+                  </Td>
+                  <Td>
+                    <Num>{int(c.matured)}</Num>
+                  </Td>
+                  <Td>
+                    <Num>{int(c.converted)}</Num>
+                  </Td>
+                  <Td>
+                    <Num className="text-paper">{pct(c.rate)}</Num>
+                  </Td>
+                  <Td className="w-40 align-middle">
                     <Bar value={c.rate ?? 0} max={1} label={`rate ${pct(c.rate)}`} />
                   </Td>
                 </tr>
@@ -104,19 +109,29 @@ export default async function AdminOverview() {
               const active = total - st("completed") - st("failed") - st("cancelled");
               return (
                 <tr key={d}>
-                  <Td>{d}</Td>
-                  <Td>{by("quick")}</Td>
-                  <Td>{by("standard")}</Td>
-                  <Td>{by("deep")}</Td>
-                  <Td className="font-medium">{total}</Td>
-                  <Td className="w-64">
+                  <Td>
+                    <Num className="text-dim">{d}</Num>
+                  </Td>
+                  <Td>
+                    <Num>{by("quick")}</Num>
+                  </Td>
+                  <Td>
+                    <Num>{by("standard")}</Num>
+                  </Td>
+                  <Td>
+                    <Num>{by("deep")}</Num>
+                  </Td>
+                  <Td>
+                    <Num className="text-paper">{total}</Num>
+                  </Td>
+                  <Td className="w-64 align-middle">
                     <div style={{ width: `${(total / maxDay) * 100}%` }} className="min-w-3">
                       <Stack
                         parts={[
-                          { label: "completed", n: st("completed"), className: "bg-success" },
-                          { label: "failed", n: st("failed"), className: "bg-danger" },
-                          { label: "cancelled", n: st("cancelled"), className: "bg-fg-muted" },
-                          { label: "in progress", n: active, className: "bg-accent" },
+                          { label: "completed", n: st("completed"), className: "bg-paper" },
+                          { label: "failed", n: st("failed"), className: "bg-paper/45" },
+                          { label: "cancelled", n: st("cancelled"), className: "bg-paper/20" },
+                          { label: "in progress", n: active, className: "bg-v-500" },
                         ]}
                       />
                     </div>
@@ -126,12 +141,27 @@ export default async function AdminOverview() {
             })}
           </T>
         )}
-        <p className="text-xs text-fg-secondary">
-          Green completed, red failed, grey cancelled, accent in progress.
+        <p className="flex flex-wrap gap-x-5 gap-y-2 font-mono text-[12px] text-dim">
+          <span className="flex items-center gap-2">
+            <i aria-hidden className="h-1.5 w-4 bg-paper" />
+            Completed
+          </span>
+          <span className="flex items-center gap-2">
+            <i aria-hidden className="h-1.5 w-4 bg-paper/45" />
+            Failed
+          </span>
+          <span className="flex items-center gap-2">
+            <i aria-hidden className="h-1.5 w-4 bg-paper/20" />
+            Cancelled
+          </span>
+          <span className="flex items-center gap-2">
+            <i aria-hidden className="h-1.5 w-4 bg-v-500" />
+            In progress
+          </span>
         </p>
       </Section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-12 lg:grid-cols-2">
         <Section title="Why runs failed" hint="Last 30 days." testId="failures">
           {o.failureReasons.length === 0 ? (
             <Empty>No failed runs.</Empty>
@@ -139,11 +169,17 @@ export default async function AdminOverview() {
             <T head={["Reason", "Runs", "Share", ""]}>
               {o.failureReasons.map((r) => (
                 <tr key={r.reason}>
-                  <Td className="font-mono text-xs">{r.reason}</Td>
-                  <Td>{r.n}</Td>
-                  <Td>{pct(r.n / failTotal, 0)}</Td>
-                  <Td className="w-32">
-                    <Bar value={r.n} max={failTotal} className="bg-danger" />
+                  <Td>
+                    <Num>{r.reason}</Num>
+                  </Td>
+                  <Td>
+                    <Num>{r.n}</Num>
+                  </Td>
+                  <Td>
+                    <Num>{pct(r.n / failTotal, 0)}</Num>
+                  </Td>
+                  <Td className="w-32 align-middle">
+                    <Bar value={r.n} max={failTotal} className="bg-paper/60" />
                   </Td>
                 </tr>
               ))}
@@ -155,23 +191,33 @@ export default async function AdminOverview() {
           <T head={["", "Credits"]}>
             <tr>
               <Td>Granted (plans, top-ups, bonuses, manual)</Td>
-              <Td>{int(o.credits.granted)}</Td>
+              <Td>
+                <Num>{int(o.credits.granted)}</Num>
+              </Td>
             </tr>
             <tr>
               <Td>Reserved by runs</Td>
-              <Td>{int(o.credits.reserved)}</Td>
+              <Td>
+                <Num>{int(o.credits.reserved)}</Num>
+              </Td>
             </tr>
             <tr>
               <Td>Refunded</Td>
-              <Td>{int(o.credits.refunded)}</Td>
+              <Td>
+                <Num>{int(o.credits.refunded)}</Num>
+              </Td>
             </tr>
             <tr>
-              <Td className="font-medium">Spent (net)</Td>
-              <Td className="font-medium">{int(o.credits.spentNet)}</Td>
+              <Td className="text-paper">Spent (net)</Td>
+              <Td>
+                <Num className="text-paper">{int(o.credits.spentNet)}</Num>
+              </Td>
             </tr>
             <tr>
               <Td>Expired unused</Td>
-              <Td>{int(o.credits.expired)}</Td>
+              <Td>
+                <Num>{int(o.credits.expired)}</Num>
+              </Td>
             </tr>
           </T>
         </Section>
@@ -189,10 +235,18 @@ export default async function AdminOverview() {
             {o.subscriptions.byPlan.map((p) => (
               <tr key={p.plan}>
                 <Td>{planName(p.plan)}</Td>
-                <Td>{p.active}</Td>
-                <Td>{p.pastDue}</Td>
-                <Td>{p.cancelling}</Td>
-                <Td>{p.founding}</Td>
+                <Td>
+                  <Num>{p.active}</Num>
+                </Td>
+                <Td>
+                  <Num>{p.pastDue}</Num>
+                </Td>
+                <Td>
+                  <Num>{p.cancelling}</Num>
+                </Td>
+                <Td>
+                  <Num>{p.founding}</Num>
+                </Td>
               </tr>
             ))}
           </T>

@@ -5,11 +5,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { CreditPill, cn } from "@voidaccess/ui";
 import { authClient } from "@/lib/auth/client";
 import { SIGN_IN_URL } from "@/lib/site";
+import { Logo } from "@/components/logo";
 
 const NAV = [
   { href: "/investigations/new", label: "New" },
   { href: "/investigations", label: "History" },
 ];
+
+const MENU = [
+  { href: "/settings", label: "Settings" },
+  { href: "/billing", label: "Billing" },
+  { href: "/usage", label: "Usage" },
+];
+
+const item =
+  "flex h-10 w-full items-center px-4 text-left text-[15px] text-dim transition-colors duration-300 hover:bg-paper/[.04] hover:text-paper focus-visible:bg-paper/[.04] focus-visible:text-paper";
 
 export function AppHeader({
   initialBalance,
@@ -68,35 +78,28 @@ export function AppHeader({
 
   const initial = (name.trim()[0] ?? email[0] ?? "?").toUpperCase();
   return (
-    <header className="sticky top-0 z-30 border-b border-border-subtle bg-void/80 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2 sm:h-14 sm:flex-nowrap sm:py-0 sm:px-6">
-        <div className="contents sm:flex sm:items-center sm:gap-6">
-          <Link
-            href="/welcome"
-            className="font-display text-lg font-semibold tracking-tight text-fg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-          >
-            Void<span className="text-accent">Access</span>
-          </Link>
-          <nav aria-label="Main" className="order-3 flex w-full items-center gap-1 sm:order-none sm:w-auto">
-            {NAV.map((n) => {
-              const active = n.href === "/investigations" ? pathname === n.href : pathname.startsWith(n.href);
-              return (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "rounded-md px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-accent",
-                    active ? "bg-raised text-fg" : "text-fg-secondary hover:text-fg",
-                  )}
-                >
-                  {n.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 border-b border-line bg-bg/[.78] backdrop-blur-[18px] backdrop-saturate-[1.4]">
+      <div className="va-wrap flex h-[68px] items-center gap-11 max-[960px]:h-auto max-[960px]:flex-wrap max-[960px]:gap-0">
+        <Logo href="/welcome" className="max-[960px]:h-[60px]" />
+        <nav
+          aria-label="Main"
+          className="flex items-center gap-[30px] max-[960px]:order-last max-[960px]:h-11 max-[960px]:w-full max-[960px]:border-t max-[960px]:border-line"
+        >
+          {NAV.map((n) => {
+            const active = n.href === "/investigations" ? pathname === n.href : pathname.startsWith(n.href);
+            return (
+              <Link
+                key={n.href}
+                href={n.href}
+                aria-current={active ? "page" : undefined}
+                className="ul-link text-[15px] leading-none"
+              >
+                {n.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="ml-auto flex items-center gap-3 max-[960px]:h-[60px]">
           <CreditPill balance={balance} data-testid="credit-pill" />
           <div className="relative" ref={menuRef}>
             <button
@@ -105,42 +108,40 @@ export function AppHeader({
               aria-haspopup="menu"
               aria-expanded={open}
               onClick={() => setOpen((o) => !o)}
-              className="flex size-8 items-center justify-center rounded-full border border-border-strong bg-raised text-xs font-medium text-fg-secondary hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className={cn(
+                "flex size-9 items-center justify-center rounded-full border text-[14px] font-medium transition-[border-color,color] duration-300",
+                open
+                  ? "border-paper text-paper"
+                  : "border-line-2 text-dim hover:border-paper hover:text-paper",
+              )}
             >
               {initial}
             </button>
             {open ? (
               <div
                 role="menu"
-                className="absolute right-0 mt-2 w-60 overflow-hidden rounded-md border border-border-subtle bg-overlay shadow-xl shadow-black/40"
+                className="absolute right-0 mt-2.5 w-64 overflow-hidden rounded-lg border border-line-2 bg-bg-2 py-1.5 animate-[va-menu-in_.45s_cubic-bezier(.16,1,.3,1)]"
               >
-                <div className="border-b border-border-dim px-3 py-2.5">
-                  <p className="truncate text-sm font-medium text-fg">{name}</p>
-                  <p className="truncate text-xs text-fg-secondary">{email}</p>
-                  {!emailVerified ? <p className="mt-1 text-xs text-warning">Email not verified</p> : null}
+                <div className="mb-1.5 border-b border-line px-4 pt-2 pb-3">
+                  <p className="truncate text-[15px] font-medium text-paper">{name}</p>
+                  <p className="truncate font-mono text-[12px] text-mute">{email}</p>
+                  {!emailVerified ? (
+                    <p className="mt-2 font-mono text-[12px] text-dim">! Email not verified</p>
+                  ) : null}
                 </div>
-                <Link
-                  role="menuitem"
-                  href="/settings"
-                  onClick={() => setOpen(false)}
-                  className="block px-3 py-2 text-sm text-fg hover:bg-raised focus-visible:bg-raised focus-visible:outline-none"
-                >
-                  Settings
-                </Link>
-                {[
-                  { href: "/billing", label: "Billing" },
-                  { href: "/usage", label: "Usage" },
-                ].map((m) => (
+                {MENU.map((m) => (
                   <Link
                     key={m.href}
                     role="menuitem"
                     href={m.href}
                     onClick={() => setOpen(false)}
-                    className="block px-3 py-2 text-sm text-fg hover:bg-raised focus-visible:bg-raised focus-visible:outline-none"
+                    aria-current={pathname.startsWith(m.href) ? "page" : undefined}
+                    className={cn(item, "aria-[current=page]:text-paper")}
                   >
                     {m.label}
                   </Link>
                 ))}
+                <div className="my-1.5 h-px bg-line" />
                 <button
                   type="button"
                   role="menuitem"
@@ -149,7 +150,7 @@ export function AppHeader({
                     window.location.assign(SIGN_IN_URL);
                     router.refresh();
                   }}
-                  className="block w-full px-3 py-2 text-left text-sm text-fg hover:bg-raised focus-visible:bg-raised focus-visible:outline-none"
+                  className={item}
                 >
                   Sign out
                 </button>

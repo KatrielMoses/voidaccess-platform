@@ -23,6 +23,7 @@ import {
   EmptyState,
   ENTITY_BADGE_VARIANTS,
   Input,
+  NativeSelect,
   Select,
   Skeleton,
   STATUS_BADGE_VARIANTS,
@@ -39,12 +40,13 @@ import {
   Textarea,
   Tooltip,
   useToast,
+  type ToastVariant,
 } from "@voidaccess/ui";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="border-b border-border-dim pb-2 font-display text-xl font-semibold">{title}</h2>
+      <h2 className="border-t border-line pt-6 text-[21px] font-medium tracking-[-0.02em]">{title}</h2>
       {children}
     </section>
   );
@@ -55,15 +57,15 @@ export function Showcase() {
   const [checked, setChecked] = React.useState<boolean | "indeterminate">(true);
 
   return (
-    <div className="flex flex-col gap-12">
-      <h1 className="font-display text-3xl font-semibold">UI kit</h1>
+    <div className="va-wrap flex flex-col gap-14 py-14">
+      <h1 className="text-[clamp(32px,3.2vw,44px)] leading-none font-medium tracking-[-0.04em]">UI kit</h1>
 
       <Section title="Button">
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="primary">Primary</Button>
           <Button variant="secondary">Secondary</Button>
+          <Button variant="paper">Paper</Button>
           <Button variant="ghost">Ghost</Button>
-          <Button variant="danger">Danger</Button>
           <Button disabled>Disabled</Button>
           <Button loading>Loading</Button>
         </div>
@@ -83,6 +85,10 @@ export function Showcase() {
           <Input placeholder="Invalid input" aria-invalid="true" aria-label="Invalid input" />
           <Input placeholder="Disabled input" disabled aria-label="Disabled input" />
           <Textarea placeholder="Textarea" aria-label="Textarea" />
+          <NativeSelect aria-label="Native select" defaultValue="a">
+            <option value="a">Native option A</option>
+            <option value="b">Native option B</option>
+          </NativeSelect>
           <Select
             aria-label="Select"
             placeholder="Select an option"
@@ -92,15 +98,15 @@ export function Showcase() {
               { value: "c", label: "Disabled option", disabled: true },
             ]}
           />
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2.5 text-[15px]">
             <Checkbox checked={checked} onCheckedChange={setChecked} />
             Checkbox (controlled)
           </label>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2.5 text-[15px]">
             <Checkbox checked="indeterminate" />
             Indeterminate
           </label>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2.5 text-[15px]">
             <Checkbox disabled />
             Disabled
           </label>
@@ -175,15 +181,19 @@ export function Showcase() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          {(["default", "success", "warning", "danger"] as const).map((variant) => (
-            <Button
-              key={variant}
-              variant="secondary"
-              onClick={() => toast({ title: `${variant} toast`, description: "Toast description.", variant })}
-            >
-              Toast: {variant}
-            </Button>
-          ))}
+          {(["default", "success", "warning", "danger"] as const satisfies readonly ToastVariant[]).map(
+            (variant) => (
+              <Button
+                key={variant}
+                variant="secondary"
+                onClick={() =>
+                  toast({ title: `${variant} toast`, description: "Toast description.", variant })
+                }
+              >
+                Toast: {variant}
+              </Button>
+            ),
+          )}
           <Tooltip content="Tooltip content">
             <Button variant="ghost">Hover or focus me</Button>
           </Tooltip>

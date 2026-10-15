@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Select as S } from "radix-ui";
 import { cn } from "../lib/cn";
+import { inputClass } from "./input";
 
 export interface SelectOption {
   value: string;
@@ -31,20 +32,23 @@ export function Select({ options, placeholder, className, id, ...props }: Select
         id={id}
         aria-label={ariaLabel}
         className={cn(
-          "inline-flex h-10 w-full items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface px-3 text-sm text-fg transition-colors hover:border-border-strong focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-accent-border disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-fg-muted",
+          inputClass,
+          "inline-flex h-[46px] items-center justify-between gap-2 text-left data-[placeholder]:text-stone",
           className,
         )}
       >
         <S.Value placeholder={placeholder} />
-        <S.Icon aria-hidden className="text-fg-muted">
-          ▾
+        <S.Icon aria-hidden className="text-stone">
+          <svg viewBox="0 0 12 12" className="size-3">
+            <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          </svg>
         </S.Icon>
       </S.Trigger>
       <S.Portal>
         <S.Content
           position="popper"
-          sideOffset={4}
-          className="z-50 min-w-(--radix-select-trigger-width) overflow-hidden rounded-md border border-border-subtle bg-overlay text-fg shadow-xl shadow-black/40"
+          sideOffset={6}
+          className="z-50 min-w-(--radix-select-trigger-width) overflow-hidden rounded-lg border border-line bg-bg-2 text-paper"
         >
           <S.Viewport className="p-1">
             {options.map((o) => (
@@ -52,9 +56,10 @@ export function Select({ options, placeholder, className, id, ...props }: Select
                 key={o.value}
                 value={o.value}
                 disabled={o.disabled}
-                className="relative flex h-9 cursor-pointer items-center rounded px-3 text-sm outline-none select-none data-[disabled]:opacity-40 data-[highlighted]:bg-accent-dim data-[highlighted]:text-fg data-[state=checked]:text-accent"
+                className="relative flex h-10 cursor-pointer items-center justify-between gap-3 rounded-xs px-3 text-[15px] text-dim outline-none select-none data-[disabled]:opacity-40 data-[highlighted]:bg-paper/[.06] data-[highlighted]:text-paper data-[state=checked]:text-paper"
               >
                 <S.ItemText>{o.label}</S.ItemText>
+                <S.ItemIndicator className="font-mono text-[12px] text-dim">✓</S.ItemIndicator>
               </S.Item>
             ))}
           </S.Viewport>

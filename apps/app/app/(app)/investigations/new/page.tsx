@@ -1,6 +1,7 @@
 import { pageUser } from "@/lib/page-user";
 import { readBalance } from "@/lib/account/balance";
 import { QueryForm } from "@/components/query-form";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata = { title: "New investigation | VoidAccess" };
 
@@ -12,14 +13,19 @@ export default async function NewInvestigationPage({
   const [{ q }, user] = await Promise.all([searchParams, pageUser()]);
   const balance = await readBalance(user.id);
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">New investigation</h1>
-        <p className="text-fg-secondary">
-          You have <span className="font-mono text-fg tabular-nums">{balance.toLocaleString("en-US")}</span>{" "}
-          credits.
-        </p>
-      </header>
+    <div className="va-rise flex max-w-[860px] flex-col gap-12">
+      <PageHeader
+        title="New investigation"
+        lede={
+          <>
+            You have{" "}
+            <span className="font-mono text-[15px] text-paper tabular-nums">
+              {balance.toLocaleString("en-US")}
+            </span>{" "}
+            credits.
+          </>
+        }
+      />
       <QueryForm
         balance={balance}
         emailVerified={user.emailVerified}
