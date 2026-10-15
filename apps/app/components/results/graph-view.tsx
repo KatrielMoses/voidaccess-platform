@@ -6,45 +6,61 @@ import Graph from "graphology";
 import Sigma from "sigma";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Input, Skeleton } from "@voidaccess/ui";
+import type { NodeLabelDrawingFunction } from "sigma/rendering";
 import { EDGE_COOCCURRENCE, edgeKindLabel, edgeTypeLabel, typeStyle } from "@/lib/results/entity-style";
 import { buildSvg, downloadSvg, exportPng, type SvgEdge, type SvgNode } from "@/lib/results/graph-export";
 import {
   DEFAULT_FILTERS,
-  TOKEN_FALLBACK,
-  communityColor,
+  EDGE,
+  FIELD,
+  LABEL,
+  MUTED_INTENSITY,
+  PAPER_HEX,
+  SIGNAL_NODE,
+  V500_HEX,
   computeVisible,
   isBig,
+  nodeColor,
+  nodeIntensity,
   nodeSize,
   seedPositions,
   typeCounts,
   type GraphFilterState,
 } from "@/lib/results/graph-model";
+import { ARCHIVE_GLYPH, glyphFor, legendFor } from "@/lib/results/glyphs";
+import { NodeGlyphProgram } from "@/lib/results/node-glyph-program";
 import { loadLayout, saveLayout } from "@/lib/results/layout-cache";
 import type { GraphData } from "@/lib/results/types";
 import { archiveCopy } from "@/lib/archive/copy";
 import { formatDate } from "@/lib/results/format";
 import { GraphControls } from "./graph-controls";
-import {
-  ARCHIVE_EDGE_COLOR,
-  ARCHIVE_NODE_COLOR,
-  useArchiveOverlay,
-  type MinTier,
-} from "./use-archive-overlay";
+import { useArchiveOverlay, type MinTier } from "./use-archive-overlay";
 import { TierBadge } from "./tier-badge";
 import { NodePanel } from "./node-panel";
+import { CloseButton } from "./ui";
+import { ShapeGlyph } from "./type-glyph";
 
-const DIM = "rgba(110,118,129,0.12)";
-const COOC = "rgba(255,255,255,0.07)";
-const TYPED = "rgba(155,159,238,0.8)";
+const LABEL_FONT = '"Geist Mono", ui-monospace, SFMono-Regular, monospace';
 
-function cssColor(type: string): string {
-  const v = typeStyle(type).cssVar;
-  const live =
-    typeof document !== "undefined"
-      ? getComputedStyle(document.documentElement).getPropertyValue(v).trim()
-      : "";
-  return live || TOKEN_FALLBACK[v] || "#6e7681";
-}
+type LabelData = Parameters<NodeLabelDrawingFunction>[1] & { labelColor?: string };
+
+/** Mono label beside the glyph, with a field-coloured halo so crossing hairlines don't cut through it. */
+const drawLabel: NodeLabelDrawingFunction = (ctx, data, settings) => {
+  if (!data.label) return;
+  const d = data as LabelData;
+  ctx.font = `${settings.labelWeight} ${settings.labelSize}px ${settings.labelFont}`;
+  const x = data.x + data.size * 1.25 + 4;
+  const y = data.y + settings.labelSize / 3;
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = FIELD;
+  ctx.strokeText(data.label, x, y);
+  ctx.fillStyle = d.labelColor ?? LABEL.base;
+  ctx.fillText(data.label, x, y);
+};
+/** Hover: no box and no shadow, only the label in lavender (the node itself turns v-500 in the reducer). */
+const drawHover: NodeLabelDrawingFunction = (ctx, data, settings) =>
+  drawLabel(ctx, { ...data, labelColor: LABEL.focus } as LabelData, settings);
 
 interface DebugHandle {
   sigma: Sigma;
@@ -62,7 +78,6 @@ export function GraphView({ investigationId }: { investigationId: string }) {
   const [data, setData] = useState<GraphData | null>(null);
   const [error, setError] = useState(false);
   const [filters, setFilters] = useState<GraphFilterState>(DEFAULT_FILTERS);
-  const [communityColors, setCommunityColors] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [laying, setLaying] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -80,7 +95,6 @@ export function GraphView({ investigationId }: { investigationId: string }) {
   const hovered = useRef<string | null>(null);
   const selectedRef = useRef<string | null>(null);
   const visibleRef = useRef<ReturnType<typeof computeVisible> | null>(null);
-  const communityRef = useRef(false);
   const t0 = useRef(typeof performance !== "undefined" ? performance.now() : 0);
 
   useEffect(() => {
@@ -109,10 +123,9 @@ export function GraphView({ investigationId }: { investigationId: string }) {
 
   useEffect(() => {
     visibleRef.current = visible;
-    communityRef.current = communityColors;
     selectedRef.current = selected;
     sigmaRef.current?.refresh();
-  }, [visible, communityColors, selected]);
+  }, [visible, selected]);
 
   // build graph + sigma once per data load
   useEffect(() => {
@@ -121,7 +134,7 @@ export function GraphView({ investigationId }: { investigationId: string }) {
     const ids = data.nodes.map((n) => n[0]);
     const cached = loadLayout(investigationId, ids);
     const seeds = seedPositions(data);
-    const colors = new Map(types.map(([t]) => [t, cssColor(t)]));
+    const maxDegree = data.nodes.reduce((m, n) => Math.max(m, n[4]), 1);
 
     const graph = new Graph({ multi: true, type: "undirected" });
     for (const [id, type, label, confidence, degree, community, sensitive] of data.nodes) {
@@ -136,7 +149,9 @@ export function GraphView({ investigationId }: { investigationId: string }) {
         degree,
         community,
         sensitive,
-        color: colors.get(type) ?? "#6e7681",
+        shape: glyphFor(type).shape,
+        intensity: nodeIntensity(degree, maxDegree),
+        color: nodeColor(nodeIntensity(degree, maxDegree)),
       });
     }
     data.edges.forEach(([s, t, type, w], i) => {
@@ -148,25 +163,40 @@ export function GraphView({ investigationId }: { investigationId: string }) {
     const sigma = new Sigma(graph, container.current, {
       renderEdgeLabels: false,
       enableEdgeEvents: data.edges.length <= 8000,
+      defaultNodeType: "glyph",
+      nodeProgramClasses: { glyph: NodeGlyphProgram },
+      defaultDrawNodeLabel: drawLabel,
+      defaultDrawNodeHover: drawHover,
+      labelFont: LABEL_FONT,
+      labelSize: 11,
+      labelWeight: "400",
       labelRenderedSizeThreshold: 9,
       labelDensity: 0.6,
-      labelColor: { color: "#c9d1d9" },
-      defaultEdgeColor: COOC,
+      labelColor: { color: LABEL.base },
+      defaultEdgeColor: EDGE.cooccurrence,
+      minEdgeThickness: 1,
       minCameraRatio: 0.03,
       maxCameraRatio: 12,
       zIndex: true,
       hideEdgesOnMove: data.edges.length > 5000,
       hideLabelsOnMove: true,
+      // hover and selection are the one violet thing: the focused node, its edges and its label
       nodeReducer: (node, attrs) => {
         const vis = visibleRef.current;
         if (!attrs.archive && vis && !vis.nodes.has(node)) return { ...attrs, hidden: true };
         const out = { ...attrs } as Record<string, unknown>;
-        if (communityRef.current) out.color = communityColor(attrs.community as number | null);
         const focus = hovered.current ?? selectedRef.current;
-        if (focus && node !== focus && !graph.areNeighbors(node, focus)) {
-          out.color = DIM;
+        if (node === focus || node === selectedRef.current) {
+          out.color = SIGNAL_NODE;
+          out.labelColor = LABEL.focus;
+          out.zIndex = 3;
+          out.forceLabel = true;
+        } else if (focus && !graph.areNeighbors(node, focus)) {
+          out.color = nodeColor(MUTED_INTENSITY);
           out.label = null;
         } else if (focus) {
+          out.color = nodeColor(Math.max(0.86, attrs.intensity as number));
+          out.labelColor = LABEL.near;
           out.zIndex = 2;
           out.forceLabel = true;
         }
@@ -175,30 +205,32 @@ export function GraphView({ investigationId }: { investigationId: string }) {
       },
       edgeReducer: (edge, attrs) => {
         const vis = visibleRef.current;
+        const focus = hovered.current ?? selectedRef.current;
+        const touches = focus ? graph.hasExtremity(edge, focus) : false;
         if (attrs.archiveEdge) {
-          const f = hovered.current ?? selectedRef.current;
           return {
             ...attrs,
-            color: f && !graph.hasExtremity(edge, f) ? "rgba(217,164,65,0.06)" : ARCHIVE_EDGE_COLOR,
+            color: focus ? (touches ? EDGE.signalSoft : EDGE.muted) : EDGE.archive,
             size: 1.2,
           };
         }
         if (vis && !vis.edges.has(attrs.idx as number)) return { ...attrs, hidden: true };
         const typed = attrs.rel !== EDGE_COOCCURRENCE;
-        const focus = hovered.current ?? selectedRef.current;
         const out: Record<string, unknown> = {
           ...attrs,
-          color: typed ? TYPED : COOC,
-          size: typed ? 1.6 : 0.5,
+          color: typed ? EDGE.typed : EDGE.cooccurrence,
+          size: typed ? 1 : 0.6,
         };
-        if (focus && !graph.hasExtremity(edge, focus)) out.color = "rgba(110,118,129,0.04)";
+        if (focus && !touches) out.color = EDGE.muted;
         else if (focus) {
-          out.color = typed ? "#9b9fee" : "rgba(255,255,255,0.35)";
-          out.size = typed ? 2.2 : 1;
+          out.color = typed ? EDGE.signal : EDGE.signalSoft;
+          out.size = typed ? 1.4 : 1;
         }
         return out;
       },
     });
+    // labels are drawn on a 2D canvas: repaint once Geist Mono is ready
+    void document.fonts?.load(`11px ${LABEL_FONT}`).then(() => sigmaRef.current === sigma && sigma.refresh());
     sigmaRef.current = sigma;
     setGraphVersion((v) => v + 1);
     sigma.on("enterNode", ({ node }) => {
@@ -331,19 +363,22 @@ export function GraphView({ investigationId }: { investigationId: string }) {
       const p = sigma.graphToViewport({ x: a.x as number, y: a.y as number });
       if (inView(p)) pos.set(id, p);
     });
+    const sel = selectedRef.current;
     g.forEachEdge((_e, a, s, t) => {
       if (!a.archiveEdge && !vis.edges.has(a.idx as number)) return;
       const p1 = pos.get(s);
       const p2 = pos.get(t);
       if (!p1 || !p2) return;
       const typed = a.rel !== EDGE_COOCCURRENCE;
+      const signal = sel !== null && (s === sel || t === sel);
       edges.push({
         x1: p1.x,
         y1: p1.y,
         x2: p2.x,
         y2: p2.y,
-        color: a.archiveEdge ? ARCHIVE_NODE_COLOR : typed ? "#9b9fee" : "#ffffff",
-        width: a.archiveEdge ? 1.2 : typed ? 1.4 : 0.4,
+        color: signal ? V500_HEX : PAPER_HEX,
+        width: signal ? 1.2 : typed || a.archiveEdge ? 1 : 0.6,
+        opacity: signal ? 0.9 : a.archiveEdge ? 0.24 : typed ? 0.36 : 0.16,
       });
     });
     const top = [...pos.keys()]
@@ -352,33 +387,36 @@ export function GraphView({ investigationId }: { investigationId: string }) {
       )
       .slice(0, 25);
     const labelled = new Set(top);
+    if (sel) labelled.add(sel);
     const usedTypes = new Set<string>();
+    const ratio = sigma.getCamera().ratio;
     for (const [id, p] of pos) {
       const a = g.getNodeAttributes(id);
       if (!a.archive) usedTypes.add(a.etype as string);
-      const ratio = sigma.getCamera().ratio;
       nodes.push({
         x: p.x,
         y: p.y,
         r: Math.max(2, ((a.size as number) / Math.sqrt(ratio)) * 0.9),
-        color: a.archive
-          ? ARCHIVE_NODE_COLOR
-          : communityRef.current
-            ? communityColor(a.community as number | null)
-            : (a.color as string),
+        color: id === sel ? V500_HEX : PAPER_HEX,
+        opacity: id === sel ? 1 : a.archive ? 0.55 : (a.intensity as number),
+        shape: a.archive ? ARCHIVE_GLYPH.shape : glyphFor(a.etype as string).shape,
         label: labelled.has(id) ? (a.label as string) : null,
       });
     }
-    const legend = [...usedTypes].slice(0, 8).map((t) => ({ label: typeStyle(t).label, color: cssColor(t) }));
+    const legend = legendFor([...usedTypes]).map((l) => ({
+      label: l.family,
+      color: PAPER_HEX,
+      shape: l.shape,
+    }));
     if ([...pos.keys()].some((id) => g.getNodeAttribute(id, "archive")))
-      legend.push({ label: archiveCopy.graph.legend, color: ARCHIVE_NODE_COLOR });
+      legend.push({ label: archiveCopy.graph.legend, color: PAPER_HEX, shape: ARCHIVE_GLYPH.shape });
     downloadSvg(
       buildSvg(width, height, nodes, edges, legend),
       `voidaccess-${investigationId.slice(0, 8)}-graph.svg`,
     );
   };
 
-  if (error) return <p className="text-sm text-danger">Couldn&apos;t load the graph. Try again.</p>;
+  if (error) return <p className="text-[15px] text-paper">Couldn&apos;t load the graph. Try again.</p>;
   if (!data || !visible)
     return (
       <div className="flex flex-col gap-3" aria-busy>
@@ -386,16 +424,15 @@ export function GraphView({ investigationId }: { investigationId: string }) {
         <Skeleton className="h-[60vh]" />
       </div>
     );
-  if (data.nodes.length === 0) return <p className="text-fg-secondary">This run has no entities to graph.</p>;
+  if (data.nodes.length === 0) return <p className="text-dim">This run has no entities to graph.</p>;
 
+  const legend = legendFor(types.map(([t]) => t));
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <GraphControls
         filters={filters}
         onChange={setFilters}
         types={types}
-        communityColors={communityColors}
-        onCommunityColors={setCommunityColors}
         big={big}
         truncated={visible.truncated}
         totalNodes={data.nodes.length}
@@ -406,7 +443,6 @@ export function GraphView({ investigationId }: { investigationId: string }) {
         onExportSvg={onSvg}
         exporting={exporting}
         tableHref={`/investigations/${investigationId}/results/entities`}
-        cssColor={cssColor}
         archive={{
           on: archiveOn,
           onToggle: setArchiveOn,
@@ -418,11 +454,10 @@ export function GraphView({ investigationId }: { investigationId: string }) {
           nodes: archive.nodes,
           truncated: archive.truncated,
           failed: archive.failed,
-          color: ARCHIVE_NODE_COLOR,
         }}
       />
       <div className="relative">
-        <label className="mb-2 flex max-w-sm flex-col gap-1 text-xs text-fg-secondary">
+        <label className="mb-3 flex max-w-sm flex-col gap-1.5 text-[13px] text-dim">
           Find a node
           <Input
             type="search"
@@ -436,50 +471,80 @@ export function GraphView({ investigationId }: { investigationId: string }) {
           <ul
             role="listbox"
             aria-label="Matching nodes"
-            className="absolute z-10 -mt-1 max-h-60 w-full max-w-sm overflow-auto rounded-md border border-border-subtle bg-overlay p-1 shadow-xl"
+            className="absolute z-10 -mt-2 max-h-60 w-full max-w-sm overflow-auto rounded-sm border border-line-2 bg-bg-2 py-1"
           >
             {matches.map((n) => (
               <li key={n[0]} role="option" aria-selected={false}>
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent-dim focus-visible:outline-2 focus-visible:outline-accent"
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors duration-300 hover:bg-bar"
                   onClick={() => (focusNode(n[0]), setSearch(""))}
                 >
-                  <span className="truncate font-mono">{n[2]}</span>
-                  <span className="shrink-0 text-fg-secondary">{typeStyle(n[1]).label}</span>
+                  <span className="truncate font-mono text-[13px] text-paper">{n[2]}</span>
+                  <span className="flex shrink-0 items-center gap-1.5 font-mono text-[12px] text-mute">
+                    <ShapeGlyph shape={glyphFor(n[1]).shape} />
+                    {typeStyle(n[1]).label}
+                  </span>
                 </button>
               </li>
             ))}
           </ul>
         ) : null}
-        <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
-          <div className="relative overflow-hidden rounded-lg border border-border-subtle bg-void">
-            <div
-              ref={container}
-              role="img"
-              aria-label={`Identity graph with ${data.nodes.length} nodes and ${data.edges.length} edges. Use the Entities tab for an accessible table of the same data.`}
-              data-testid="graph-canvas"
-              className="h-[min(65vh,42rem)] min-h-[22rem] w-full"
-            />
-            {laying ? (
+        <div className="grid overflow-hidden rounded-lg border border-line lg:grid-cols-[1fr_22rem]">
+          <div className="flex min-w-0 flex-col">
+            <div className="relative bg-bg">
               <div
-                className="absolute inset-0 flex items-center justify-center bg-void/80 text-sm text-fg-secondary"
-                role="status"
-              >
-                Arranging graph…
-              </div>
-            ) : null}
-            {edgeTip ? (
-              <div
-                data-testid="edge-tip"
-                className="pointer-events-none absolute rounded border border-border-subtle bg-overlay px-2 py-1 text-xs"
-                style={{ left: edgeTip.x + 12, top: edgeTip.y + 12 }}
-              >
-                {edgeTip.text}
-              </div>
-            ) : null}
+                ref={container}
+                role="img"
+                aria-label={`Identity graph with ${data.nodes.length} nodes and ${data.edges.length} edges. Use the Entities tab for an accessible table of the same data.`}
+                data-testid="graph-canvas"
+                className="h-[min(65vh,42rem)] min-h-[22rem] w-full bg-bg"
+              />
+              {laying ? (
+                <div
+                  className="absolute inset-0 flex items-center justify-center bg-bg/80 font-mono text-[13px] text-dim"
+                  role="status"
+                >
+                  Arranging graph…
+                </div>
+              ) : null}
+              {edgeTip ? (
+                <div
+                  data-testid="edge-tip"
+                  className="pointer-events-none absolute max-w-xs rounded-xs border border-line-2 bg-bg-2 px-2.5 py-1.5 font-mono text-[12px] leading-snug text-dim"
+                  style={{ left: edgeTip.x + 12, top: edgeTip.y + 12 }}
+                >
+                  {edgeTip.text}
+                </div>
+              ) : null}
+            </div>
+            <ul
+              aria-label="Legend"
+              className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line px-4 py-3 font-mono text-[12px] text-mute"
+            >
+              {legend.map((l) => (
+                <li key={l.family} className="flex items-center gap-1.5">
+                  <ShapeGlyph shape={l.shape} className="text-paper/80" />
+                  {l.family}
+                </li>
+              ))}
+              {archiveOn ? (
+                <li className="flex items-center gap-1.5">
+                  <ShapeGlyph shape={ARCHIVE_GLYPH.shape} className="text-paper/80" />
+                  {ARCHIVE_GLYPH.family}
+                </li>
+              ) : null}
+              <li className="flex items-center gap-1.5">
+                <span aria-hidden className="h-px w-4 bg-paper/30" />
+                typed (lead)
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span aria-hidden className="h-px w-4 bg-paper/15" />
+                co-occurrence
+              </li>
+            </ul>
           </div>
-          <div>
+          <div className="min-w-0 border-t border-line lg:border-t-0 lg:border-l">
             {selected?.startsWith("arc:") && graphRef.current?.hasNode(selected) ? (
               <ArchiveNodeCard
                 attrs={
@@ -500,10 +565,16 @@ export function GraphView({ investigationId }: { investigationId: string }) {
                 onClose={() => setSelected(null)}
               />
             ) : (
-              <p className="rounded-lg border border-dashed border-border-strong p-4 text-sm text-fg-secondary">
-                Click a node to see its details, sources and connections. Hover to highlight its
-                neighbourhood. Edges are leads, not facts.
-              </p>
+              <div className="flex h-full flex-col gap-3 p-5 text-[15px] text-dim">
+                <p className="font-mono text-[12px] text-mute">No node selected</p>
+                <p>
+                  Click a node to see its details, sources and connections. Hover to highlight its
+                  neighbourhood. Edges are leads, not facts.
+                </p>
+                <p className="text-[13px] text-mute">
+                  Brighter, larger nodes have more connections. Shapes show the kind of entity.
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -523,25 +594,21 @@ function ArchiveNodeCard({
     <aside
       aria-label="Archive node"
       data-testid="archive-node-card"
-      className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4 text-sm"
+      className="flex flex-col gap-4 p-5 text-[14px]"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-display text-base font-semibold">{archiveCopy.title}</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="text-fg-secondary hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
-        >
-          ✕
-        </button>
+        <h3 className="text-[17px] font-medium tracking-[-0.01em]">{archiveCopy.title}</h3>
+        <CloseButton onClick={onClose} label="Close" />
       </div>
-      <code className="break-all rounded bg-void px-2 py-1.5 font-mono text-xs">{attrs.label}</code>
-      <p className="flex items-center gap-2">
-        <span className="text-fg-secondary">{typeStyle(attrs.etype).label}</span>
+      <code className="font-mono text-[14px] break-all text-paper">{attrs.label}</code>
+      <p className="flex flex-wrap items-center gap-3">
+        <span className="flex items-center gap-1.5 font-mono text-[12px] text-dim">
+          <ShapeGlyph shape={ARCHIVE_GLYPH.shape} />
+          {typeStyle(attrs.etype).label}
+        </span>
         <TierBadge tier={attrs.tier} />
       </p>
-      <p className="text-xs text-fg-secondary">{archiveCopy.graph.nodeNote}</p>
+      <p className="text-[13px] text-dim">{archiveCopy.graph.nodeNote}</p>
     </aside>
   );
 }

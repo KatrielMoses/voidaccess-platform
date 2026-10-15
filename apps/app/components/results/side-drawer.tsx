@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { CloseButton } from "./ui";
 
 /** Minimal accessible right-hand drawer: Esc and overlay close it, focus moves in and returns on close. */
 export function SideDrawer({
@@ -34,25 +35,18 @@ export function SideDrawer({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-40 flex justify-end" data-testid="drawer">
-      {modal ? <div aria-hidden className="absolute inset-0 bg-black/60" onClick={onClose} /> : null}
+      {modal ? <div aria-hidden className="absolute inset-0 bg-bg/70" onClick={onClose} /> : null}
       <div
         ref={panel}
         role="dialog"
         aria-modal={modal}
         aria-label={title}
         tabIndex={-1}
-        className="relative flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-border-subtle bg-overlay p-5 shadow-2xl shadow-black/60 outline-none"
+        className="relative flex h-full w-full max-w-[30rem] flex-col overflow-y-auto border-l border-line bg-bg-2 px-6 py-6 outline-none sm:px-7"
       >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <h2 className="font-display text-lg font-semibold break-words">{title}</h2>
-          <button
-            type="button"
-            aria-label="Close panel"
-            onClick={onClose}
-            className="flex size-8 shrink-0 items-center justify-center rounded text-fg-secondary hover:bg-raised hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            ✕
-          </button>
+        <div className="mb-6 flex items-start justify-between gap-3 border-b border-line pb-4">
+          <h2 className="text-[20px] leading-tight font-medium tracking-[-0.02em] break-words">{title}</h2>
+          <CloseButton onClick={onClose} label="Close panel" />
         </div>
         {children}
       </div>

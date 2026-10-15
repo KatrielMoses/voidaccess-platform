@@ -29,26 +29,45 @@ const ALLOWED = [
   "del",
 ];
 
+/** Reading typography (design.md §4): General Sans 400 17px/1.6, 500 headings with tight tracking, mono IOCs. */
+const PROSE = [
+  "max-w-[68ch] space-y-4 [overflow-wrap:anywhere] text-[16px] leading-[1.6] text-paper sm:text-[17px]",
+  "[&_h1]:mt-9 [&_h1]:text-[26px] [&_h1]:leading-[1.15] [&_h1]:font-medium [&_h1]:tracking-[-0.03em]",
+  "[&_h2]:mt-8 [&_h2]:text-[22px] [&_h2]:leading-[1.2] [&_h2]:font-medium [&_h2]:tracking-[-0.025em]",
+  "[&_h3]:mt-6 [&_h3]:text-[18px] [&_h3]:leading-[1.3] [&_h3]:font-medium [&_h3]:tracking-[-0.015em]",
+  "[&_h4]:mt-5 [&_h4]:font-medium [&_h5]:font-medium [&_h6]:font-medium [&>*:first-child]:mt-0",
+  "[&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:my-1.5 [&_li]:pl-1 [&_li::marker]:text-mute",
+  "[&_strong]:font-medium [&_em]:text-dim [&_del]:text-mute",
+  "[&_blockquote]:border-l [&_blockquote]:border-line-3 [&_blockquote]:pl-5 [&_blockquote]:text-dim",
+  "[&_hr]:my-8 [&_hr]:border-line",
+  "[&_pre]:overflow-x-auto [&_pre]:rounded-sm [&_pre]:border [&_pre]:border-line [&_pre]:p-4 [&_pre_code]:border-0 [&_pre_code]:p-0",
+].join(" ");
+
 export function SafeMarkdown({ children }: { children: string }) {
   return (
-    <div className="space-y-3 text-sm leading-relaxed text-fg [&_h1]:mt-5 [&_h1]:font-display [&_h1]:text-xl [&_h2]:mt-5 [&_h2]:font-display [&_h2]:text-lg [&_h3]:mt-4 [&_h3]:font-display [&_h3]:text-base [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_li]:ml-5 [&_ol]:list-decimal [&_ul]:list-disc [&_strong]:font-semibold [&_blockquote]:border-l-2 [&_blockquote]:border-border-strong [&_blockquote]:pl-3 [&_blockquote]:text-fg-secondary">
+    <div className={PROSE}>
       <ReactMarkdown
         allowedElements={ALLOWED}
         unwrapDisallowed
         skipHtml
         urlTransform={() => ""}
         components={{
+          // links stay text: paper with a hairline underline, never an <a> (no source is one click away)
           a: ({ children: c, href }) => (
-            <span>
+            <span className="underline decoration-line-3 underline-offset-[3px]">
               {c}
               {href ? <span className="sr-only"> (link removed)</span> : null}
             </span>
           ),
           img: ({ alt }) => (
-            <span className="text-fg-secondary">{alt ? `[image: ${alt}]` : "[image removed]"}</span>
+            <span className="font-mono text-[13px] text-mute">
+              {alt ? `[image: ${alt}]` : "[image removed]"}
+            </span>
           ),
           code: ({ children: c }) => (
-            <code className="rounded bg-raised px-1 py-0.5 font-mono text-[0.85em]">{c}</code>
+            <code className="rounded-xs border border-line px-1 py-px font-mono text-[0.84em] break-words text-paper">
+              {c}
+            </code>
           ),
         }}
       >

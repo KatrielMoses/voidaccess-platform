@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import type { ArchiveContext } from "@voidaccess/archive";
-import { Badge, Card, CardContent, CardHeader, CardTitle, Skeleton, Tooltip } from "@voidaccess/ui";
+import { Skeleton } from "@voidaccess/ui";
 import { archiveCopy as copy, fillArchive as fill } from "@/lib/archive/copy";
 import { formatDate } from "@/lib/results/format";
 import { CopyOnlyUrl } from "./copy-text";
 import { TierBadge } from "./tier-badge";
 import { TypeBadge } from "./type-badge";
+import { H, InfoTip, RULED } from "./ui";
 
 /** The archive's view of an investigation (or of one entity, in the drawer). All text is escaped; source URLs are copy-only. */
 export function ArchivePanel({
@@ -40,35 +41,45 @@ export function ArchivePanel({
 
   const wrap = (children: React.ReactNode) =>
     compact ? (
-      <section aria-labelledby="arc-h" className="flex flex-col gap-3 text-sm" data-testid="archive-panel">
-        <h3 id="arc-h" className="font-medium">
+      <section
+        aria-labelledby="arc-h"
+        className="flex flex-col gap-3 text-[14px]"
+        data-testid="archive-panel"
+      >
+        <h3 id="arc-h" className={H}>
           {copy.title}
         </h3>
         {children}
       </section>
     ) : (
-      <Card data-testid="archive-panel">
-        <CardHeader>
-          <CardTitle>{copy.title}</CardTitle>
-          <p className="text-sm text-fg-secondary">{copy.intro}</p>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5 text-sm">{children}</CardContent>
-      </Card>
+      <section
+        aria-labelledby="arc-h"
+        className="grid gap-x-10 gap-y-5 border-t border-line pt-6 lg:grid-cols-[minmax(0,20rem)_1fr]"
+        data-testid="archive-panel"
+      >
+        <div className="flex flex-col gap-2">
+          <h2 id="arc-h" className="text-[22px] leading-tight font-medium tracking-[-0.02em]">
+            {copy.title}
+          </h2>
+          <p className="text-[14px] text-dim">{copy.intro}</p>
+        </div>
+        <div className="flex min-w-0 flex-col gap-6 text-[14px]">{children}</div>
+      </section>
     );
 
   if (!cur) return wrap(<Skeleton className="h-24" />);
-  if (cur.error || !cur.ctx) return wrap(<p className="text-danger">Couldn&apos;t load archive context.</p>);
+  if (cur.error || !cur.ctx) return wrap(<p className="text-paper">Couldn&apos;t load archive context.</p>);
   const ctx = cur.ctx;
   const seen = Object.entries(ctx.seen).sort(
     (a, b) => b[1].independentSources - a[1].independentSources || b[1].observations - a[1].observations,
   );
   const nothing = seen.length === 0 && ctx.neighbours.length === 0 && ctx.offline.length === 0;
-  if (nothing) return wrap(<p className="text-fg-secondary">{copy.empty}</p>);
+  if (nothing) return wrap(<p className="text-dim">{copy.empty}</p>);
 
   return wrap(
     <>
       {!entityKey ? (
-        <p data-testid="archive-summary">
+        <p data-testid="archive-summary" className="text-[16px] leading-relaxed text-paper">
           {fill(copy.seenSummary, {
             seen: ctx.totals.seenBefore,
             total: ctx.totals.entities,
@@ -79,19 +90,19 @@ export function ArchivePanel({
 
       {seen.length > 0 ? (
         <div>
-          <h4 className="mb-1.5 font-medium">{copy.seenHeading}</h4>
-          <ul className="flex flex-col gap-1.5" data-testid="archive-seen">
+          <h4 className={`${H} mb-2`}>{copy.seenHeading}</h4>
+          <ul className={RULED} data-testid="archive-seen">
             {seen.slice(0, compact ? 3 : 8).map(([k, s]) => (
-              <li
-                key={k}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-border-dim bg-void px-2.5 py-1.5"
-              >
-                <span className="min-w-0 max-w-full truncate font-mono text-xs" title={s.display}>
+              <li key={k} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 py-2.5">
+                <span
+                  className="min-w-0 max-w-full truncate font-mono text-[13px] text-paper"
+                  title={s.display}
+                >
                   {s.display}
                 </span>
                 <TypeBadge type={s.type} />
                 <TierBadge tier={s.tier} />
-                <span className="text-xs text-fg-secondary">
+                <span className="text-[13px] text-dim tabular-nums">
                   {formatDate(s.firstSeen)} to {formatDate(s.lastSeen)} · {s.independentSources} independent{" "}
                   {s.independentSources === 1 ? "site" : "sites"} · {s.observations}{" "}
                   {s.observations === 1 ? "sighting" : "sightings"}
@@ -104,34 +115,22 @@ export function ArchivePanel({
 
       {ctx.neighbours.length > 0 ? (
         <div>
-          <h4 className="mb-1 flex items-center gap-2 font-medium">
+          <h4 className={`${H} mb-1 flex items-center gap-2`}>
             {copy.neighboursHeading}
-            <Tooltip content={copy.neighboursNote}>
-              <button
-                type="button"
-                aria-label="About these leads"
-                className="flex size-5 items-center justify-center rounded-full border border-border-strong text-xs text-fg-secondary"
-              >
-                i
-              </button>
-            </Tooltip>
+            <InfoTip content={copy.neighboursNote} label="About these leads" />
           </h4>
-          <p className="mb-1.5 text-xs text-fg-secondary">{copy.neighboursNote}</p>
-          <ul className="flex flex-col gap-1.5" data-testid="archive-neighbours">
+          <p className="mb-2 text-[13px] text-dim">{copy.neighboursNote}</p>
+          <ul className={RULED} data-testid="archive-neighbours">
             {ctx.neighbours.slice(0, compact ? 4 : 10).map((n) => (
-              <li
-                key={n.archiveId}
-                className="rounded border border-border-dim bg-void px-2.5 py-1.5"
-                data-testid="archive-neighbour"
-              >
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="min-w-0 truncate font-mono text-xs" title={n.display}>
+              <li key={n.archiveId} className="py-2.5" data-testid="archive-neighbour">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                  <span className="min-w-0 truncate font-mono text-[13px] text-paper" title={n.display}>
                     {n.display}
                   </span>
                   <TypeBadge type={n.type} />
                   <TierBadge tier={n.relationship.tier} />
                 </div>
-                <p className="mt-0.5 text-xs text-fg-secondary">
+                <p className="mt-1 text-[13px] text-dim">
                   {n.relationship.type === "CO_APPEARED_ON"
                     ? "co-occurrence"
                     : `typed (lead): ${n.relationship.type.toLowerCase().replaceAll("_", " ")}`}{" "}
@@ -148,22 +147,21 @@ export function ArchivePanel({
 
       {ctx.offline.length > 0 ? (
         <div>
-          <h4 className="mb-1.5 font-medium">{copy.offlineHeading}</h4>
-          <ul className="flex flex-col gap-2" data-testid="archive-offline">
+          <h4 className={`${H} mb-2`}>{copy.offlineHeading}</h4>
+          <ul className={RULED} data-testid="archive-offline">
             {ctx.offline.slice(0, compact ? 2 : 6).map((o) => (
-              <li
-                key={o.url}
-                className="rounded border border-border-dim bg-void p-2.5"
-                data-testid="archive-offline-item"
-              >
-                <p className="flex flex-wrap items-center gap-2">
-                  <Badge variant="warning">{fill(copy.offlineLine, { date: formatDate(o.lastAlive) })}</Badge>
-                  <span className="text-xs text-fg-secondary">
+              <li key={o.url} className="py-3" data-testid="archive-offline-item">
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-paper">
+                    <span aria-hidden className="size-2 rounded-full border border-current" />
+                    {fill(copy.offlineLine, { date: formatDate(o.lastAlive) })}
+                  </span>
+                  <span className="text-[13px] text-dim">
                     {fill(copy.lastSeenMention, { date: formatDate(o.lastSeen) })}
                   </span>
                 </p>
                 {o.excerpt ? (
-                  <p className="mt-1.5 text-xs whitespace-pre-wrap text-fg-secondary">{o.excerpt}</p>
+                  <p className="mt-1.5 text-[13px] whitespace-pre-wrap text-dim">{o.excerpt}</p>
                 ) : null}
                 <div className="mt-2">
                   <CopyOnlyUrl url={o.url} />

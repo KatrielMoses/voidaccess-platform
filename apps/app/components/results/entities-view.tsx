@@ -3,7 +3,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Checkbox, Input } from "@voidaccess/ui";
+import { Checkbox, Input } from "@voidaccess/ui";
 import {
   filtersToParams,
   parseFilters,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/results/entity-filters";
 import { archiveCopy } from "@/lib/archive/copy";
 import { typeLabel } from "@/lib/results/entity-style";
+import { glyphFor } from "@/lib/results/glyphs";
 import { TierBadge } from "./tier-badge";
 import { formatDate } from "@/lib/results/format";
 import type { EntityPage, EntityRowView, EntitySort } from "@/lib/results/types";
@@ -20,11 +21,13 @@ import { CopyButton } from "./copy-text";
 import { EntityDetailView } from "./entity-detail";
 import { SideDrawer } from "./side-drawer";
 import { TypeBadge } from "./type-badge";
+import { ShapeGlyph } from "./type-glyph";
+import { MaskedMark, UL } from "./ui";
 
 const PAGE = 100;
 const ROW_H = 44;
 const GRID =
-  "grid grid-cols-[2.25rem_minmax(14rem,2.4fr)_9rem_6rem_7.5rem_5rem_11rem_minmax(8rem,1fr)] items-center gap-x-3 px-3";
+  "grid grid-cols-[2.25rem_minmax(14rem,2.4fr)_10rem_6rem_7.5rem_5rem_11rem_minmax(8rem,1fr)] items-center gap-x-4 px-3";
 
 const COLS: { key: EntitySort | null; label: string }[] = [
   { key: "value", label: "Value" },
@@ -197,7 +200,7 @@ export function EntitiesView({
   const selectedRows = rows.filter((r) => selected.has(r.bundleId));
   const allSelected = rows.length > 0 && selectedRows.length === rows.length;
   const arrow = (k: EntitySort | null) =>
-    k && filters.sort === k ? (filters.dir === "asc" ? " ▲" : " ▼") : "";
+    k && filters.sort === k ? (filters.dir === "asc" ? " ↑" : " ↓") : "";
   const anyFilter =
     filters.q ||
     filters.types.length ||
@@ -209,7 +212,7 @@ export function EntitiesView({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-4">
-        <label className="flex min-w-56 flex-1 flex-col gap-1 text-xs text-fg-secondary">
+        <label className="flex min-w-56 flex-1 flex-col gap-1.5 text-[13px] text-dim">
           Search values and tags
           <Input
             type="search"
@@ -218,8 +221,8 @@ export function EntitiesView({
             placeholder="e.g. cve-2023, onion, lockbit"
           />
         </label>
-        <fieldset className="flex items-end gap-2 text-xs text-fg-secondary">
-          <legend className="mb-1">Confidence</legend>
+        <fieldset className="flex items-end gap-2 text-[13px] text-dim">
+          <legend className="mb-1.5">Confidence</legend>
           <label className="flex flex-col gap-1">
             <span className="sr-only">Minimum confidence</span>
             <Input
@@ -254,7 +257,7 @@ export function EntitiesView({
             />
           </label>
         </fieldset>
-        <label className="flex items-center gap-2 pb-2 text-sm">
+        <label className="flex items-center gap-2 pb-2.5 text-[14px] text-paper">
           <Checkbox
             checked={filters.sensitive}
             onCheckedChange={(c) => setFilters({ ...filters, sensitive: c === true })}
@@ -262,13 +265,13 @@ export function EntitiesView({
           />
           Sensitive only
         </label>
-        <label className="flex flex-col gap-1 text-xs text-fg-secondary">
+        <label className="flex flex-col gap-1.5 text-[13px] text-dim">
           {archiveCopy.entities.filterLabel}
           <select
             value={filters.archive}
             onChange={(e) => setFilters({ ...filters, archive: e.target.value as "all" | "new" | "seen" })}
             data-testid="archive-filter"
-            className="h-10 rounded-md border border-border-subtle bg-surface px-3 text-sm text-fg"
+            className="h-10 rounded-sm border border-line bg-bg px-3 text-[14px] text-paper transition-colors duration-300 hover:border-line-2"
           >
             <option value="all">{archiveCopy.entities.all}</option>
             <option value="new">{archiveCopy.entities.onlyNew}</option>
@@ -290,7 +293,7 @@ export function EntitiesView({
                 archive: "all",
               })
             )}
-            className="pb-2 text-sm text-accent hover:underline"
+            className={`${UL} mb-2.5 text-[14px]`}
           >
             Clear filters
           </button>
@@ -306,16 +309,17 @@ export function EntitiesView({
               type="button"
               aria-pressed={on}
               onClick={() => setFilters(toggleType(filters, t))}
-              className={`rounded-full border px-3 py-1 text-xs focus-visible:outline-2 focus-visible:outline-accent ${on ? "border-accent-border bg-accent-dim text-accent" : "border-border-subtle text-fg-secondary hover:text-fg"}`}
+              className={`flex h-8 items-center gap-2 rounded-sm border px-2.5 text-[13px] transition-colors duration-300 ${on ? "border-line-3 bg-paper/[0.06] text-paper" : "border-line text-dim hover:border-line-2 hover:text-paper"}`}
             >
-              {typeLabel(t)} <span className="font-mono">{n}</span>
+              <ShapeGlyph shape={glyphFor(t).shape} className={on ? "text-paper" : "text-paper/60"} />
+              {typeLabel(t)} <span className="font-mono text-[12px] text-mute tabular-nums">{n}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-fg-secondary">
-        <p aria-live="polite" data-testid="entity-count">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[14px] text-dim">
+        <p aria-live="polite" data-testid="entity-count" className="tabular-nums">
           {total === null
             ? "Loading…"
             : `Showing ${rows.length.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} entities`}
@@ -324,28 +328,25 @@ export function EntitiesView({
           <CopyButton
             text={rows.map((r) => r.displayValue).join("\n")}
             label={`Copy ${rows.length} loaded values (sensitive values masked)`}
-            className="!h-8"
           />
-          <span className="text-xs">column ({rows.length})</span>
+          <span className="font-mono text-[12px] text-mute tabular-nums">column ({rows.length})</span>
           {selectedRows.length > 0 ? (
             <>
               <CopyButton
                 text={selectedRows.map((r) => r.displayValue).join("\n")}
                 label="Copy selected values (sensitive values masked)"
-                className="!h-8"
               />
-              <span className="text-xs">{selectedRows.length} selected</span>
+              <span className="font-mono text-[12px] text-mute tabular-nums">
+                {selectedRows.length} selected
+              </span>
             </>
           ) : null}
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border-subtle">
+      <div className="overflow-x-auto border-y border-line">
         <div role="grid" aria-label="Entities" aria-rowcount={total ?? undefined} className="min-w-[68rem]">
-          <div
-            role="row"
-            className={`${GRID} h-10 border-b border-border-subtle bg-surface text-xs font-medium tracking-wide text-fg-secondary uppercase`}
-          >
+          <div role="row" className={`${GRID} h-10 border-b border-line-2 font-mono text-[12px] text-mute`}>
             <div role="columnheader">
               <Checkbox
                 checked={allSelected ? true : selectedRows.length > 0 ? "indeterminate" : false}
@@ -371,7 +372,7 @@ export function EntitiesView({
                   <button
                     type="button"
                     onClick={() => setFilters(toggleSort(filters, c.key!))}
-                    className="uppercase hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
+                    className="transition-colors duration-300 hover:text-paper aria-[sort]:text-paper"
                   >
                     {c.label}
                     {arrow(c.key)}
@@ -388,10 +389,10 @@ export function EntitiesView({
             data-testid="entity-scroller"
           >
             {failed ? (
-              <p className="p-6 text-sm text-danger">Couldn&apos;t load entities. Try again.</p>
+              <p className="p-6 text-[15px] text-paper">Couldn&apos;t load entities. Try again.</p>
             ) : null}
             {!failed && total === 0 ? (
-              <p className="p-6 text-sm text-fg-secondary">No entities match these filters.</p>
+              <p className="p-6 text-[15px] text-dim">No entities match these filters.</p>
             ) : null}
             <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
               {items.map((v) => {
@@ -421,7 +422,7 @@ export function EntitiesView({
                       height: ROW_H,
                       transform: `translateY(${v.start}px)`,
                     }}
-                    className={`${GRID} cursor-pointer border-b border-border-dim text-sm hover:bg-raised/60 focus-visible:bg-raised focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${isSel ? "bg-accent-dim" : ""}`}
+                    className={`${GRID} group cursor-pointer border-b border-line text-[14px] transition-colors duration-300 hover:bg-bg-2 focus-visible:bg-bg-2 focus-visible:outline-offset-[-2px] ${isSel ? "bg-bg-2" : ""}`}
                   >
                     <div role="gridcell" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
@@ -431,10 +432,13 @@ export function EntitiesView({
                       />
                     </div>
                     <div role="gridcell" className="flex min-w-0 items-center gap-2">
-                      <span className="truncate font-mono text-xs" title={r.displayValue}>
+                      <span
+                        className="truncate font-mono text-[13px] text-paper transition-colors duration-300 group-hover:text-v-200 group-focus-visible:text-v-200"
+                        title={r.displayValue}
+                      >
                         {r.displayValue}
                       </span>
-                      {r.sensitive ? <Badge variant="warning">masked</Badge> : null}
+                      {r.sensitive ? <MaskedMark /> : null}
                       <CopyButton
                         text={r.displayValue}
                         label={r.sensitive ? "Copy masked value" : "Copy value"}
@@ -444,34 +448,36 @@ export function EntitiesView({
                     <div role="gridcell">
                       <TypeBadge type={r.type} />
                     </div>
-                    <div role="gridcell" className="font-mono">
+                    <div role="gridcell" className="font-mono text-[13px] tabular-nums">
                       {r.confidence.toFixed(2)}
                     </div>
-                    <div role="gridcell" className="text-xs text-fg-secondary">
+                    <div role="gridcell" className="text-[13px] text-dim tabular-nums">
                       {formatDate(r.firstSeen)}
                     </div>
-                    <div role="gridcell" className="font-mono">
+                    <div role="gridcell" className="font-mono text-[13px] tabular-nums">
                       {r.sourceCount}
                     </div>
                     <div
                       role="gridcell"
-                      className="flex flex-wrap items-center gap-1.5 text-xs"
+                      className="flex flex-wrap items-center gap-2 text-[13px]"
                       data-testid="seen-before-cell"
                     >
                       {seenMap?.[r.bundleId] ? (
                         <>
-                          <span className="text-fg-secondary">
+                          <span className="text-dim tabular-nums">
                             {formatDate(seenMap[r.bundleId]!.firstSeen)}
                           </span>
                           <TierBadge tier={seenMap[r.bundleId]!.tier} />
                         </>
                       ) : (
-                        <span className="text-fg-muted">{seenMap ? archiveCopy.entities.never : "…"}</span>
+                        <span className="font-mono text-[12px] text-mute">
+                          {seenMap ? archiveCopy.entities.never : "…"}
+                        </span>
                       )}
                     </div>
                     <div
                       role="gridcell"
-                      className="truncate text-xs text-fg-secondary"
+                      className="truncate font-mono text-[12px] text-dim"
                       title={r.tags.join(", ")}
                     >
                       {r.tags.join(", ")}
@@ -481,12 +487,12 @@ export function EntitiesView({
               })}
             </div>
             {loading && rows.length > 0 ? (
-              <p className="p-3 text-center text-xs text-fg-secondary">Loading more…</p>
+              <p className="p-3 text-center font-mono text-[12px] text-mute">Loading more…</p>
             ) : null}
           </div>
         </div>
       </div>
-      <p className="text-xs text-fg-secondary">
+      <p className="font-mono text-[12px] text-mute">
         Keyboard: ↑ ↓ move between rows, Enter opens details, Space selects.
       </p>
 
