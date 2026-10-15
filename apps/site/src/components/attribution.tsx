@@ -33,15 +33,15 @@ export function Attribution() {
     <div
       role="region"
       aria-label={privacyNotice.label}
-      className="fixed bottom-4 left-4 right-4 z-50 max-w-md rounded-xl border border-border-strong bg-raised p-4 text-sm shadow-2xl sm:right-auto"
+      className="fixed bottom-4 left-4 right-4 z-50 max-w-md rounded-lg border border-line-2 bg-bg-2 p-5 sm:bottom-6 sm:left-6 sm:right-auto"
     >
-      <p className="leading-relaxed text-fg-secondary">{privacyNotice.text}</p>
-      <div className="mt-3 flex gap-2">
-        <button type="button" onClick={() => choose("granted")} className="min-h-11 rounded-lg bg-accent px-4 font-semibold text-fg-inverse hover:bg-white">
-          {privacyNotice.accept}
+      <p className="text-[15px] leading-normal text-dim">{privacyNotice.text}</p>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button type="button" onClick={() => choose("granted")} className="va-btn va-btn-light">
+          <span>{privacyNotice.accept}</span>
         </button>
-        <button type="button" onClick={() => choose("denied")} className="min-h-11 rounded-lg border border-border-strong px-4 font-semibold hover:bg-accent-dim">
-          {privacyNotice.decline}
+        <button type="button" onClick={() => choose("denied")} className="va-btn va-btn-line">
+          <span>{privacyNotice.decline}</span>
         </button>
       </div>
     </div>

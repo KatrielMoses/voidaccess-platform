@@ -41,9 +41,12 @@ describe("minimal-mode allowlist", () => {
     for (const p of MARKETING) expect(isAllowedPath(p, "minimal"), p).toBe(false);
   });
 
-  it("keeps Next internals and logo assets reachable", () => {
+  it("keeps Next internals and the home page's static files reachable", () => {
     expect(isAllowedPath("/_next/static/chunks/a.js", "minimal")).toBe(true);
-    expect(isAllowedPath("/logo-96.png", "minimal")).toBe(true);
+    for (const p of ["/assets/logo.png", "/css/site.css", "/js/app.js", "/vendor/three/three.module.min.js", "/fonts/GeneralSans-500.woff2", "/site.webmanifest"])
+      expect(isAllowedPath(p, "minimal"), p).toBe(true);
+    expect(isAllowedPath("/assets", "minimal")).toBe(false);
+    expect(isAllowedPath("/logo-96.png", "minimal")).toBe(false);
     expect(isAllowedPath("/_nextevil", "minimal")).toBe(false);
   });
 

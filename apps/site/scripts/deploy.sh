@@ -5,7 +5,7 @@
 #   SITE_MODE=full CLOUDSDK_ACTIVE_CONFIG_NAME=voidaccess pnpm --filter site deploy  # marketing site + waitlist
 # If ANY required secret has no enabled version, nothing is deployed and the missing ones are listed.
 #
-# minimal: auth + legal pages + placeholder home (wrangler.jsonc). Needs no database, Resend or IP salt, and no
+# minimal: home + auth + legal pages (wrangler.jsonc). Needs no database, Resend or IP salt, and no
 #          Turnstile secret (the app verifies Turnstile). Turnstile's SITE key is public but must be inlined at build time.
 # full:    also needs DATABASE_URL, RESEND_API_KEY, TURNSTILE_SECRET_KEY, IP_HASH_SALT (wrangler.full.jsonc).
 set -euo pipefail

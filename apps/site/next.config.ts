@@ -13,7 +13,12 @@ const config: NextConfig = {
   poweredByHeader: false,
   transpilePackages: ["@voidaccess/config", "@voidaccess/db", "@voidaccess/ui"],
   outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
-  turbopack: { root: path.join(import.meta.dirname, "../..") },
+  turbopack: {
+    root: path.join(import.meta.dirname, "../.."),
+    // The static home page (src/home/index.html) is imported by app/route.ts as its exact bytes (a Uint8Array).
+    // ("raw" does not inline the contents, and there is no "text" type.)
+    rules: { "*.html": { type: "bytes" } },
+  },
   images: { unoptimized: true },
   // SITE_MODE=minimal is read at build time and inlined (see src/lib/site-mode.ts).
   env: { NEXT_PUBLIC_SITE_MODE: process.env.SITE_MODE ?? "" },

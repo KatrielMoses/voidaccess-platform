@@ -6,7 +6,7 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "observability": { "enabled": true },
-  // Production config for SITE_MODE=minimal (auth + legal pages + placeholder home). No secrets, no database, no bindings.
+  // Production config for SITE_MODE=minimal (home + auth + legal pages). No secrets, no database, no bindings.
   // The full marketing site + waitlist uses wrangler.full.jsonc (see scripts/deploy.sh). Both deploy the same Worker name.
   // Workers custom domains in the voidaccess.pro zone; www is served only to redirect to the bare host (src/proxy.ts).
   "routes": [

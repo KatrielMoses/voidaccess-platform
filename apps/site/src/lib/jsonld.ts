@@ -68,7 +68,7 @@ export function organizationLd() {
     "@type": "Organization",
     name: SITE_NAME,
     url: abs("/"),
-    logo: abs("/logo_circle.png"),
+    logo: abs("/assets/logo.png"),
     founder: { "@type": "Person", name: "Katriel Moses" },
     sameAs: [GITHUB_URL],
   };

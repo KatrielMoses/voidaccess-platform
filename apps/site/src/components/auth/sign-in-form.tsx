@@ -103,7 +103,7 @@ export function SignInForm() {
   if (step === "code") {
     return (
       <AuthCard title={t.codeTitle} description={t.codeSent.replace("{email}", email)}>
-        <form onSubmit={onCode} className="flex flex-col gap-4">
+        <form onSubmit={onCode} className="flex flex-col gap-5">
           <Field
             id="code"
             label={t.codeLabel}
@@ -113,14 +113,14 @@ export function SignInForm() {
             maxLength={8}
             required
             autoFocus
-            className="font-mono text-lg tracking-[0.4em]"
+            className="va-input-code"
           />
           <FormError message={error} />
           <FormNotice message={notice} />
           <SubmitButton busy={busy}>{t.verify}</SubmitButton>
         </form>
         {cooldown > 0 ? (
-          <p className="text-center text-sm text-fg-secondary">{t.resendIn.replace("{seconds}", String(cooldown))}</p>
+          <p className="text-[15px] text-mute tabular-nums">{t.resendIn.replace("{seconds}", String(cooldown))}</p>
         ) : (
           <>
             <Turnstile onToken={setToken} resetRef={resetCaptcha} />
@@ -137,7 +137,7 @@ export function SignInForm() {
         )}
         <button
           type="button"
-          className="text-sm text-fg-secondary underline-offset-4 hover:text-fg hover:underline"
+          className="va-ul self-start"
           onClick={() => {
             setStep("email");
             setError(null);
@@ -155,7 +155,7 @@ export function SignInForm() {
     <AuthCard title={t.title} description={t.description}>
       <ProviderButtons callbackURL={target} />
       <OrDivider />
-      <form onSubmit={onEmail} className="flex flex-col gap-4">
+      <form onSubmit={onEmail} className="flex flex-col gap-5">
         <Field id="email" label={t.emailLabel} type="email" autoComplete="email" required defaultValue={email} />
         <Turnstile onToken={setToken} resetRef={resetCaptcha} />
         <FormError message={error} />
@@ -163,7 +163,7 @@ export function SignInForm() {
           {t.sendCode}
         </SubmitButton>
       </form>
-      <p className="text-center text-xs text-fg-secondary">
+      <p className="text-[15px] leading-normal text-mute">
         {before}
         <TextLink href="/terms">{t.termsLink}</TextLink>
         {between}

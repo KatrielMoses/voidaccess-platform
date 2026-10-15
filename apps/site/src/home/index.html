@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VoidAccess — Open-source dark-web intelligence</title>
+<meta name="description" content="VoidAccess turns one research question into structured threat intelligence: parallel dark-web collection, entity extraction, relationship graphs and STIX, MISP, Sigma and YARA exports. Open source, self-hosted, MIT licensed.">
+<meta name="theme-color" content="#0F0F12">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="VoidAccess — Flatten the noise. Follow the signal.">
+<meta property="og:description" content="Open-source, self-hosted dark-web OSINT that turns one research question into structured threat intelligence.">
+<meta property="og:image" content="/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="/fonts/GeneralSans-500.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/GeneralSans-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/GeistMono-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/vendor/lenis.css">
+<link rel="stylesheet" href="/css/site.css">
+<link rel="modulepreload" href="/vendor/three/three.module.min.js">
+<script type="importmap">{"imports":{"three":"/vendor/three/three.module.min.js"}}</script>
+<script src="/js/va-stack.js" defer></script>
+<noscript><style>.split,.pre,.rv{visibility:visible!important;opacity:1!important}.dx{transform:none!important}</style></noscript>
+</head>
+<body>
+
+<nav id="nav"><div class="wrap">
+  <a class="logo pre" href="/" aria-label="VoidAccess home"><img src="/assets/logo.png" alt="">VoidAccess</a>
+  <div class="links pre"><a href="#sources">Sources</a><a href="#pipeline">Pipeline</a><a href="#entities">Entities</a><a href="#exports">Exports</a></div>
+  <div class="navr pre"><a class="ul-link" href="https://github.com/KatrielMoses/voidaccess" target="_blank" rel="noopener">GitHub</a><a class="btn btn-light mag" href="#start"><span>Install</span></a></div>
+</div></nav>
+
+<main>
+<header class="hero" id="hero">
+  <div class="tcv pre" id="tHero" aria-hidden="true"></div>
+  <div class="marks" id="marks" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="htop" id="htop">
+      <h1 class="split" id="h1">Flatten the noise.<br><span class="ln2">Follow the signal.</span></h1>
+      <div class="hside">
+        <p class="lede split" id="lede">VoidAccess turns one research question into structured threat intelligence: open source, self-hosted, run from your own machine.</p>
+        <div class="acts pre"><a class="btn btn-light mag" href="#start"><span>Install</span><span class="arr" aria-hidden="true"></span></a><a class="btn btn-line" href="#pipeline"><span>Fly the pipeline</span></a></div>
+        <button class="cmd pre" type="button" data-copy="pip install voidaccess" aria-label="Copy install command: pip install voidaccess"><span class="pr">$</span><span class="tx" id="htype">pip install voidaccess</span><span class="cp">Copy</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="wrap" style="position:static"><div class="stackwrap pre" id="stackwrap"></div></div>
+</header>
+
+<template id="stackTpl">
+  <va-stack layout="fan" chrome="minimal" delay="120" ry="-24" rx="12">
+    <figure data-label="Collection · 5 sources"><div class="ro"><div class="t"><span>investigation 0412</span><b>collecting</b></div>
+      <div class="rw"><span>Tor indexes</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="0"/></svg></div>
+      <div class="rw"><span>Paste sites</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="1"/></svg></div>
+      <div class="rw"><span>Code forges</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="2"/></svg></div>
+      <div class="rw"><span>Security feeds</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="3"/></svg></div>
+      <div class="rw"><span>.onion seeds</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="4"/></svg></div>
+    </div></figure>
+    <figure class="cardimg" data-label="Entity graph"><img src="/assets/platform-graph.png" alt=""></figure>
+    <figure data-label="Extracted · defanged"><div class="ro"><div class="t"><span>entities</span><b>6 found</b></div>
+      <div class="e"><span>actor</span><span data-v="LockBitSupp">LockBitSupp</span></div><div class="e"><span>malware</span><span data-v="LockBit 3.0">LockBit 3.0</span></div><div class="e"><span>cve</span><span data-v="CVE-2023-4966">CVE-2023-4966</span></div><div class="e"><span>wallet</span><span data-v="bc1q…k7x2">bc1q…k7x2</span></div><div class="e"><span>onion</span><span data-v="lockbit…[.]onion">lockbit…[.]onion</span></div><div class="e"><span>handle</span><span data-v="@ransom_ops">@ransom_ops</span></div>
+    </div></figure>
+    <figure class="cardimg" data-label="voidaccess — zsh"><img src="/assets/terminal-hero.png" alt=""></figure>
+  </va-stack>
+</template>
+
+<section class="sec" id="sources" style="padding-top:150px;padding-bottom:150px">
+  <div class="wrap">
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="01 Sources">01 Sources</span></span><h2 class="split">Five sources, <span class="ac">five kinds of terrain.</span></h2><p class="rv">One query fans out in parallel, then follows new .onion links as it finds them.</p></div>
+    <div class="chans" id="chans">
+      <div class="chan" data-ch="0"><span class="id pre">CH 1<small>relayed</small></span><h3 class="pre">Tor indexes</h3><div class="rp"><canvas></canvas></div><p class="pre">Search across onion indexes.</p><i class="rl dx"></i></div>
+      <div class="chan" data-ch="1"><span class="id pre">CH 2<small>bursty</small></span><h3 class="pre">Paste sites</h3><div class="rp"><canvas></canvas></div><p class="pre">Short-lived posts and dumps.</p><i class="rl dx"></i></div>
+      <div class="chan" data-ch="2"><span class="id pre">CH 3<small>structured</small></span><h3 class="pre">Code forges</h3><div class="rp"><canvas></canvas></div><p class="pre">Leaked keys, tooling, configs.</p><i class="rl dx"></i></div>
+      <div class="chan" data-ch="3"><span class="id pre">CH 4<small>periodic</small></span><h3 class="pre">Security feeds</h3><div class="rp"><canvas></canvas></div><p class="pre">RSS from the research community.</p><i class="rl dx"></i></div>
+      <div class="chan" data-ch="4"><span class="id pre">CH 5<small>recursive</small></span><h3 class="pre">Curated .onion seeds</h3><div class="rp"><canvas></canvas></div><p class="pre">Known starting points, followed recursively.</p><i class="rl dx"></i></div>
+    </div>
+  </div>
+</section>
+
+<section class="pipe" id="pipeline" aria-label="Pipeline">
+  <div class="tcv" id="tPipe" aria-hidden="true"></div>
+  <div class="pui">
+    <div class="wrap">
+      <div class="ptop">
+        <span class="plab"><i></i>02 Pipeline</span>
+        <div class="phead">
+          <div class="snum">Stage <span class="odo" id="odo" aria-hidden="true"></span><span>of 13</span><span style="margin-left:14px;color:var(--mute)" id="pphase">Gather</span></div>
+          <h2 id="ptitle" aria-live="polite">Refine the query</h2>
+          <p id="pdesc">The selected LLM sharpens your research question before anything is collected.</p>
+        </div>
+        <div class="meter">
+          <div class="read">
+            <div><small>Relief</small><b id="mRel">100<i>%</i></b></div>
+            <div><small>Signal</small><b id="mSig">0<i>%</i></b></div>
+            <div class="sn"><small>SNR</small><b id="mSnr">−9<i>dB</i></b></div>
+          </div>
+          <svg class="prof" id="prof" viewBox="0 0 300 44" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="300" y1="43.5" y2="43.5"/><path/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="ruler" id="ruler" aria-hidden="true">
+        <svg id="rsvg" viewBox="0 0 1000 10" preserveAspectRatio="none"></svg>
+        <i class="rtrack"></i><i class="rfill" id="rfill"></i><i class="caret" id="caret"></i>
+        <div class="cells" id="cells"></div>
+        <div class="phases" id="phases"><span style="grid-column:1/9" class="on">Gather</span><span style="grid-column:9/13">Understand</span><span style="grid-column:13/14">Deliver</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="entities" style="padding-top:150px;padding-bottom:160px">
+  <div class="wrap">
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="03 Entities">03 Entities</span></span><h2 class="split">What holds its shape <span class="ac">when the ground goes flat.</span></h2><p class="rv">Regex, NER and optional LLM analysis, cross-referenced against what you have collected before. Values are defanged samples.</p></div>
+    <div class="ents" id="ents">
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">01</span><span class="ty">actor</span><b>Threat actors</b><code class="vl">LockBitSupp</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">02</span><span class="ty">malware</span><b>Malware</b><code class="vl">LockBit 3.0</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">03</span><span class="ty">cve</span><b>CVEs</b><code class="vl">CVE-2023-4966</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">04</span><span class="ty">wallet</span><b>Wallets</b><code class="vl">bc1q…k7x2</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">05</span><span class="ty">handle</span><b>Handles and credentials</b><code class="vl">@ransom_ops</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">06</span><span class="ty">ioc</span><b>IOCs and infrastructure</b><code class="vl">lockbit…[.]onion</code></div>
+    </div>
+  </div>
+</section>
+
+<section class="xfield" id="exports">
+  <div class="wrap">
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="04 Exports">04 Exports</span></span><h2 class="split">Nine formats for the tools you already run.</h2><p class="rv">Every investigation ends in a summary and an export-ready result.</p></div>
+    <div class="xrow" id="xrow">
+      <svg class="xprof" id="xprof" viewBox="0 0 900 41" preserveAspectRatio="none" aria-hidden="true"><path/></svg>
+      <i class="xb dx"></i>
+      <div class="x" tabindex="0"><i class="vd"></i><i class="fl"></i><span class="nm"><span>STIX 2.1</span></span><small data-a="sharing" data-b="bundle.json">sharing</small><i class="hb"></i></div>
+      <div class="x" tabindex="0"><i class="vd"></i><i class="fl"></i><span class="nm"><span>MISP</span></span><small data-a="events" data-b="event.json">events</small><i class="hb"></i></div>
+      <div class="x" tabindex="0"><i class="vd"></i><i class="fl"></i><span class="nm"><span>Sigma</span></span><small data-a="detection" data-b="rules.yml">detection</small><i class="hb"></i></div>
+      <div class="x" tabindex="0"><i class="vd"></i><i class="fl"></i><span class="nm"><span>YARA</span></span><small data-a="patterns" data-b="rules.yar">patterns</small><i class="hb"></i></div>
+      <div class="x" tabindex="0"><i class="vd"></i><i class="fl"></i><span class="nm"><span>Snort</span></span><small data-a="network" data-b="local.rules">network</small><i class="hb"></i></div>
+      <div class="x" tabindex="0"><i class="vd"></i><i class="fl"></i><span class="nm"><span>Suricata</span></span><small data-a="network" data-b="suricata.rules">network</small><i class="hb"></i></div>
+      <div class="x" tabindex="0"><i class="vd"></i><i class="fl"></i><span class="nm"><span>CSV</span></span><small data-a="tables" data-b="entities.csv">tables</small><i class="hb"></i></div>
+      <div class="x" tabindex="0"><i class="vd"></i><i class="fl"></i><span class="nm"><span>Markdown</span></span><small data-a="reports" data-b="report.md">reports</small><i class="hb"></i></div>
+      <div class="x" tabindex="0"><i class="vd"></i><i class="fl"></i><span class="nm"><span>JSON</span></span><small data-a="raw" data-b="result.json">raw</small><i class="hb"></i></div>
+    </div>
+  </div>
+</section>
+
+<section class="final" id="start">
+  <div class="wrap">
+    <h2 class="split">What will you hunt <span class="ac">today?</span></h2>
+    <p class="sub rv">Self-hosted and MIT licensed. For security researchers, threat-intel teams and authorised investigators.</p>
+    <div class="hl rv">
+      <form class="hunt" id="hunt" onsubmit="return false">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.75"/><path d="M13 13l4.5 4.5" stroke-linecap="round"/></svg>
+        <input id="q" aria-label="Research query" placeholder="A threat actor, wallet, malware family or onion URL" autocomplete="off">
+        <button class="mag" type="submit"><span>Hunt</span><span class="arr" aria-hidden="true"></span></button>
+      </form>
+    </div>
+    <div class="alt rv">or <button class="cc" type="button" data-copy="pip install voidaccess" aria-label="Copy command: pip install voidaccess"><code>pip install voidaccess</code><span>Copy</span></button><button class="cc" type="button" data-copy="docker compose up" aria-label="Copy command: docker compose up"><code>docker compose up</code><span>Copy</span></button></div>
+  </div>
+  <div class="tcv" id="tFinal" aria-hidden="true"></div>
+</section>
+</main>
+
+<footer><div class="wrap"><a class="logo" href="/" aria-label="VoidAccess home"><img src="/assets/logo.png" alt="">VoidAccess</a><span class="fm">Open-source dark-web OSINT. Self-hosted, MIT licensed.</span><div class="fl"><a class="ul-link" href="https://github.com/KatrielMoses/voidaccess" target="_blank" rel="noopener">GitHub</a><a class="ul-link" href="https://github.com/KatrielMoses/voidaccess#readme" target="_blank" rel="noopener">Docs</a><a class="ul-link" href="https://github.com/KatrielMoses/voidaccess/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a><a class="ul-link" href="https://github.com/KatrielMoses/voidaccess/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></div></div></footer>
+
+<script src="/vendor/gsap.min.js"></script>
+<script src="/vendor/ScrollTrigger.min.js"></script>
+<script src="/vendor/SplitText.min.js"></script>
+<script src="/vendor/ScrambleTextPlugin.min.js"></script>
+<script src="/vendor/lenis.min.js"></script>
+<script src="/js/motion.js"></script>
+<script src="/js/terrain-math.js"></script>
+<script src="/js/app.js"></script>
+<script type="module" src="/js/terrain-gl.js"></script>
+</body>
+</html>
