@@ -8,11 +8,41 @@
  * Use with Tailwind v4: @import "@voidaccess/ui/tokens.css"; the @theme block exposes utilities (bg-bg, text-dim,
  * border-line, bg-v-600, font-mono …).
  */
-@font-face { font-family: "General Sans"; src: url(/fonts/GeneralSans-400.woff2) format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: "General Sans"; src: url(/fonts/GeneralSans-500.woff2) format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
-@font-face { font-family: "General Sans"; src: url(/fonts/GeneralSans-600.woff2) format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: "Geist Mono"; src: url(/fonts/GeistMono-400.woff2) format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: "Geist Mono"; src: url(/fonts/GeistMono-500.woff2) format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face {
+  font-family: "General Sans";
+  src: url(/fonts/GeneralSans-400.woff2) format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "General Sans";
+  src: url(/fonts/GeneralSans-500.woff2) format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "General Sans";
+  src: url(/fonts/GeneralSans-600.woff2) format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url(/fonts/GeistMono-400.woff2) format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url(/fonts/GeistMono-500.woff2) format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
 
 @theme {
   /* design.md §3.1 */
