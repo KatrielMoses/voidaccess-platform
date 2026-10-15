@@ -300,7 +300,7 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
 
       <section aria-labelledby="plans-h" className="flex flex-col gap-7">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <SectionTitle id="plans-h">{copy.title}</SectionTitle>
+          <SectionTitle id="plans-h">Plans</SectionTitle>
           <div
             role="group"
             aria-label="Billing period"

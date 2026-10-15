@@ -80,11 +80,6 @@
   --color-accent: var(--color-v-200);
   --color-accent-dim: rgb(243 241 236 / 0.06); /* selected fill: paper at 6%, never a violet wash */
   --color-accent-border: var(--color-line-2);
-  /* Status has no hue (design.md §3.1): meaning comes from words, icons and weight. */
-  --color-danger: var(--color-paper);
-  --color-warning: var(--color-dim);
-  --color-success: var(--color-paper);
-  --color-neutral: var(--color-mute);
 
   --font-sans: "General Sans", system-ui, -apple-system, sans-serif;
   --font-display: "General Sans", system-ui, -apple-system, sans-serif;
