@@ -67,7 +67,7 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
             <TableHead>Investigation</TableHead>
             <TableHead className="max-[640px]:hidden">Date</TableHead>
             <TableHead className="max-[640px]:hidden">Depth</TableHead>
-            <TableHead className="text-right">Credits</TableHead>
+            <TableHead className="text-right max-[640px]:hidden">Credits</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">
               <span className="sr-only">Actions</span>

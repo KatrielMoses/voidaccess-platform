@@ -6,7 +6,7 @@ export const metadata = { title: "Not found | VoidAccess" };
 export default function NotFound() {
   return (
     // Rendered inside whichever layout owns the segment (the app shell for a missing investigation), so no header here.
-    <div className="va-wrap flex min-h-[70vh] flex-col pt-[clamp(56px,14vh,160px)] pb-24">
+    <div className="va-wrap flex min-h-[70vh] flex-col pt-[clamp(56px,14vh,160px)] pb-24 [main_&]:px-0">
       <div>
         <div className="va-rise flex max-w-[640px] flex-col gap-6">
           <p className="flex items-center gap-3 font-mono text-[13px] text-dim">

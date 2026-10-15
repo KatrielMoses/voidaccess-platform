@@ -61,7 +61,7 @@ let cancelledId = "";
 let runningId = "";
 
 test("user flow", async ({ browser }) => {
-  test.setTimeout(2_400_000);
+  test.setTimeout(1_200_000);
   const email = uniqueEmail("design");
   const ctx = await browser.newContext({ viewport: SIZES[0] });
   const page = await ctx.newPage();
