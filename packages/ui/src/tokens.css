@@ -1,48 +1,80 @@
 /*
- * VoidAccess brand tokens, shared by apps/site and apps/app.
- * Palette carried over from the engine UI (voidaccess/web/app/globals.css) so the
- * cloud product and the OSS UI look like one family. Fonts: Space Grotesk (display),
- * Inter (body), JetBrains Mono (mono). Load them per app with next/font using
- * variable names --nf-display / --nf-body / --nf-mono; the theme maps those below.
- * Use with Tailwind v4: @import "@voidaccess/ui/tokens.css"; then the @theme block
- * below exposes them as utilities (bg-void, text-accent, font-mono …).
+ * VoidAccess design tokens, shared by apps/site and apps/app.
+ * Source of truth: website-mockups/design.md (locked from mockup 81 "Terrain · Noir"). If this file and design.md
+ * disagree, fix the one that drifted.
+ *
+ * Ink ≈ 80%, paper ≈ 12%, violet ≈ 8%. There are no other colours: no red, green, amber or entity hues. One violet
+ * thing per view. Fonts are self-hosted from each app's public/fonts (General Sans 400/500/600, Geist Mono 400/500).
+ * Use with Tailwind v4: @import "@voidaccess/ui/tokens.css"; the @theme block exposes utilities (bg-bg, text-dim,
+ * border-line, bg-v-600, font-mono …).
  */
+@font-face { font-family: "General Sans"; src: url(/fonts/GeneralSans-400.woff2) format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "General Sans"; src: url(/fonts/GeneralSans-500.woff2) format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "General Sans"; src: url(/fonts/GeneralSans-600.woff2) format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Geist Mono"; src: url(/fonts/GeistMono-400.woff2) format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Geist Mono"; src: url(/fonts/GeistMono-500.woff2) format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+
 @theme {
-  --color-void: #080b11;
-  --color-surface: #0d1117;
-  --color-raised: #161b22;
-  --color-overlay: #1c2128;
+  /* design.md §3.1 */
+  --color-bg: #0f0f12; /* the field; also every canvas fill */
+  --color-bg-2: #17171c; /* raised ink: cards, hovered rows */
+  --color-bar: #1f1f25; /* title bars inside raised cards */
+  --color-paper: #f3f1ec;
+  --color-paper-2: #e9e6df;
+  --color-dim: rgb(243 241 236 / 0.66);
+  --color-mute: rgb(243 241 236 / 0.54);
+  --color-faint: rgb(243 241 236 / 0.42); /* non-essential instrument labels only */
+  --color-line: rgb(243 241 236 / 0.14);
+  --color-line-2: rgb(243 241 236 / 0.24);
+  --color-line-3: rgb(243 241 236 / 0.4);
+  --color-ink: #111114; /* text on paper */
+  --color-stone: #6e6c73; /* placeholder / icon on paper */
+  --color-v-700: #3a3fb0;
+  --color-v-600: #4a51cc; /* the violet field, primary buttons */
+  --color-v-500: #6a75ef; /* the signal: live/active markers */
+  --color-v-200: #c9ccf3; /* accent phrase, active values, focus ring */
+  --color-v-100: #e6e7f8; /* secondary text on the violet field */
 
-  --color-border-dim: rgb(255 255 255 / 0.06);
-  --color-border-subtle: rgb(255 255 255 / 0.1);
-  --color-border-strong: rgb(255 255 255 / 0.18);
+  /* Legacy names, mapped onto the palette above. Prefer the design.md names in new code. */
+  --color-void: var(--color-bg);
+  --color-surface: var(--color-bg);
+  --color-raised: var(--color-bg-2);
+  --color-overlay: var(--color-bar);
+  --color-border-dim: var(--color-line);
+  --color-border-subtle: var(--color-line);
+  --color-border-strong: var(--color-line-2);
+  --color-fg: var(--color-paper);
+  --color-fg-secondary: var(--color-dim);
+  --color-fg-muted: var(--color-mute);
+  --color-fg-inverse: var(--color-ink);
+  --color-accent: var(--color-v-200);
+  --color-accent-dim: rgb(243 241 236 / 0.06); /* selected fill: paper at 6%, never a violet wash */
+  --color-accent-border: var(--color-line-2);
+  /* Status has no hue (design.md §3.1): meaning comes from words, icons and weight. */
+  --color-danger: var(--color-paper);
+  --color-warning: var(--color-dim);
+  --color-success: var(--color-paper);
+  --color-neutral: var(--color-mute);
 
-  --color-fg: #e6edf3;
-  --color-fg-secondary: #8b949e;
-  --color-fg-muted: #6e7681;
-  --color-fg-inverse: #080b11;
+  --font-sans: "General Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "General Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-accent: #9b9fee;
-  --color-accent-dim: rgb(155 159 238 / 0.15);
-  --color-accent-border: rgb(155 159 238 / 0.3);
+  /* §5: 4px buttons/command/chips, 6px fields and cards, 3px small inner buttons */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 6px;
+  --radius-2xl: 6px;
+  --radius-3xl: 6px;
 
-  --color-danger: #f85149;
-  --color-warning: #d29922;
-  --color-success: #3fb950;
-  --color-neutral: #6e7681;
+  /* §1.4: no shadows outside the 3D product stack */
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
 
-  /* entity colours (graph + entity chips) */
-  --color-entity-actor: #e05c5c;
-  --color-entity-wallet: #9b9fee;
-  --color-entity-malware: #d08770;
-  --color-entity-forum: #79b8ff;
-  --color-entity-cve: #f0e68c;
-  --color-entity-paste: #56b6c2;
-  --color-entity-onion: #9ecbff;
-  --color-entity-email: #c9a35a;
-  --color-entity-pgp: #73d397;
-
-  --font-display: var(--nf-display), ui-sans-serif, system-ui;
-  --font-sans: var(--nf-body), ui-sans-serif, system-ui;
-  --font-mono: var(--nf-mono), ui-monospace, monospace;
+  /* §8: expo.out for entrances and reveals */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
