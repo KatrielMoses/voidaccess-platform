@@ -63,6 +63,8 @@ fi
 export SITE_MODE
 export SITE_URL="${SITE_URL:-https://voidaccess.pro}"
 export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-https://app.voidaccess.pro}"
+# Sign-in buttons shown on /sign-in. Each must be configured in the app (client id + secret), or its button fails.
+export NEXT_PUBLIC_AUTH_PROVIDERS="${NEXT_PUBLIC_AUTH_PROVIDERS:-github,google}"
 
 pnpm exec opennextjs-cloudflare build -c "$WRANGLER_CONFIG"
 if [ "$SITE_MODE" = "full" ]; then

@@ -59,6 +59,8 @@ locals {
       RESEND_API_KEY         = "resend-api-key"
       GITHUB_CLIENT_ID       = "github-oauth-client-id"
       GITHUB_CLIENT_SECRET   = "github-oauth-client-secret"
+      GOOGLE_CLIENT_ID       = "google-client-id" # Sign in with Google (Better Auth); redirect https://app.voidaccess.pro/api/auth/callback/google
+      GOOGLE_CLIENT_SECRET   = "google-client-secret"
       TURNSTILE_SECRET_KEY   = "turnstile-secret-key"
       DODO_PAYMENTS_API_KEY  = "dodo-api-key-test"
       OPENROUTER_API_KEY     = "openrouter-api-key"

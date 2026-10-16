@@ -18,6 +18,8 @@ locals {
     "resend-api-key",
     "github-oauth-client-id",
     "github-oauth-client-secret",
+    "google-client-id",
+    "google-client-secret",
     "turnstile-secret-key",
     "dodo-api-key-test",
     "openrouter-api-key",
