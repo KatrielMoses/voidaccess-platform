@@ -69,7 +69,7 @@ export const founding = {
     "Each year we check your seat: if you paid for at least {{founding.renewalMonths}} of the last {{founding.termMonths}} months, it renews at {{founding.price}} for another {{founding.termMonths}} months. If not, the seat is released and you move to Pro at {{founding.proPrice}}/mo (or Free if you've left).",
     "If you run no investigations for {{founding.inactivityMonths}} months in a row, the seat is released early with the same outcome.",
     "We email you {{founding.noticeDays}} days before a release and again on the day.",
-    "Released seats go back to the pool for the next new subscriber. The counter shows seats available now, including reopened ones.",
+    "Released seats go back to the pool for the next new subscriber.",
     "Founding seats are monthly billing only. Upgrading to Pro+ gives up the founding price; we warn you before you confirm.",
   ],
 };

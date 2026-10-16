@@ -37,7 +37,12 @@ export function MinimalFooter() {
     <footer className="va-footer">
       <div className="va-wrap">
         <Logo />
-        <span className="va-fm">{c.footerLine}</span>
+        <span className="va-fm">
+          {c.footerLine} Support:{" "}
+          <a className="va-ul" href={c.support.href}>
+            {c.support.label}
+          </a>
+        </span>
         <div className="va-fl">
           {c.footerLinks.map((l) => (
             <a key={l.label} className="va-ul" href={l.href} {...(l.external ? { target: "_blank", rel: "noopener" } : {})}>
