@@ -13,6 +13,7 @@ const STATIC: Record<string, RegExp> = {
   "/js/app.js": /javascript/,
   "/js/motion.js": /javascript/,
   "/js/terrain-gl.js": /javascript/,
+  "/js/terrain-field.js": /javascript/, // imported by terrain-gl.js and by the sign-in page's calm field
   "/js/terrain-math.js": /javascript/,
   "/js/va-stack.js": /javascript/,
   "/vendor/gsap.min.js": /javascript/,

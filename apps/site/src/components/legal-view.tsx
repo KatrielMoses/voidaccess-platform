@@ -1,5 +1,6 @@
 import { resolve } from "@/lib/facts";
 import type { LegalPage } from "@content/types";
+import { Reveal } from "./motion";
 
 const pad = (i: number) => String(i + 1).padStart(2, "0");
 const slug = (s: string) =>
@@ -16,17 +17,26 @@ export function LegalView({ page }: { page: LegalPage }) {
   const sections = page.sections.map((s, i) => ({ ...s, id: s.id ?? slug(s.heading), n: pad(i) }));
   return (
     <div className="va-wrap">
+      <Reveal />
       <header className="grid grid-cols-1 gap-y-6 pt-14 pb-11 min-[961px]:grid-cols-12 min-[961px]:pt-[132px] min-[961px]:pb-[84px]">
         <div className="min-[961px]:col-span-9">
-          <h1 className="va-title">{page.title}</h1>
-          <p className="mt-6 font-mono text-[13px] leading-none text-dim">{page.updated}</p>
+          <h1 className="va-title" data-va-split="title">
+            {page.title}
+          </h1>
+          <p className="mt-6 font-mono text-[13px] leading-none text-dim" data-va-up>
+            {page.updated}
+          </p>
         </div>
-        <p role="note" className="self-end text-[15px] leading-normal text-dim min-[961px]:col-start-10 min-[961px]:col-end-13 min-[961px]:border-t min-[961px]:border-line-2 min-[961px]:pt-4">
+        <p
+          role="note"
+          data-va-up
+          className="self-end text-[15px] leading-normal text-dim min-[961px]:col-start-10 min-[961px]:col-end-13 min-[961px]:border-t min-[961px]:border-line-2 min-[961px]:pt-4"
+        >
           {page.note}
         </p>
       </header>
 
-      <div className="grid grid-cols-1 border-t border-line pb-28 min-[961px]:grid-cols-12 min-[961px]:pb-[168px]">
+      <div data-va-up className="grid grid-cols-1 border-t border-line pb-28 min-[961px]:grid-cols-12 min-[961px]:pb-[168px]">
         <nav aria-label="On this page" className="hidden min-[961px]:col-span-3 min-[961px]:block">
           <ol className="sticky top-[108px] flex flex-col gap-3.5 pt-12 pr-8">
             {sections.map((s) => (

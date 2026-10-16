@@ -4,6 +4,7 @@ import * as pricing from "@content/pricing";
 import { APP_URL } from "@/lib/auth/config";
 import { money, number, resolve, topupRows } from "@/lib/facts";
 import { pageMetadata } from "@/lib/metadata";
+import { Reveal } from "@/components/motion";
 
 export const metadata = pageMetadata(pricing.meta, "/pricing");
 
@@ -50,13 +51,19 @@ export default function PricingPage() {
 
   return (
     <div className="va-wrap pb-28 min-[961px]:pb-[168px]">
+      {/* the home page's load sequence: headline lines rise, then the lede, then the plans fade up */}
+      <Reveal />
       <header className="pt-14 pb-12 min-[961px]:pt-[132px] min-[961px]:pb-[84px]">
-        <h1 className="va-title max-w-[16ch]">{pricing.hero.title}</h1>
-        <p className="va-lede mt-6 max-w-[58ch]">{r(pricing.hero.sub)}</p>
+        <h1 className="va-title max-w-[16ch]" data-va-split="title">
+          {pricing.hero.title}
+        </h1>
+        <p className="va-lede mt-6 max-w-[58ch]" data-va-split="lede">
+          {r(pricing.hero.sub)}
+        </p>
       </header>
 
       {/* Plans. The billing toggle is two radios; CSS shows the matching prices (works without JavaScript). */}
-      <section aria-labelledby="plans-h" className="group/bill">
+      <section aria-labelledby="plans-h" className="group/bill" data-va-up>
         <div className="flex flex-wrap items-end justify-between gap-6">
           <h2 id="plans-h" className="text-[30px] leading-none tracking-[-0.03em]">
             Plans

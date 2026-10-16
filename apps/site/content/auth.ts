@@ -1,6 +1,8 @@
 /** Words on the sign-in page. There is no separate sign-up: the first sign-in creates the account. */
 export const auth = {
   signIn: {
+    /** The mono step index above the title (decorative; the title says the same). */
+    steps: ["01 Identify", "02 Verify"],
     title: "Sign in to VoidAccess",
     description: "New here? Signing in for the first time creates your account.",
     emailLabel: "Email",

@@ -59,5 +59,5 @@ export function Turnstile({ onToken, resetRef }: { onToken: (token: string) => v
     };
   }, [resetRef]);
 
-  return <div ref={el} className="min-h-[65px]" data-testid="turnstile" />;
+  return <div ref={el} className="min-h-[65px]" data-testid="turnstile" data-va-up />;
 }

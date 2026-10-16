@@ -8,6 +8,8 @@ import { authClient } from "@/lib/auth/client";
 import { APP_URL, CAPTCHA_HEADER } from "@/lib/auth/config";
 import { firstTouchPayload } from "@/lib/auth/first-touch";
 import { safeNext } from "@/lib/auth/safe-next";
+import { leave } from "@/lib/motion";
+import { lockField, rippleOnKey } from "../calm-field";
 import { AuthCard, Field, FormError, FormNotice, SecondaryButton, SubmitButton, TextLink } from "./parts";
 import { OrDivider, ProviderButtons } from "./provider-buttons";
 import { Turnstile } from "./turnstile";
@@ -30,6 +32,15 @@ export function SignInForm() {
   const [error, setError] = useState<string | null>(params.get("error") ? t.oauthFailed : null);
   const [notice, setNotice] = useState<string | null>(null);
   const resetCaptcha = useRef<() => void>(() => {});
+  // Motion only: the card that is on screen (it fades out before the step changes), and whether a step has changed
+  // yet (the first card plays the page's load sequence, later ones a section-head entrance).
+  const card = useRef<HTMLDivElement>(null);
+  const [stepped, setStepped] = useState(false);
+  async function goTo(next: "email" | "code") {
+    await leave(card.current);
+    setStepped(true);
+    setStep(next);
+  }
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -68,8 +79,9 @@ export function SignInForm() {
     setNotice(null);
     try {
       if (await sendCode(address)) {
+        lockField();
         setEmail(address);
-        setStep("code");
+        await goTo("code");
       }
     } finally {
       setBusy(false);
@@ -94,83 +106,93 @@ export function SignInForm() {
         setError(t.codeFailed);
         return;
       }
+      lockField();
       window.location.assign(target);
     } finally {
       setBusy(false);
     }
   }
 
+  const entrance = stepped ? "step" : "load";
   if (step === "code") {
     return (
-      <AuthCard title={t.codeTitle} description={t.codeSent.replace("{email}", email)}>
-        <form onSubmit={onCode} className="flex flex-col gap-5">
-          <Field
-            id="code"
-            label={t.codeLabel}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="[0-9 ]{6,8}"
-            maxLength={8}
-            required
-            autoFocus
-            className="va-input-code"
-          />
-          <FormError message={error} />
-          <FormNotice message={notice} />
-          <SubmitButton busy={busy}>{t.verify}</SubmitButton>
-        </form>
-        {cooldown > 0 ? (
-          <p className="text-[15px] text-mute tabular-nums">{t.resendIn.replace("{seconds}", String(cooldown))}</p>
-        ) : (
-          <>
-            <Turnstile onToken={setToken} resetRef={resetCaptcha} />
-            <SecondaryButton
-              disabled={busy || !token}
-              onClick={async () => {
-                setError(null);
-                if (await sendCode(email)) setNotice(t.resent);
-              }}
-            >
-              {t.resend}
-            </SecondaryButton>
-          </>
-        )}
-        <button
-          type="button"
-          className="va-ul self-start"
-          onClick={() => {
-            setStep("email");
-            setError(null);
-            setNotice(null);
-          }}
-        >
-          {t.differentEmail}
-        </button>
-      </AuthCard>
+      <div ref={card} key="code">
+        <AuthCard index={t.steps[1]} title={t.codeTitle} description={t.codeSent.replace("{email}", email)} entrance={entrance}>
+          <form onSubmit={onCode} className="flex flex-col gap-5">
+            <Field
+              id="code"
+              onKeyDown={rippleOnKey}
+              label={t.codeLabel}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9 ]{6,8}"
+              maxLength={8}
+              required
+              autoFocus
+              className="va-input-code"
+            />
+            <FormError message={error} />
+            <FormNotice message={notice} />
+            <SubmitButton busy={busy}>{t.verify}</SubmitButton>
+          </form>
+          {cooldown > 0 ? (
+            <p className="text-[15px] text-mute tabular-nums" data-va-up>
+              {t.resendIn.replace("{seconds}", String(cooldown))}
+            </p>
+          ) : (
+            <>
+              <Turnstile onToken={setToken} resetRef={resetCaptcha} />
+              <SecondaryButton
+                disabled={busy || !token}
+                onClick={async () => {
+                  setError(null);
+                  if (await sendCode(email)) setNotice(t.resent);
+                }}
+              >
+                {t.resend}
+              </SecondaryButton>
+            </>
+          )}
+          <button
+            type="button"
+            className="va-ul self-start"
+            data-va-up
+            onClick={() => {
+              setError(null);
+              setNotice(null);
+              void goTo("email");
+            }}
+          >
+            {t.differentEmail}
+          </button>
+        </AuthCard>
+      </div>
     );
   }
 
   const [before, between, after] = splitTerms(t.terms);
   return (
-    <AuthCard title={t.title} description={t.description}>
-      <ProviderButtons callbackURL={target} />
-      <OrDivider />
-      <form onSubmit={onEmail} className="flex flex-col gap-5">
-        <Field id="email" label={t.emailLabel} type="email" autoComplete="email" required defaultValue={email} />
-        <Turnstile onToken={setToken} resetRef={resetCaptcha} />
-        <FormError message={error} />
-        <SubmitButton busy={busy} disabled={!token}>
-          {t.sendCode}
-        </SubmitButton>
-      </form>
-      <p className="text-[15px] leading-normal text-mute">
-        {before}
-        <TextLink href="/terms">{t.termsLink}</TextLink>
-        {between}
-        <TextLink href="/acceptable-use">{t.aupLink}</TextLink>
-        {after}
-      </p>
-    </AuthCard>
+    <div ref={card} key="email">
+      <AuthCard index={t.steps[0]} title={t.title} description={t.description} entrance={entrance}>
+        <ProviderButtons callbackURL={target} />
+        <OrDivider />
+        <form onSubmit={onEmail} className="flex flex-col gap-5">
+          <Field id="email" label={t.emailLabel} type="email" autoComplete="email" required defaultValue={email} onKeyDown={rippleOnKey} />
+          <Turnstile onToken={setToken} resetRef={resetCaptcha} />
+          <FormError message={error} />
+          <SubmitButton busy={busy} disabled={!token}>
+            {t.sendCode}
+          </SubmitButton>
+        </form>
+        <p className="text-[15px] leading-normal text-mute" data-va-up>
+          {before}
+          <TextLink href="/terms">{t.termsLink}</TextLink>
+          {between}
+          <TextLink href="/acceptable-use">{t.aupLink}</TextLink>
+          {after}
+        </p>
+      </AuthCard>
+    </div>
   );
 }
 

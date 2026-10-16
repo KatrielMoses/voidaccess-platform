@@ -286,11 +286,60 @@
     align-items: center;
     gap: 12px;
   }
-  .va-idx::before {
-    content: "";
+  .va-idx i {
+    display: inline-block;
     width: 28px;
     height: 1px;
     background: var(--color-line-3);
+    transform-origin: 0 50%;
+  }
+
+  /* ---------- provider marks: 18px, left of the label ---------- */
+  .va-prov {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .va-plogo {
+    display: block;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--color-paper);
+  }
+
+  /* ---------- sign-in: one viewport, the calm field filling its bottom (§7) ---------- */
+  .va-auth {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100svh - 68px);
+  }
+  .va-auth > .va-wrap {
+    flex: 1 0 auto;
+    width: 100%;
+    z-index: 2;
+  }
+  .va-field {
+    position: relative;
+    flex: none;
+    height: 420px; /* the home's closing field (#tFinal): same box, same camera */
+    margin-top: -120px; /* its far rows are blank (fog), so the box may tuck under the form's last line */
+    z-index: 1;
+    pointer-events: none;
+  }
+  .va-field canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  /* the functional fade into the page at the field's lower edge (§3.3) */
+  .va-field::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 100px;
+    background: linear-gradient(rgb(15 15 18 / 0), var(--color-bg));
   }
 
   /* ---------- footer (§6): 12 columns, 104px, top hairline ---------- */
@@ -332,6 +381,10 @@
     .va-nav .va-wrap {
       height: 60px;
     }
+    /* as on the home page: the text links go at <=960px, the button stays */
+    .va-navr .va-ul {
+      display: none;
+    }
     .va-main {
       padding-top: 60px;
     }
@@ -347,6 +400,13 @@
     }
     .va-lede {
       font-size: 17px;
+    }
+    .va-auth {
+      min-height: calc(100svh - 60px);
+    }
+    .va-field {
+      height: 280px;
+      margin-top: -10px;
     }
     .va-footer .va-wrap {
       height: auto;
@@ -364,6 +424,21 @@
       flex-wrap: wrap;
     }
   }
+}
+
+/*
+ * Motion (lib/motion.ts, components/motion.tsx). `va-m` is set before first paint only when entrances may play, and
+ * is lifted as soon as they have set their start states (or after 4s at most). Without it, everything is visible.
+ */
+html.va-m [data-va-pre],
+html.va-m [data-va-split],
+html.va-m [data-va-up] {
+  visibility: hidden;
+}
+/* SplitText's line masks (the home page's .va-line): room for descenders, no change in layout */
+.va-line {
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
 }
 
 @media (prefers-reduced-motion: reduce) {

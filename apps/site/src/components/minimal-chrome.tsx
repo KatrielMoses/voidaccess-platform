@@ -6,9 +6,9 @@ import { NavScroll } from "./nav-scroll";
  * The home page's logo lockup (design.md §2): 28px PNG, then "VoidAccess" in General Sans 500 16px. A plain link: the
  * home page is a static document (app/route.ts), not a React page, so there is nothing for next/link to prefetch.
  */
-function Logo() {
+function Logo({ pre = false }: { pre?: boolean }) {
   return (
-    <a className="va-logo" href="/" aria-label={c.homeLabel}>
+    <a className="va-logo" href="/" aria-label={c.homeLabel} data-va-pre={pre || undefined}>
       {/* eslint-disable-next-line @next/next/no-img-element -- the logo PNG at its fixed 28px size, as on the home page */}
       <img src="/assets/logo.png" alt="" width={28} height={28} />
       VoidAccess
@@ -21,8 +21,8 @@ export function MinimalHeader() {
   return (
     <nav id="nav" className="va-nav" aria-label="Main">
       <div className="va-wrap">
-        <Logo />
-        <div className="va-navr">
+        <Logo pre />
+        <div className="va-navr" data-va-pre>
           <NavActions />
         </div>
       </div>

@@ -14,7 +14,7 @@ export function NavActions() {
       <a className="va-ul" href={c.signIn.href}>
         {c.signIn.label}
       </a>
-      <a className="va-btn va-btn-light" href={c.start.href}>
+      <a className="va-btn va-btn-light" href={c.start.href} data-va-mag>
         <span>{c.start.label}</span>
       </a>
     </>
