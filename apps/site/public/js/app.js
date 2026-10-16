@@ -46,8 +46,7 @@
       onSplit(self) { g.set('#h1', { autoAlpha: 1 }); return g.from(self.lines, { yPercent: 118, duration: 1.4, stagger: .12, ease: 'expo.out', delay: .5 }); } });
     SplitText.create('#lede', { type: 'lines', mask: 'lines', linesClass: 'va-line', autoSplit: true,
       onSplit(self) { g.set('#lede', { autoAlpha: 1 }); return g.from(self.lines, { yPercent: 105, duration: 1.2, stagger: .06, ease: 'expo.out', delay: .85 }); } });
-    tl.fromTo('.hside .acts, .hside .cmd', { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 1.2, stagger: .1 }, 1.0)
-      .add(() => typeCmd(), 1.35)
+    tl.fromTo('.hside .acts, .hside .hnote', { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 1.2, stagger: .1 }, 1.0)
       .add(() => mountStack(), 1.0)
       .fromTo(stackwrap, { autoAlpha: 0, y: 70 }, { autoAlpha: 1, y: 0, duration: 2 }, 1.05)
       .add(() => { $$('#stackwrap [data-v]').forEach((e, i) => scr(e, e.dataset.v, { d: .9, delay: i * .07, chars: HEX, tl: false })); }, 1.9);
@@ -59,13 +58,6 @@
     ScrollTrigger.create({ ...pst, onUpdate: s => { SIG.hero.scroll = s.progress; } });
     VA.magnetic('.mag', .28);
   });
-  function typeCmd() {
-    const el = $('#htype'), txt = 'pip install voidaccess', o = { n: 0 };
-    el.innerHTML = '<i></i>';
-    g.to(o, { n: txt.length, duration: .9, ease: 'none', onUpdate() { el.innerHTML = txt.slice(0, Math.round(o.n)) + '<i style="opacity:1"></i>'; },
-      onComplete() { const c = el.querySelector('i'); g.fromTo(c, { opacity: 1 }, { opacity: 0, duration: .45, repeat: 5, yoyo: true, ease: 'steps(1)', onComplete: () => { el.textContent = txt; } }); } });
-  }
-
   /* section heads */
   $$('.shead').forEach(h => {
     const n = $('.n span', h), rl = $('.n i', h);
@@ -134,14 +126,14 @@
 
   /* ---------------- pipeline ---------------- */
   const STG = [
-    ['Refine the query', 'The selected LLM sharpens your research question before anything is collected.', 0, 0],
-    ['Collect in parallel', 'Tor search, paste sites, code forges, RSS feeds and curated seeds, all at once.', 0, 0],
+    ['Refine the query', 'An LLM sharpens your research question before anything is collected.', 0, 0],
+    ['Collect in parallel', 'Onion search engines, GitHub, research feeds and curated seeds, all at once.', 0, 0],
     ['Filter', 'Noisy or irrelevant pages are dropped at a mandatory content-safety gate.', 1, 0],
     ['Enrich early indicators', 'The query and first indicators are checked against threat-intelligence sources.', 0, 0],
     ['Discover .onion links', 'Additional links are found and followed recursively.', 0, 0],
     ['Reuse the vector cache', 'Recently processed pages are reused instead of fetched again.', 0, 0],
     ['Fetch through Tor', 'Selected pages only, with response-size limits.', 0, 0],
-    ['Persist new content', 'Newly collected material is stored on your machine.', 0, 0],
+    ['Persist new content', 'New findings join the shared archive, dated and anonymous.', 0, 0],
     ['Merge intelligence', 'Collected and enriched results come together.', 0, 1],
     ['Extract entities', 'Regex, NER and optional LLM analysis, behind a content-safety gate.', 1, 1],
     ['Cross-reference', 'Against historical and seed datasets.', 0, 1],
@@ -274,12 +266,10 @@
   const q = $('#q'), hunt = $('#hunt');
   q.addEventListener('keydown', e => { if (e.key.length === 1 || e.key === 'Backspace') { const F = SIG.final; F.drops.push({ x: (Math.random() - .5) * 7, z: -1 - Math.random() * 4, t: performance.now() / 1000, a: .22 }); if (F.drops.length > 8) F.drops.shift(); } });
   hunt.addEventListener('submit', () => {
-    // VoidAccess runs on your machine: answer a hunt with the exact command to run it locally.
-    const qv = q.value.trim().replace(/["\\]/g, '').slice(0, 80);
-    if (qv) {
-      const chip = document.querySelector('.alt .cc'), code = chip && chip.querySelector('code'), cmd = `voidaccess investigate "${qv}"`;
-      if (chip && code) { chip.dataset.copy = cmd; chip.setAttribute('aria-label', 'Copy command: ' + cmd); scr(code, cmd, { d: .8, chars: LOW, tl: true }); }
-    }
+    // A hunt opens a new investigation in the app with the query filled in; signed-out visitors sign in first and land there.
+    const qv = q.value.trim().slice(0, 500), app = (document.querySelector('meta[name="va-app"]') || {}).content || 'https://app.voidaccess.pro';
+    const go = app.replace(/\/$/, '') + '/investigations/new' + (qv ? '?q=' + encodeURIComponent(qv) : '');
+    setTimeout(() => { location.href = go; }, still ? 0 : 450);
  const F = SIG.final; F.drops.push({ x: 0, z: -2.5, t: performance.now() / 1000, a: .55 }); if (F.drops.length > 8) F.drops.shift(); F.lock = performance.now() / 1000; });
   if (!still) {
     ScrollTrigger.create({ trigger: '#start', start: 'top 70%', once: true, onEnter() { g.to(SIG.final, { on: 1, duration: 2.4, ease: 'power3.inOut', delay: .3 }); } });

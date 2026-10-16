@@ -34,8 +34,8 @@ const STATIC: Record<string, RegExp> = {
   "/assets/icon-512.png": /^image\/png/,
   "/assets/logo.png": /^image\/png/,
   "/assets/og.png": /^image\/png/,
-  "/assets/platform-graph.png": /^image\/png/,
-  "/assets/terminal-hero.png": /^image\/png/,
+  "/assets/cloud-graph.png": /^image\/png/,
+  "/assets/cloud-summary.png": /^image\/png/,
 };
 const BLOCKED = ["/features", "/pricing", "/trust", "/open-source", "/waitlist", "/waitlist/check-email", "/waitlist/confirmed", "/llms.txt", "/llms-full.txt", "/og", "/sitemap.xml", "/api/waitlist", "/api/waitlist/confirm", "/api/founding/seats", "/pl/event", "/pl/script.js"];
 
@@ -53,12 +53,13 @@ test.describe("routes", () => {
     });
   }
 
-  test("/ is the static home page, byte for byte, and every file it references is served", async ({ request }) => {
+  test("/ is the static home page with the app's origin filled in, and every file it references is served", async ({ request }) => {
     const res = await request.get("/");
     expect(res.headers()["content-type"]).toMatch(/^text\/html/);
     const html = await res.text();
-    expect(html).toBe(readFileSync(path.join(import.meta.dirname, "../../src/home/index.html"), "utf8"));
-    const refs = new Set([...html.matchAll(/(?:href|src)="(\/[^"#]*)"/g)].map((m) => m[1]!).filter((u) => u !== "/"));
+    const source = readFileSync(path.join(import.meta.dirname, "../../src/home/index.html"), "utf8");
+    expect(html).toBe(source.replace("__VA_APP_URL__", APP));
+    const refs = new Set([...html.matchAll(/(?:href|src)="(\/[^"#]*)"/g)].map((m) => m[1]!).filter((u) => /^\/(assets|css|js|vendor|fonts)\/|^\/site\.webmanifest$/.test(u)));
     refs.add("/vendor/three/three.module.min.js"); // the importmap target
     for (const ref of refs) {
       expect(STATIC[ref], `${ref} is listed in STATIC`).toBeDefined();
@@ -104,6 +105,31 @@ test.describe("routes", () => {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(3000);
     expect(problems).toEqual([]);
+  });
+
+  test("the home page leads to sign-in: nav, hero and the hunt field", async ({ page }) => {
+    await page.goto("/?static");
+    await expect(page.locator("#nav").getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/sign-in");
+    await expect(page.locator("#nav").getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/sign-in");
+    await expect(page.locator(".hside").getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/sign-in");
+    await expect(page.locator("#start").getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/sign-in");
+    await expect(page.locator("footer").getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+    // nothing on the page offers the self-hosted install as the way in
+    await expect(page.getByRole("link", { name: "Install" })).toHaveCount(0);
+    // a hunt opens a new investigation in the app with the query filled in (the app sends signed-out visitors to sign in)
+    await page.route(`${APP}/**`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<h1>app</h1>" }));
+    await page.locator("#q").fill("LockBit ransomware group");
+    await page.locator("#hunt").getByRole("button", { name: /Hunt/ }).click();
+    await expect(page).toHaveURL(`${APP}/investigations/new?q=LockBit%20ransomware%20group`);
+  });
+
+  test("sign-in, legal and 404 pages offer sign-in in the nav (not on the sign-in page itself)", async ({ page }) => {
+    for (const p of ["/terms", "/privacy", "/acceptable-use", "/pricing"]) {
+      await page.goto(p);
+      await expect(page.locator("#nav").getByRole("link", { name: "Sign in" }), p).toHaveAttribute("href", "/sign-in");
+    }
+    await page.goto("/sign-in");
+    await expect(page.locator("#nav").getByRole("link", { name: "Sign in" })).toHaveCount(0);
   });
 
   test("auth pages are noindex", async ({ page }) => {

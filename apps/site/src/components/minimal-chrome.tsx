@@ -1,4 +1,5 @@
 import { chrome as c } from "@content/chrome";
+import { NavActions } from "./nav-actions";
 import { NavScroll } from "./nav-scroll";
 
 /**
@@ -22,9 +23,7 @@ export function MinimalHeader() {
       <div className="va-wrap">
         <Logo />
         <div className="va-navr">
-          <a className="va-ul" href={c.github.href} target="_blank" rel="noopener">
-            {c.github.label}
-          </a>
+          <NavActions />
         </div>
       </div>
       <NavScroll />
@@ -32,7 +31,7 @@ export function MinimalHeader() {
   );
 }
 
-/** The home page's footer, unchanged. */
+/** The home page's footer. */
 export function MinimalFooter() {
   return (
     <footer className="va-footer">
@@ -41,7 +40,7 @@ export function MinimalFooter() {
         <span className="va-fm">{c.footerLine}</span>
         <div className="va-fl">
           {c.footerLinks.map((l) => (
-            <a key={l.label} className="va-ul" href={l.href} target="_blank" rel="noopener">
+            <a key={l.label} className="va-ul" href={l.href} {...(l.external ? { target: "_blank", rel: "noopener" } : {})}>
               {l.label}
             </a>
           ))}

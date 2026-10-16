@@ -78,6 +78,7 @@ nav .wrap{display:flex;align-items:center;height:var(--nav);gap:44px}
 .hside{grid-column:9/13;padding-left:8px;padding-bottom:8px}
 .lede{color:var(--dim);font-size:18px;line-height:1.55}
 .acts{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap}
+.hnote{margin-top:14px;font:400 13px/1.4 var(--mono);color:var(--dim)}
 .cmd{display:flex;align-items:center;gap:12px;margin-top:12px;width:100%;max-width:340px;height:46px;padding:0 6px 0 16px;border:1px solid var(--paper);border-radius:4px;background:var(--paper);font:400 13.5px/1 var(--mono);color:var(--ink);text-align:left;transition:border-color .3s}
 .cmd:hover{border-color:var(--paper-2)}
 .cmd .pr{color:var(--v-600)}
@@ -226,6 +227,9 @@ figure.cardimg img{display:block;width:100%;height:auto}
 .hunt button{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 24px;border-radius:4px;background:var(--v-600);color:var(--paper);font:500 15px/1 var(--sans);transition:background .25s}
 .hunt button:hover{background:var(--v-700)}
 .alt{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-top:28px;font-size:14px;color:var(--mute)}
+.alt .ul-link{font-size:14px;color:var(--fg)}
+.alt .self{display:inline-flex;align-items:center;gap:10px;margin-left:16px;padding-left:18px;border-left:1px solid var(--line)}
+@media (max-width:960px){.alt .self{margin-left:0;padding-left:0;border-left:0;flex-basis:100%;justify-content:center}}
 .cc{display:inline-flex;align-items:center;gap:10px;height:36px;padding:0 6px 0 14px;border:1px solid var(--line);border-radius:4px;font:400 13px/1 var(--mono);color:var(--fg);transition:border-color .3s}
 .cc:hover{border-color:var(--line-2)}
 .cc span{font-size:11px;color:var(--mute);height:24px;min-width:52px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;border-radius:3px;background:rgba(243,241,236,.06)}

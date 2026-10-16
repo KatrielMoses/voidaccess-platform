@@ -26,6 +26,9 @@ export const pageUser = cache(async (): Promise<SessionUser> => {
   }
   if (!u) redirect(await signInUrl());
   if (u.status !== "active") redirect(`${getEnv().SITE_URL}/sign-in?error=inactive`);
-  if (!u.aupAcceptedAt) redirect("/accept-terms");
+  if (!u.aupAcceptedAt) {
+    const path = (await headers()).get("x-va-path") ?? "/";
+    redirect(`/accept-terms?next=${encodeURIComponent(path)}`);
+  }
   return u;
 });

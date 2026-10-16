@@ -27,8 +27,8 @@
   if (customElements.get('va-stack')) return;
 
   const SRC = {
-    graph: ['/assets/platform-graph.png', 'Entity graph', 1610 / 895],
-    cli:   ['/assets/terminal-hero.png',  'voidaccess — zsh', 1094 / 569],
+    graph: ['/assets/cloud-graph.png', 'Entity graph', 1120 / 623],
+    cli:   ['/assets/cloud-summary.png', 'Summary', 1094 / 569],
   };
 
   // positions in units of card width (x,y) and px (z). s = scale of card width.
