@@ -1,206 +1,211 @@
-import { PLANS, type Feature } from "@voidaccess/config";
-import { FaqList } from "@/components/faq";
-import { JsonLd } from "@/components/json-ld";
-import { SeatCounter } from "@/components/seat-counter";
-import { Card, Container, Eyebrow, H2, LinkButton, Section } from "@/components/ui";
-import { money, number, resolve, topupRows } from "@/lib/facts";
-import { pricingFaqLd } from "@/lib/jsonld";
-import { pageMetadata } from "@/lib/metadata";
-import { getFoundingSeats } from "@/lib/seats";
+import { FOUNDING, PLANS, type Feature, type PlanId } from "@voidaccess/config";
+import { SUPPORT_EMAIL } from "@content/legal-common";
 import * as pricing from "@content/pricing";
+import { APP_URL } from "@/lib/auth/config";
+import { money, number, resolve, topupRows } from "@/lib/facts";
+import { pageMetadata } from "@/lib/metadata";
 
 export const metadata = pageMetadata(pricing.meta, "/pricing");
 
 const r = resolve;
-const radioLabel =
-  "inline-flex min-h-11 cursor-pointer items-center rounded-md px-4 text-sm font-semibold text-fg-secondary transition-colors";
+/** Paid plans go through sign-in to Billing in the app, where checkout starts. */
+const billingNext = `/sign-in?next=${encodeURIComponent(`${APP_URL}/billing`)}`;
+const ctaHref = (id: PlanId) => (id === "free" ? "/sign-in" : billingNext);
 
-function FeatureList({ features }: { features: readonly Feature[] }) {
+function Features({ features, extras }: { features: readonly Feature[]; extras: readonly string[] }) {
+  const rows = [
+    ...extras.map((e) => ({ key: e, label: r(e), soon: false })),
+    ...features
+      .filter((f) => f !== "deep" && pricing.featureLabels[f])
+      .map((f) => ({ key: f, label: pricing.featureLabels[f]!.label, soon: !!pricing.featureLabels[f]!.soon })),
+  ];
   return (
-    <>
-      {features
-        .filter((f) => f !== "deep" && pricing.featureLabels[f])
-        .map((f) => {
-          const l = pricing.featureLabels[f]!;
-          return (
-            <li key={f} className="flex gap-2.5">
-              <span aria-hidden className="mt-0.5 text-success">
-                ✓
-              </span>
-              <span>
-                {l.label}
-                {l.soon && <span className="ml-2 rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-fg-secondary">{pricing.planCopy.soonNote}</span>}
-              </span>
-            </li>
-          );
-        })}
-    </>
+    <ul className="mt-6 flex flex-1 flex-col border-t border-line text-[15px] leading-snug text-dim">
+      {rows.map((x) => (
+        <li key={x.key} className="border-b border-line py-3">
+          {x.label}
+          {x.soon && <span className="ml-2 font-mono text-[12px] text-mute">{pricing.planCopy.soonNote.toLowerCase()}</span>}
+        </li>
+      ))}
+    </ul>
   );
 }
 
-export default async function PricingPage() {
-  const seats = await getFoundingSeats();
+function Head({ index, title, note }: { index: string; title: string; note?: string }) {
+  return (
+    <div className="grid grid-cols-1 gap-y-4 min-[961px]:grid-cols-12">
+      <p className="flex items-center gap-3 font-mono text-[13px] text-dim min-[961px]:col-span-2">
+        <i aria-hidden className="inline-block h-px w-7 bg-line-3" />
+        {index}
+      </p>
+      <h2 className="text-[clamp(32px,3.6vw,52px)] leading-none tracking-[-0.04em] min-[961px]:col-span-7">{title}</h2>
+      {note && <p className="text-[16px] leading-normal text-dim min-[961px]:col-span-3">{note}</p>}
+    </div>
+  );
+}
+
+export default function PricingPage() {
   const rows = topupRows();
   const plans = [PLANS.free, PLANS.pro, PLANS.pro_plus];
 
   return (
-    <>
-      <JsonLd data={pricingFaqLd()} />
-      <Section className="!pb-8">
-        <Eyebrow>Pricing</Eyebrow>
-        <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">{pricing.hero.title}</h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-fg-secondary">{r(pricing.hero.sub)}</p>
-      </Section>
+    <div className="va-wrap pb-28 min-[961px]:pb-[168px]">
+      <header className="pt-14 pb-12 min-[961px]:pt-[132px] min-[961px]:pb-[84px]">
+        <h1 className="va-title max-w-[16ch]">{pricing.hero.title}</h1>
+        <p className="va-lede mt-6 max-w-[58ch]">{r(pricing.hero.sub)}</p>
+      </header>
 
-      <Container>
-        <div className="group/bill">
-          <fieldset className="relative inline-flex gap-1 rounded-lg border border-border-strong bg-surface p-1">
+      {/* Plans. The billing toggle is two radios; CSS shows the matching prices (works without JavaScript). */}
+      <section aria-labelledby="plans-h" className="group/bill">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <h2 id="plans-h" className="text-[30px] leading-none tracking-[-0.03em]">
+            Plans
+          </h2>
+          <fieldset className="inline-flex rounded-[4px] border border-line-2 p-1">
             <legend className="sr-only">Billing period</legend>
             <input type="radio" name="billing" id="bill-monthly" defaultChecked className="peer/m sr-only" />
-            <label htmlFor="bill-monthly" className={`${radioLabel} peer-checked/m:bg-accent peer-checked/m:text-fg-inverse peer-focus-visible/m:outline-2 peer-focus-visible/m:outline-accent`}>
+            <label
+              htmlFor="bill-monthly"
+              className="inline-flex h-9 cursor-pointer items-center rounded-[3px] px-4 text-[14px] text-dim transition-colors duration-300 peer-checked/m:bg-paper peer-checked/m:text-ink peer-focus-visible/m:outline peer-focus-visible/m:outline-[1.5px] peer-focus-visible/m:outline-v-200"
+            >
               {pricing.billing.monthly}
             </label>
             <input type="radio" name="billing" id="bill-annual" className="peer/a sr-only" />
-            <label htmlFor="bill-annual" className={`${radioLabel} gap-2 peer-checked/a:bg-accent peer-checked/a:text-fg-inverse peer-focus-visible/a:outline-2 peer-focus-visible/a:outline-accent`}>
+            <label
+              htmlFor="bill-annual"
+              className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-[3px] px-4 text-[14px] text-dim transition-colors duration-300 peer-checked/a:bg-paper peer-checked/a:text-ink peer-focus-visible/a:outline peer-focus-visible/a:outline-[1.5px] peer-focus-visible/a:outline-v-200"
+            >
               {pricing.billing.annual}
-              <span className="font-mono text-[11px] opacity-90">{r(pricing.billing.annualNote)}</span>
+              <span className="font-mono text-[11.5px] opacity-80">{r(pricing.billing.annualNote)}</span>
             </label>
           </fieldset>
-
-          <div className="mt-6 grid gap-5 lg:grid-cols-3">
-            {plans.map((p) => {
-              const copy = pricing.planCopy[p.id];
-              const featured = p.id === "pro";
-              return (
-                <Card key={p.id} className={`flex flex-col ${featured ? "border-accent-border bg-raised" : ""}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="font-display text-2xl font-bold">{p.name}</h2>
-                    {featured && <span className="rounded-full bg-accent-dim px-2.5 py-1 font-mono text-[11px] text-accent">{pricing.planCopy.proBadge}</span>}
-                  </div>
-                  <p className="mt-1 text-sm text-fg-secondary">{copy.tagline}</p>
-                  <div className="mt-6">
-                    <p className="group-has-[#bill-annual:checked]/bill:hidden">
-                      <span className="font-display text-5xl font-bold">{money(p.monthlyUsd)}</span>
-                      <span className="text-fg-secondary">{pricing.planCopy.perMonth}</span>
-                    </p>
-                    <p className="hidden group-has-[#bill-annual:checked]/bill:block">
-                      <span className="font-display text-5xl font-bold">{money(p.annualUsd ?? p.monthlyUsd)}</span>
-                      <span className="text-fg-secondary">{p.annualUsd ? pricing.planCopy.perYear : pricing.planCopy.perMonth}</span>
-                    </p>
-                  </div>
-                  <p className="mt-3 font-mono text-sm text-accent">
-                    {number(p.monthlyCredits)} {pricing.planCopy.credits}
-                  </p>
-                  <ul className="mt-6 flex-1 space-y-2.5 text-sm leading-relaxed">
-                    {copy.extras.map((e) => (
-                      <li key={e} className="flex gap-2.5">
-                        <span aria-hidden className="mt-0.5 text-success">
-                          ✓
-                        </span>
-                        {r(e)}
-                      </li>
-                    ))}
-                    <FeatureList features={p.features} />
-                  </ul>
-                  <LinkButton href={`/waitlist${featured ? "?founding=1" : ""}`} variant={featured ? "primary" : "secondary"} className="mt-8">
-                    {copy.cta}
-                  </LinkButton>
-                </Card>
-              );
-            })}
-          </div>
         </div>
-      </Container>
 
-      <Section id="founding">
-        <div className="rounded-2xl border border-accent-border bg-accent-dim p-6 sm:p-10">
-          <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
-            <div>
-              <Eyebrow>{pricing.founding.badge}</Eyebrow>
-              <h2 className="mt-3 text-3xl font-bold sm:text-4xl">{r(pricing.founding.title)}</h2>
-              <p className="mt-3 text-lg text-fg-secondary">{r(pricing.founding.lead)}</p>
-              <div className="mt-6">
-                <SeatCounter initial={seats} label={pricing.founding.counterLabel} of={pricing.founding.counterOf} loading={pricing.founding.counterLoading} />
+        <div className="mt-8 grid grid-cols-1 gap-px border border-line bg-line min-[961px]:grid-cols-3">
+          {plans.map((p) => {
+            const copy = pricing.planCopy[p.id];
+            return (
+              <div key={p.id} className="flex flex-col bg-bg p-7 min-[961px]:p-8">
+                <h3 className="text-[24px] leading-none tracking-[-0.03em]">{p.name}</h3>
+                <p className="mt-2 text-[15px] text-dim">{copy.tagline}</p>
+                <p className="mt-8 font-mono tabular-nums group-has-[#bill-annual:checked]/bill:hidden">
+                  <span className="text-[40px] leading-none tracking-[-0.04em]">{money(p.monthlyUsd)}</span>
+                  <span className="ml-1 text-[13px] text-mute">{pricing.planCopy.perMonth}</span>
+                </p>
+                <p className="mt-8 hidden font-mono tabular-nums group-has-[#bill-annual:checked]/bill:block">
+                  <span className="text-[40px] leading-none tracking-[-0.04em]">{money(p.annualUsd ?? p.monthlyUsd)}</span>
+                  <span className="ml-1 text-[13px] text-mute">
+                    {p.annualUsd ? pricing.planCopy.perYear : pricing.planCopy.perMonth}
+                  </span>
+                </p>
+                <p className="mt-3 font-mono text-[13px] text-paper">
+                  {number(p.monthlyCredits)} {pricing.planCopy.credits}
+                </p>
+                <Features features={p.features} extras={copy.extras} />
+                <a href={ctaHref(p.id)} className={`va-btn va-btn-block mt-8 ${p.id === "pro" ? "va-btn-light" : "va-btn-line"}`}>
+                  <span>{copy.cta}</span>
+                </a>
               </div>
-              <LinkButton href="/waitlist?founding=1" className="mt-6">
-                {pricing.founding.cta}
-              </LinkButton>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold">{pricing.founding.rulesHeading}</h3>
-              <ul className="mt-3 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-fg-secondary marker:text-accent">
-                {pricing.founding.rules.map((x) => (
-                  <li key={x}>{r(x)}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
+            );
+          })}
         </div>
-      </Section>
+      </section>
 
-      <Section tone="raised" id="credits">
-        <Eyebrow>Credits</Eyebrow>
-        <H2>{pricing.explainer.heading}</H2>
-        <p className="mt-3 max-w-2xl text-fg-secondary">{pricing.explainer.body}</p>
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
+      {/* Founding seats: the page's one violet field. */}
+      <section id="founding" aria-labelledby="founding-h" className="mt-24 rounded-[6px] bg-v-600 p-8 text-paper min-[961px]:mt-[150px] min-[961px]:p-12">
+        <div className="grid grid-cols-1 gap-10 min-[961px]:grid-cols-12">
+          <div className="min-[961px]:col-span-5">
+            <p className="font-mono text-[13px] text-v-100">{pricing.founding.badge}</p>
+            <h2 id="founding-h" className="mt-4 text-[clamp(32px,3.6vw,48px)] leading-none tracking-[-0.04em]">
+              {r(pricing.founding.title)}
+            </h2>
+            <p className="mt-5 text-[17px] leading-normal text-v-100">{r(pricing.founding.lead)}</p>
+            <p className="mt-5 font-mono text-[13px] text-v-100">
+              {FOUNDING.seats} seats, first come first served
+            </p>
+            <a href={billingNext} className="va-btn va-btn-light mt-7">
+              <span>{pricing.founding.cta}</span>
+            </a>
+          </div>
+          <ol className="flex flex-col border-t border-paper/30 min-[961px]:col-span-7">
+            {pricing.founding.rules.map((x, i) => (
+              <li key={x} className="grid grid-cols-[40px_1fr] border-b border-paper/30 py-4 text-[15px] leading-normal">
+                <span className="font-mono text-[12px] text-v-100">{String(i + 1).padStart(2, "0")}</span>
+                <span>{r(x)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section id="credits" aria-labelledby="credits-h" className="mt-24 min-[961px]:mt-[150px]">
+        <Head index="01 Usage" title={pricing.explainer.heading} note={pricing.explainer.body} />
+        <div className="mt-12 grid grid-cols-1 gap-px border border-line bg-line min-[961px]:grid-cols-2">
           {pricing.explainer.rows.map((x) => (
-            <Card key={x.name}>
-              <p className="font-mono text-4xl font-bold text-accent">{r(x.credits)}</p>
-              <h3 className="mt-1 text-lg font-bold">{x.name}</h3>
-              <p className="mt-1 text-sm text-fg-secondary">{x.note}</p>
-            </Card>
+            <div key={x.name} className="bg-bg p-7 min-[961px]:p-8">
+              <p className="font-mono text-[40px] leading-none tracking-[-0.04em] tabular-nums">{r(x.credits)}</p>
+              <h3 className="mt-4 text-[21px] leading-none tracking-[-0.02em]">{x.name}</h3>
+              <p className="mt-2 text-[15px] text-dim">{x.note}</p>
+            </div>
           ))}
         </div>
-        <p className="mt-6 text-lg">{r(pricing.explainer.example)}</p>
-        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-fg-secondary">
+        <p className="mt-8 text-[17px] text-paper">{r(pricing.explainer.example)}</p>
+        <ul className="mt-3 flex flex-col gap-1 text-[15px] text-dim">
           {pricing.explainer.rules.map((x) => (
             <li key={x}>{r(x)}</li>
           ))}
         </ul>
-      </Section>
+      </section>
 
-      <Section id="topups">
-        <Eyebrow>{pricing.topups.heading}</Eyebrow>
-        <H2>{pricing.topups.heading}</H2>
-        <p className="mt-3 max-w-2xl text-fg-secondary">
-          {pricing.topups.body} {r(pricing.topups.minimum)}
-        </p>
-        <div className="mt-8 overflow-x-auto rounded-xl border border-border-subtle">
-          <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+      <section id="topups" aria-labelledby="topups-h" className="mt-24 min-[961px]:mt-[150px]">
+        <Head index="02 Top-ups" title={pricing.topups.heading} note={`${pricing.topups.body} ${r(pricing.topups.minimum)}`} />
+        <div className="mt-12 overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-left">
             <caption className="sr-only">{pricing.topups.heading}</caption>
             <thead>
-              <tr className="bg-raised">
+              <tr className="border-b border-line">
                 {Object.values(pricing.topups.columns).map((c) => (
-                  <th key={c} scope="col" className="px-4 py-3 font-display">
+                  <th key={c} scope="col" className="py-3 pr-4 font-mono text-[12px] font-normal text-mute">
                     {c}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-dim font-mono">
+            <tbody className="font-mono text-[14px] tabular-nums">
               {rows.map((t) => (
-                <tr key={t.usd}>
-                  <th scope="row" className="px-4 py-3 font-semibold">
+                <tr key={t.usd} className="border-b border-line">
+                  <th scope="row" className="py-4 pr-4 font-normal text-paper">
                     {t.usd}
                   </th>
-                  <td className="px-4 py-3">{t.credits}</td>
-                  <td className="px-4 py-3 text-fg-secondary">{t.baseBonus}</td>
-                  <td className="px-4 py-3">{t.proCredits}</td>
-                  <td className="px-4 py-3">{t.plusCredits}</td>
+                  <td className="py-4 pr-4">{t.credits}</td>
+                  <td className="py-4 pr-4 text-dim">{t.baseBonus}</td>
+                  <td className="py-4 pr-4">{t.proCredits}</td>
+                  <td className="py-4 pr-4">{t.plusCredits}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </Section>
+      </section>
 
-      <Section tone="raised" id="faq">
-        <Eyebrow>FAQ</Eyebrow>
-        <H2>Pricing questions</H2>
-        <div className="mt-8 max-w-3xl">
-          <FaqList items={pricing.faq} />
-        </div>
-      </Section>
-    </>
+      <section id="faq" aria-labelledby="faq-h" className="mt-24 min-[961px]:mt-[150px]">
+        <Head index="03 Questions" title="Pricing questions" />
+        <dl className="mt-12 border-t border-line">
+          {pricing.faq.map((f) => (
+            <div key={f.q} className="grid grid-cols-1 gap-2 border-b border-line py-6 min-[961px]:grid-cols-12">
+              <dt className="text-[19px] leading-snug tracking-[-0.01em] min-[961px]:col-span-5">{f.q}</dt>
+              <dd className="text-[16px] leading-relaxed text-dim min-[961px]:col-span-7">{r(f.a)}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-10 text-[16px] text-dim">
+          Anything else? Email{" "}
+          <a className="va-ul text-paper" href={`mailto:${SUPPORT_EMAIL}`}>
+            {SUPPORT_EMAIL}
+          </a>
+          . We reply within 3 business days.
+        </p>
+      </section>
+    </div>
   );
 }

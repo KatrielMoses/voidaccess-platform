@@ -26,9 +26,9 @@ export const featureLabels: Record<string, { label: string; soon?: boolean }> = 
 };
 
 export const planCopy = {
-  free: { tagline: "Try it on a real question.", cta: "Join the waitlist", extras: ["Quick and Standard investigations", "{{free.historyDays}}-day history", "No card required"] },
-  pro: { tagline: "For regular investigations.", cta: "Join the waitlist", extras: ["Quick and Standard investigations", "Deep investigations are not available at launch"] },
-  pro_plus: { tagline: "For analysts who live in it.", cta: "Join the waitlist", extras: ["Everything in Pro"] },
+  free: { tagline: "Try it on a real question.", cta: "Start free", extras: ["Quick and Standard investigations", "{{free.historyDays}}-day history", "No card required"] },
+  pro: { tagline: "For regular investigations.", cta: "Choose Pro", extras: ["Quick and Standard investigations", "Deep investigations are not available at launch"] },
+  pro_plus: { tagline: "For analysts who live in it.", cta: "Choose Pro+", extras: ["Everything in Pro"] },
   soonNote: "Coming after launch",
   proBadge: "Founding seats open",
   perMonth: "/mo",
@@ -61,7 +61,7 @@ export const founding = {
   counterLabel: "seats available",
   counterOf: "of",
   counterLoading: "checking seats…",
-  cta: "Join the waitlist for a founding seat",
+  cta: "Claim a founding seat",
   rulesHeading: "The rules, plainly",
   rules: [
     "The first {{founding.seats}} paid Pro subscribers get Pro at {{founding.price}}/mo, with the same {{founding.credits}} credits a month, and a Founding member badge.",
@@ -82,5 +82,6 @@ export const faq: Faq[] = [
   { q: "What if a run fails?", a: "Failed and cancelled runs are refunded automatically in credits. You never pay for an investigation that didn't complete." },
   { q: "What does annual billing save?", a: "Annual billing gives {{pro.monthsFree}} months free: Pro is {{pro.annual}} a year and Pro+ is {{plus.annual}} a year. Founding seats are monthly only." },
   { q: "How do the founding seats work?", a: "{{founding.copy}} The first {{founding.seats}} paid Pro subscribers get {{founding.price}}/mo for {{founding.termMonths}} months, renewed each year you stay active. The full rules are on this page." },
-  { q: "When can I buy?", a: "The app isn't open yet. Join the waitlist and we'll email you the day it launches." },
+  { q: "How do I pay?", a: "By card at checkout. Payments are processed by Creem, our merchant of record, which adds any applicable tax and emails your receipt. Cancel any time from Billing in the app." },
+  { q: "Can I get a refund?", a: "Yes. Email {{support.email}} within 14 days of a payment and we'll refund it in full, as long as you haven't used the credits it bought." },
 ];

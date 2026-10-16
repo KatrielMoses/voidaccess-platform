@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL } from "@content/legal-common";
 /**
  * Every price, credit number and plan limit the site can show, derived from
  * @voidaccess/config at build time. Content files refer to these as {{token}}
@@ -46,6 +47,7 @@ export const facts = {
     copy: FOUNDING.copy,
   },
   topup: { min: usd(TOPUP_MIN_USD), expiryMonths: String(TOPUP_EXPIRY_MONTHS) },
+  support: { email: SUPPORT_EMAIL },
 } as const;
 
 export type Facts = typeof facts;

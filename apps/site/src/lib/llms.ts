@@ -35,7 +35,7 @@ function sections(list: Section[]): string[] {
 }
 
 function legal(p: LegalPage): string[] {
-  return [`## ${p.title} (${p.draftNotice})`, r(p.intro), "", ...sections(p.sections)];
+  return [`## ${p.title}`, r(p.intro), "", ...sections(p.sections)];
 }
 
 /** /llms.txt: a short, link-first summary (llmstxt.org format). Built from content + config at build time. */

@@ -20,7 +20,8 @@ export interface LegalPage {
   meta: PageMeta;
   title: string;
   updated: string;
-  draftNotice: string;
+  /** Short note beside the title (contact, effective date context). */
+  note: string;
   intro: string;
   sections: Section[];
 }

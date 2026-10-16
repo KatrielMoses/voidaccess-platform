@@ -5,7 +5,6 @@ import { AUTH_PATHS, LEGAL_PATHS, isAllowedPath, minimalGuard, normalizePath, ww
 
 const MARKETING = [
   "/features",
-  "/pricing",
   "/trust",
   "/open-source",
   "/waitlist",
@@ -28,7 +27,7 @@ const MARKETING = [
 
 describe("minimal-mode allowlist", () => {
   it("serves auth, legal, home and robots", () => {
-    for (const p of ["/", "/robots.txt", ...AUTH_PATHS, ...LEGAL_PATHS]) expect(isAllowedPath(p, "minimal"), p).toBe(true);
+    for (const p of ["/", "/pricing", "/robots.txt", ...AUTH_PATHS, ...LEGAL_PATHS]) expect(isAllowedPath(p, "minimal"), p).toBe(true);
   });
 
   it("tolerates a trailing slash", () => {
@@ -73,7 +72,7 @@ describe("minimal-mode allowlist", () => {
     };
     walk(app, "");
     const allowed = [...served].filter((p) => isAllowedPath(p, "minimal")).sort();
-    expect(allowed).toEqual(["/", ...AUTH_PATHS, ...LEGAL_PATHS].sort());
+    expect(allowed).toEqual(["/", "/pricing", ...AUTH_PATHS, ...LEGAL_PATHS].sort());
   });
 });
 

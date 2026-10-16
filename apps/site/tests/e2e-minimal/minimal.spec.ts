@@ -4,7 +4,7 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 
 const APP = "http://app.va.localhost:3600";
 
-const ALLOWED = ["/", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/check-email", "/verified", "/acceptable-use", "/privacy", "/terms", "/robots.txt"];
+const ALLOWED = ["/", "/pricing", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/check-email", "/verified", "/acceptable-use", "/privacy", "/terms", "/robots.txt"];
 /** The home page's own files (src/home/index.html references them; public/ holds them). */
 const STATIC: Record<string, RegExp> = {
   "/site.webmanifest": /^application\/(manifest\+)?json/,
@@ -37,7 +37,7 @@ const STATIC: Record<string, RegExp> = {
   "/assets/cloud-graph.png": /^image\/png/,
   "/assets/cloud-summary.png": /^image\/png/,
 };
-const BLOCKED = ["/features", "/pricing", "/trust", "/open-source", "/waitlist", "/waitlist/check-email", "/waitlist/confirmed", "/llms.txt", "/llms-full.txt", "/og", "/sitemap.xml", "/api/waitlist", "/api/waitlist/confirm", "/api/founding/seats", "/pl/event", "/pl/script.js"];
+const BLOCKED = ["/features", "/trust", "/open-source", "/waitlist", "/waitlist/check-email", "/waitlist/confirmed", "/llms.txt", "/llms-full.txt", "/og", "/sitemap.xml", "/api/waitlist", "/api/waitlist/confirm", "/api/founding/seats", "/pl/event", "/pl/script.js"];
 
 test.describe("routes", () => {
   for (const p of ALLOWED) {
@@ -124,7 +124,7 @@ test.describe("routes", () => {
   });
 
   test("sign-in, legal and 404 pages offer sign-in in the nav (not on the sign-in page itself)", async ({ page }) => {
-    for (const p of ["/terms", "/privacy", "/acceptable-use", "/pricing"]) {
+    for (const p of ["/terms", "/privacy", "/acceptable-use", "/pricing", "/features"]) {
       await page.goto(p);
       await expect(page.locator("#nav").getByRole("link", { name: "Sign in" }), p).toHaveAttribute("href", "/sign-in");
     }
@@ -142,7 +142,7 @@ test.describe("routes", () => {
   test("home, sign-in, legal and 404 pages link only to pages that exist", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Flatten the noise\.\s*Follow the signal\.$/);
-    for (const url of ["/", "/sign-in", "/terms", "/privacy", "/acceptable-use", "/pricing"]) {
+    for (const url of ["/", "/pricing", "/sign-in", "/terms", "/privacy", "/acceptable-use", "/features"]) {
       await page.goto(url);
       const hrefs = await page.locator("a[href]").evaluateAll((els) => els.map((a) => a.getAttribute("href") as string));
       for (const href of new Set(hrefs)) {
@@ -152,10 +152,9 @@ test.describe("routes", () => {
         expect(status, `${url} links to ${href}`).toBe(200);
       }
     }
-    const notFound = await page.goto("/pricing");
+    const notFound = await page.goto("/features");
     expect(notFound?.status()).toBe(404);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("That page isn't here");
-    await expect(page.getByRole("link", { name: "Pricing" })).toHaveCount(0);
   });
 });
 

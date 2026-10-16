@@ -31,7 +31,7 @@ describe("llms.txt", () => {
   });
   it("full text includes policies and the archive disclosure", () => {
     expect(full).toContain("shared, anonymous, dated archive");
-    expect(full).toContain("Draft, pending legal review");
+    expect(full).toContain("Sexually explicit, pornographic or other NSFW content");
     expect(full).not.toMatch(/\{\{/);
   });
 });

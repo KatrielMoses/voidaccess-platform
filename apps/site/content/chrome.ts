@@ -7,10 +7,14 @@ export const chrome = {
   signIn: { label: "Sign in", href: "/sign-in" },
   start: { label: "Start free", href: "/sign-in" },
   footerLine: "Dark-web OSINT in your browser. Built on the open-source VoidAccess engine.",
+  support: { label: "support@voidaccess.pro", href: "mailto:support@voidaccess.pro" },
+  pricing: { label: "Pricing", href: "/pricing" },
   footerLinks: [
+    { label: "Pricing", href: "/pricing", external: false },
     { label: "Terms", href: "/terms", external: false },
     { label: "Privacy", href: "/privacy", external: false },
     { label: "Acceptable use", href: "/acceptable-use", external: false },
     { label: "GitHub", href: "https://github.com/KatrielMoses/voidaccess", external: true },
+    { label: "support@voidaccess.pro", href: "mailto:support@voidaccess.pro", external: false },
   ],
 } as const;

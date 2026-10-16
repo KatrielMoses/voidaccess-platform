@@ -3,11 +3,14 @@
 import { usePathname } from "next/navigation";
 import { chrome as c } from "@content/chrome";
 
-/** The home page's nav actions: Sign in and Start free. Hidden on the sign-in page itself. */
+/** The home page's nav actions: Pricing, Sign in and Start free. Hidden on the sign-in page itself. */
 export function NavActions() {
   if (usePathname() === "/sign-in") return null;
   return (
     <>
+      <a className="va-ul" href={c.pricing.href}>
+        {c.pricing.label}
+      </a>
       <a className="va-ul" href={c.signIn.href}>
         {c.signIn.label}
       </a>

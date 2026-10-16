@@ -10,7 +10,7 @@ const slug = (s: string) =>
 
 /**
  * Long-form legal page in the design system: section-head pattern on the 12-column grid (title in columns 1-9, the
- * draft note in 10-12), a mono-indexed contents list beside a ~68ch reading column, hairline rules between sections.
+ * side note in 10-12), a mono-indexed contents list beside a ~68ch reading column, hairline rules between sections.
  */
 export function LegalView({ page }: { page: LegalPage }) {
   const sections = page.sections.map((s, i) => ({ ...s, id: s.id ?? slug(s.heading), n: pad(i) }));
@@ -22,7 +22,7 @@ export function LegalView({ page }: { page: LegalPage }) {
           <p className="mt-6 font-mono text-[13px] leading-none text-dim">{page.updated}</p>
         </div>
         <p role="note" className="self-end text-[15px] leading-normal text-dim min-[961px]:col-start-10 min-[961px]:col-end-13 min-[961px]:border-t min-[961px]:border-line-2 min-[961px]:pt-4">
-          {page.draftNotice}
+          {page.note}
         </p>
       </header>
 

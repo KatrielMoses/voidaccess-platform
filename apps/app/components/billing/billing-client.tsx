@@ -19,6 +19,7 @@ import { billingCopy as copy, fill } from "@/content/billing";
 import { dateFmt, centsToUsd, num, usd } from "@/lib/billing/format";
 import type { BillingView } from "@/lib/billing/view";
 import { Notice, Row, SectionTitle } from "@/components/page-header";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 type Interval = "month" | "year";
 interface Preview {
@@ -472,6 +473,14 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
           {fill(copy.topups.expiry, { expiryMonths: TOPUP_EXPIRY_MONTHS })}
         </p>
       </section>
+
+      <p className="text-[15px] text-dim">
+        Questions about billing, refunds or your plan? Email{" "}
+        <a className="ul-link text-paper" href={`mailto:${SUPPORT_EMAIL}`}>
+          {SUPPORT_EMAIL}
+        </a>
+        . We reply within 3 business days.
+      </p>
 
       <Dialog open={change !== null} onOpenChange={(o) => !o && setChange(null)}>
         <DialogContent>

@@ -18,6 +18,7 @@ const MINIMAL_ALLOWED: ReadonlySet<string> = new Set([
   "/",
   ...AUTH_PATHS,
   ...LEGAL_PATHS,
+  "/pricing",
   "/robots.txt",
   // Static files from /public used by the pages above.
   "/site.webmanifest",
