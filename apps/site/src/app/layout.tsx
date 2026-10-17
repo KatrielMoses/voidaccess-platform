@@ -16,7 +16,7 @@ import "./globals.css";
 
 // Fonts are self-hosted from public/fonts (@font-face in @voidaccess/ui/tokens.css). Preload the three the pages use
 // first, as the home page does.
-const PRELOAD_FONTS = ["/fonts/GeneralSans-500.woff2", "/fonts/GeneralSans-400.woff2", "/fonts/GeistMono-400.woff2"];
+const PRELOAD_FONTS = ["/fonts/GeneralSans-500.woff2", "/fonts/GeneralSans-400.woff2", "/fonts/GeistMono-400.woff2", "/fonts/Sora-500.woff2"];
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

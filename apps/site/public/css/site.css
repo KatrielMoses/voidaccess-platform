@@ -8,6 +8,7 @@
 @font-face{font-family:'General Sans';src:url(/fonts/GeneralSans-400.woff2) format('woff2');font-weight:400;font-style:normal;font-display:swap}
 @font-face{font-family:'General Sans';src:url(/fonts/GeneralSans-500.woff2) format('woff2');font-weight:500;font-style:normal;font-display:swap}
 @font-face{font-family:'General Sans';src:url(/fonts/GeneralSans-600.woff2) format('woff2');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Sora';src:url(/fonts/Sora-500.woff2) format('woff2');font-weight:500;font-style:normal;font-display:swap}
 @font-face{font-family:'Geist Mono';src:url(/fonts/GeistMono-400.woff2) format('woff2');font-weight:400;font-style:normal;font-display:swap}
 @font-face{font-family:'Geist Mono';src:url(/fonts/GeistMono-500.woff2) format('woff2');font-weight:500;font-style:normal;font-display:swap}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -40,7 +41,7 @@ nav{position:fixed;inset:0 0 auto;z-index:50;border-bottom:1px solid transparent
 nav.solid{background:rgba(15,15,18,.78);backdrop-filter:saturate(140%) blur(18px);-webkit-backdrop-filter:saturate(140%) blur(18px);border-color:var(--line)}
 nav.hide{transform:translateY(-101%)}
 nav .wrap{display:flex;align-items:center;height:var(--nav);gap:44px}
-.logo{display:flex;align-items:center;gap:10px;font:500 16px/1 var(--sans);letter-spacing:-.01em}
+.logo{display:flex;align-items:center;gap:10px;font:500 16px/1 'Sora','General Sans',system-ui,sans-serif;letter-spacing:-.03em}
 .logo img{width:28px;height:28px;display:block;border-radius:50%}
 .links{display:flex;gap:30px;margin-left:auto}
 .links a,.ul-link{position:relative;font-size:15px;color:var(--dim);transition:color .3s}

@@ -14,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" href="/fonts/GeneralSans-400.woff2" as="font" type="font/woff2" crossOrigin="" />
         <link rel="preload" href="/fonts/GeneralSans-500.woff2" as="font" type="font/woff2" crossOrigin="" />
         <link rel="preload" href="/fonts/GeistMono-400.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fonts/Sora-500.woff2" as="font" type="font/woff2" crossOrigin="" />
       </head>
       <body className="min-h-screen bg-bg font-sans text-paper">
         <TooltipProvider>

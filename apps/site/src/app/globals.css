@@ -91,13 +91,13 @@
     padding-top: 68px;
   }
 
-  /* logo lockup: 28px PNG, 10px gap, General Sans 500 16px -0.01em */
+  /* logo lockup: 28px PNG, 10px gap, "voidaccess" in Sora 500 16px -0.03em (design.md §2) */
   .va-logo {
     display: flex;
     align-items: center;
     gap: 10px;
-    font: 500 16px/1 var(--font-sans);
-    letter-spacing: -0.01em;
+    font: 500 16px/1 var(--font-brand);
+    letter-spacing: -0.03em;
     color: var(--color-paper);
   }
   .va-logo img {

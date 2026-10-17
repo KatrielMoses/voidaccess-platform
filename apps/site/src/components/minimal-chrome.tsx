@@ -11,7 +11,7 @@ function Logo({ pre = false }: { pre?: boolean }) {
     <a className="va-logo" href="/" aria-label={c.homeLabel} data-va-pre={pre || undefined}>
       {/* eslint-disable-next-line @next/next/no-img-element -- the logo PNG at its fixed 28px size, as on the home page */}
       <img src="/assets/logo.png" alt="" width={28} height={28} />
-      VoidAccess
+      voidaccess
     </a>
   );
 }

@@ -29,6 +29,14 @@
   font-style: normal;
   font-display: swap;
 }
+/* The wordmark only (logo lockup "voidaccess"): Sora 500, OFL (public/fonts/OFL-Sora.txt). */
+@font-face {
+  font-family: "Sora";
+  src: url(/fonts/Sora-500.woff2) format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
 @font-face {
   font-family: "Geist Mono";
   src: url(/fonts/GeistMono-400.woff2) format("woff2");
@@ -84,6 +92,7 @@
   --font-sans: "General Sans", system-ui, -apple-system, sans-serif;
   --font-display: "General Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-brand: "Sora", "General Sans", system-ui, sans-serif; /* the wordmark only */
 
   /* §5: 4px buttons/command/chips, 6px fields and cards, 3px small inner buttons */
   --radius-xs: 3px;

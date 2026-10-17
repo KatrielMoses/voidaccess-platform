@@ -27,6 +27,7 @@ const STATIC: Record<string, RegExp> = {
   "/fonts/GeneralSans-500.woff2": /^font\/woff2/,
   "/fonts/GeneralSans-600.woff2": /^font\/woff2/,
   "/fonts/GeistMono-400.woff2": /^font\/woff2/,
+  "/fonts/Sora-500.woff2": /^font\/woff2/,
   "/fonts/GeistMono-500.woff2": /^font\/woff2/,
   "/assets/favicon.ico": /^image\/(x-icon|vnd\.microsoft\.icon)/,
   "/assets/favicon-32.png": /^image\/png/,
