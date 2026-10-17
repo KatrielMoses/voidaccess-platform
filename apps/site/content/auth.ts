@@ -1,10 +1,11 @@
 /** Words on the sign-in page. There is no separate sign-up: the first sign-in creates the account. */
 export const auth = {
   signIn: {
-    /** The mono step index above the title (decorative; the title says the same). */
-    steps: ["01 Identify", "02 Verify"],
-    title: "Sign in to VoidAccess",
-    description: "New here? Signing in for the first time creates your account.",
+    title: "Create your free account",
+    /** {{tokens}} are filled from @voidaccess/config on the server (lib/facts.ts). */
+    description: "{{free.credits}} credits every month. No card. Already have an account? Same buttons; we'll sign you in.",
+    /** Under the form; {stars} is the live GitHub star count (lib/stats.ts). */
+    github: "Open source on GitHub ({stars}★)",
     emailLabel: "Email",
     sendCode: "Email me a sign-in code",
     codeTitle: "Check your email",

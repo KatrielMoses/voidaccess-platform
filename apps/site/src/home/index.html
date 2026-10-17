@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VoidAccess Cloud — Dark-web OSINT in your browser</title>
-<meta name="description" content="VoidAccess Cloud turns one research question into structured threat intelligence in your browser: parallel dark-web collection, entity extraction, relationship graphs and STIX, MISP, Sigma and YARA exports. Nothing to install. Free to start.">
+<title>VoidAccess — Dark-web threat intel in your browser</title>
+<meta name="description" content="Ask one question and VoidAccess searches 12+ Tor search engines, GitHub and security feeds in parallel, then returns actors, wallets, leaked credentials and IOCs ready for STIX, MISP or Sigma. Open source. Free to start.">
 <meta name="theme-color" content="#0F0F12">
 <meta name="color-scheme" content="dark">
 <meta name="va-app" content="__VA_APP_URL__">
 <meta property="og:type" content="website">
-<meta property="og:title" content="VoidAccess — Flatten the noise. Follow the signal.">
-<meta property="og:description" content="Hosted dark-web OSINT that turns one research question into structured threat intelligence. Nothing to install, free to start.">
+<meta property="og:title" content="VoidAccess — Dark-web threat intel in your browser">
+<meta property="og:description" content="Ask one question and VoidAccess searches 12+ Tor search engines, GitHub and security feeds in parallel, then returns actors, wallets, leaked credentials and IOCs ready for STIX, MISP or Sigma. Open source. Free to start.">
 <meta property="og:image" content="/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/assets/favicon.ico" sizes="any">
@@ -32,8 +32,8 @@
 
 <nav id="nav"><div class="wrap">
   <a class="logo pre" href="/" aria-label="VoidAccess home"><img src="/assets/logo.png" alt="">voidaccess</a>
-  <div class="links pre"><a href="#sources">Sources</a><a href="#pipeline">Pipeline</a><a href="#entities">Entities</a><a href="#exports">Exports</a></div>
-  <div class="navr pre"><a class="ul-link" href="/pricing">Pricing</a><a class="ul-link" href="/sign-in">Sign in</a><a class="btn btn-light mag" href="/sign-in"><span>Start free</span></a></div>
+  <div class="links pre"><a href="#product">Product</a><a href="#use-cases">Use cases</a><a href="/pricing">Pricing</a><a href="#open-source">Open source</a></div>
+  <div class="navr pre"><a class="ul-link" href="/sign-in">Sign in</a><a class="btn btn-light mag" href="/sign-in"><span>Start free</span></a></div>
 </div></nav>
 
 <main>
@@ -42,11 +42,13 @@
   <div class="marks" id="marks" aria-hidden="true"></div>
   <div class="wrap">
     <div class="htop" id="htop">
-      <h1 class="split" id="h1">Flatten the noise.<br><span class="ln2">Follow the signal.</span></h1>
+      <p class="eyebrow pre">Dark-web OSINT · hosted · open source</p>
+      <h1 class="split" id="h1">Dark-web threat intel<br><span class="ln2">in your browser.</span></h1>
       <div class="hside">
-        <p class="lede split" id="lede">VoidAccess turns one research question into structured threat intelligence, in your browser. Nothing to install, no Tor to run.</p>
-        <div class="acts pre"><a class="btn btn-light mag" href="/sign-in"><span>Start free</span><span class="arr" aria-hidden="true"></span></a><a class="btn btn-line" href="#pipeline"><span>Fly the pipeline</span></a></div>
-        <p class="hnote pre">100 free credits every month. No card. <a class="ul-link" href="/pricing">See pricing</a></p>
+        <p class="lede split" id="lede">Ask one question. VoidAccess searches 12+ Tor search engines, GitHub and security feeds in parallel, then gives you back actors, wallets, leaked credentials and IOCs, ready to export as STIX, MISP or Sigma. No Tor to run. Nothing to install.</p>
+        <div class="acts pre"><a class="btn btn-light mag" href="/sign-in"><span>Start free</span><span class="arr" aria-hidden="true"></span></a><a class="btn btn-line" href="#how"><span>How it works</span></a></div>
+        <p class="hnote pre">__VA_FREE_CREDITS__ free credits a month · no card · from __VA_PRO_PRICE__/mo after that</p>
+        <p class="proof pre"><span>Open source (MIT)</span><a href="https://github.com/KatrielMoses/VoidAccess" target="_blank" rel="noopener">__VA_STARS__★ on GitHub</a><span>__VA_DOWNLOADS__+ downloads</span><span>Built by Katriel Moses, who found CVE-2026-50112 (Apache CloudStack RCE)</span></p>
       </div>
     </div>
   </div>
@@ -54,84 +56,91 @@
 </header>
 
 <template id="stackTpl">
-  <va-stack layout="fan" chrome="minimal" delay="120" ry="-24" rx="12">
-    <figure data-label="Collection · 5 sources"><div class="ro"><div class="t"><span>investigation 0412</span><b>collecting</b></div>
-      <div class="rw"><span>Tor indexes</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="0"/></svg></div>
-      <div class="rw"><span>Threat intel</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="1"/></svg></div>
-      <div class="rw"><span>GitHub</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="2"/></svg></div>
-      <div class="rw"><span>Security feeds</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="3"/></svg></div>
-      <div class="rw"><span>.onion seeds</span><svg viewBox="0 0 200 22" preserveAspectRatio="none"><path data-k="4"/></svg></div>
-    </div></figure>
+  <!-- the sample investigation sits in front, full size; the other windows peek out behind it -->
+  <va-stack layout="fan" chrome="minimal" delay="120" ry="-24" rx="12" pos="-.22 -.34 -170 1, .2 -.2 -60 .82, .32 .1 40 .66, -.08 .08 170 1">
     <figure class="cardimg" data-label="Entity graph"><img src="/assets/cloud-graph.png" alt=""></figure>
     <figure data-label="Extracted · defanged"><div class="ro"><div class="t"><span>entities</span><b>6 found</b></div>
       <div class="e"><span>actor</span><span data-v="LockBitSupp">LockBitSupp</span></div><div class="e"><span>malware</span><span data-v="LockBit 3.0">LockBit 3.0</span></div><div class="e"><span>cve</span><span data-v="CVE-2023-4966">CVE-2023-4966</span></div><div class="e"><span>wallet</span><span data-v="bc1q…k7x2">bc1q…k7x2</span></div><div class="e"><span>onion</span><span data-v="lockbit…[.]onion">lockbit…[.]onion</span></div><div class="e"><span>handle</span><span data-v="@ransom_ops">@ransom_ops</span></div>
     </div></figure>
     <figure class="cardimg" data-label="Summary"><img src="/assets/cloud-summary.png" alt=""></figure>
+    <figure data-label="Investigation · sample"><div class="ro inv"><div class="t"><span>investigation 0412</span><b>collecting</b></div>
+      <div class="e"><span>query</span><span>lockbit affiliate infrastructure, last 30 days</span></div>
+      <div class="e"><span>status</span><span>collecting</span></div>
+      <div class="e"><span>sources</span><span>Tor indexes · GitHub · threat intel · security feeds · .onion seeds</span></div>
+      <div class="e"><span>found</span><span>6 entities found: actor LockBitSupp · malware LockBit 3.0 · CVE-2023-4966 · wallet bc1q…k7x2 · lockbit…[.]onion · @ransom_ops</span></div>
+      <div class="lbls" aria-hidden="true"><span>Export STIX</span><span>Export MISP</span><span>Open graph</span></div>
+    </div></figure>
   </va-stack>
 </template>
 
-<section class="sec" id="sources" style="padding-top:150px;padding-bottom:150px">
+<section class="sec" id="use-cases">
   <div class="wrap">
-    <div class="shead"><span class="n"><i class="dx"></i><span data-t="01 Sources">01 Sources</span></span><h2 class="split">Five sources, <span class="ac">five kinds of terrain.</span></h2><p class="rv">One query fans out in parallel from our servers, through Tor, then follows new .onion links as it finds them.</p></div>
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="01 Use cases">01 Use cases</span></span><h2 class="split">What people <span class="ac">use it for</span></h2></div>
+    <div class="ucs">
+      <div class="uc rv"><span class="ix">01</span><h3>Is your company on a leak site?</h3><p>Search your domain and brand across dark-web search engines and GitHub. See what's being said before an attacker acts on it.</p></div>
+      <div class="uc rv"><span class="ix">02</span><h3>Track a ransomware group</h3><p>Map a group's .onion sites, wallets, handles and the CVEs it exploits, and see how they connect.</p></div>
+      <div class="uc rv"><span class="ix">03</span><h3>Turn a lead into detections</h3><p>Start from a handle, a wallet or a hash. End with IOCs and Sigma, YARA or Suricata rules your SIEM can load.</p></div>
+      <div class="uc rv"><span class="ix">04</span><h3>See what was there before</h3><p>Findings from earlier investigations stay in the VoidAccess archive, dated, so you can still see infrastructure that has since gone offline.</p></div>
+    </div>
+    <p class="secnote rv">For security researchers, threat-intel teams, MSSPs and authorised investigators.</p>
+  </div>
+</section>
+
+<section class="sec" id="sources">
+  <div class="wrap">
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="02 Sources">02 Sources</span></span><h2 class="split">12+ Tor search engines and public threat intel, <span class="ac">searched at once.</span></h2><p class="rv">One query fans out from our servers through Tor and follows new .onion links as it finds them. You never touch Tor yourself.</p></div>
     <div class="chans" id="chans">
-      <div class="chan" data-ch="0"><span class="id pre">CH 1<small>relayed</small></span><h3 class="pre">Tor indexes</h3><div class="rp"><canvas></canvas></div><p class="pre">Torch, Haystack and other onion search engines.</p><i class="rl dx"></i></div>
+      <div class="chan" data-ch="0"><span class="id pre">CH 1<small>relayed</small></span><h3 class="pre">Tor search engines</h3><div class="rp"><canvas></canvas></div><p class="pre">Torch, Ahmia, Tor66 and 9+ more.</p><i class="rl dx"></i></div>
       <div class="chan" data-ch="1"><span class="id pre">CH 2<small>bursty</small></span><h3 class="pre">Threat intel</h3><div class="rp"><canvas></canvas></div><p class="pre">Indicators checked against public threat-intel sources.</p><i class="rl dx"></i></div>
       <div class="chan" data-ch="2"><span class="id pre">CH 3<small>structured</small></span><h3 class="pre">GitHub</h3><div class="rp"><canvas></canvas></div><p class="pre">Leaked keys, tooling, configs.</p><i class="rl dx"></i></div>
       <div class="chan" data-ch="3"><span class="id pre">CH 4<small>periodic</small></span><h3 class="pre">Security feeds</h3><div class="rp"><canvas></canvas></div><p class="pre">Headlines and snippets from research feeds.</p><i class="rl dx"></i></div>
       <div class="chan" data-ch="4"><span class="id pre">CH 5<small>recursive</small></span><h3 class="pre">Curated .onion seeds</h3><div class="rp"><canvas></canvas></div><p class="pre">Known starting points, followed recursively.</p><i class="rl dx"></i></div>
     </div>
+    <p class="enr rv">Checked against public sources including <span class="chip">CISA KEV</span>, <span class="chip">NVD</span>, <span class="chip">MITRE ATT&amp;CK</span>, <span class="chip">crt.sh</span>, <span class="chip">RDAP</span> and the <span class="chip">Wayback Machine</span>.</p>
   </div>
 </section>
 
-<section class="pipe" id="pipeline" aria-label="Pipeline">
-  <div class="tcv" id="tPipe" aria-hidden="true"></div>
-  <div class="pui">
-    <div class="wrap">
-      <div class="ptop">
-        <span class="plab"><i></i>02 Pipeline</span>
-        <div class="phead">
-          <div class="snum">Stage <span class="odo" id="odo" aria-hidden="true"></span><span>of 13</span><span style="margin-left:14px;color:var(--mute)" id="pphase">Gather</span></div>
-          <h2 id="ptitle" aria-live="polite">Refine the query</h2>
-          <p id="pdesc">The selected LLM sharpens your research question before anything is collected.</p>
-        </div>
-        <div class="meter">
-          <div class="read">
-            <div><small>Relief</small><b id="mRel">100<i>%</i></b></div>
-            <div><small>Signal</small><b id="mSig">0<i>%</i></b></div>
-            <div class="sn"><small>SNR</small><b id="mSnr">−9<i>dB</i></b></div>
-          </div>
-          <svg class="prof" id="prof" viewBox="0 0 300 44" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="300" y1="43.5" y2="43.5"/><path/></svg>
-        </div>
-      </div>
-    </div>
-    <div class="wrap">
-      <div class="ruler" id="ruler" aria-hidden="true">
-        <svg id="rsvg" viewBox="0 0 1000 10" preserveAspectRatio="none"></svg>
-        <i class="rtrack"></i><i class="rfill" id="rfill"></i><i class="caret" id="caret"></i>
-        <div class="cells" id="cells"></div>
-        <div class="phases" id="phases"><span style="grid-column:1/9" class="on">Gather</span><span style="grid-column:9/13">Understand</span><span style="grid-column:13/14">Deliver</span></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="sec" id="entities" style="padding-top:150px;padding-bottom:160px">
+<section class="sec" id="how">
   <div class="wrap">
-    <div class="shead"><span class="n"><i class="dx"></i><span data-t="03 Entities">03 Entities</span></span><h2 class="split">What holds its shape <span class="ac">when the ground goes flat.</span></h2><p class="rv">Regex, NER and optional LLM analysis, cross-referenced against what you have collected before. Values are defanged samples.</p></div>
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="03 How it works">03 How it works</span></span><h2 class="split">From question to report <span class="ac">in one run.</span></h2></div>
+    <ol class="steps">
+      <li class="step rv"><span class="ix">01</span><h3>Ask</h3><p>Type a question in plain English. The AI sharpens it before anything is collected.</p></li>
+      <li class="step rv"><span class="ix">02</span><h3>Collect</h3><p>Dark-web search engines, GitHub and security feeds are searched in parallel through Tor.</p></li>
+      <li class="step rv"><span class="ix">03</span><h3>Filter</h3><p>Noise, duplicates and prohibited content are dropped automatically.</p></li>
+      <li class="step rv"><span class="ix">04</span><h3>Extract</h3><p>Actors, wallets, credentials, CVEs and IOCs are pulled out and cross-checked.</p></li>
+      <li class="step rv"><span class="ix">05</span><h3>Deliver</h3><p>You get a summary, a searchable relationship graph and an export-ready result.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="sec" id="entities">
+  <div class="wrap">
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="04 Entities">04 Entities</span></span><h2 class="split">It pulls out <span class="ac">what analysts actually need.</span></h2><p class="rv">Pattern matching, entity recognition and optional AI analysis, cross-referenced against earlier findings. Values below are defanged samples.</p></div>
     <div class="ents" id="ents">
-      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">01</span><span class="ty">actor</span><b>Threat actors</b><code class="vl">LockBitSupp</code></div>
-      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">02</span><span class="ty">malware</span><b>Malware</b><code class="vl">LockBit 3.0</code></div>
-      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">03</span><span class="ty">cve</span><b>CVEs</b><code class="vl">CVE-2023-4966</code></div>
-      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">04</span><span class="ty">wallet</span><b>Wallets</b><code class="vl">bc1q…k7x2</code></div>
-      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">05</span><span class="ty">handle</span><b>Handles and credentials</b><code class="vl">@ransom_ops</code></div>
-      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">06</span><span class="ty">ioc</span><b>IOCs and infrastructure</b><code class="vl">lockbit…[.]onion</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">01</span><span class="ty">actor</span><b>Threat actors and ransomware groups</b><span class="nt"></span><code class="vl">LockBitSupp</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">02</span><span class="ty">malware</span><b>Malware families</b><span class="nt"></span><code class="vl">LockBit 3.0</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">03</span><span class="ty">cve</span><b>CVEs and ATT&amp;CK techniques</b><span class="nt"></span><code class="vl">CVE-2023-4966</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">04</span><span class="ty">wallet</span><b>Crypto wallets</b><span class="nt">BTC, ETH, XMR and 8 more chains</span><code class="vl">bc1q…k7x2</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">05</span><span class="ty">handle</span><b>Handles</b><span class="nt">Telegram, Discord, XMPP, Tox, Session, Matrix</span><code class="vl">@ransom_ops</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">06</span><span class="ty">credential</span><b>Leaked credentials, always masked</b><span class="nt">cloud keys, tokens, stealer logs, combo lists</span><code class="vl">svc_backup:••••••</code></div>
+      <div class="ent" tabindex="0"><svg viewBox="-115 -85 230 170" aria-hidden="true"></svg><span class="ix">07</span><span class="ty">ioc</span><b>Infrastructure</b><span class="nt">IPs, domains, .onion, hashes</span><code class="vl">lockbit…[.]onion</code></div>
     </div>
+  </div>
+</section>
+
+<section class="sec" id="product">
+  <div class="wrap">
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="05 Product">05 Product</span></span><h2 class="split">This is what <span class="ac">you get back.</span></h2></div>
+    <figure class="shot rv">
+      <div class="frame"><img src="/assets/product-graph.webp" width="1440" height="634" loading="lazy" decoding="async" alt="A VoidAccess investigation's results: a relationship graph of actors, malware, CVEs and onion links, with a sidebar listing extracted values by type and a toolbar for zoom, layout and table view."></div>
+      <figcaption>A summary you can send, a graph you can search, and IOCs you can load. Viewing results and exporting cost nothing.</figcaption>
+    </figure>
   </div>
 </section>
 
 <section class="xfield" id="exports">
   <div class="wrap">
-    <div class="shead"><span class="n"><i class="dx"></i><span data-t="04 Exports">04 Exports</span></span><h2 class="split">Nine formats for the tools you already run.</h2><p class="rv">Every investigation ends in a summary and an export-ready result. CSV and JSON on every plan.</p></div>
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="06 Exports">06 Exports</span></span><h2 class="split">Nine formats for the tools you already run.</h2><p class="rv">STIX 2.1 and MISP for sharing. Sigma, YARA, Snort and Suricata for detection. CSV, JSON and Markdown for everything else. CSV and JSON are on every plan, including Free.</p></div>
     <div class="xrow" id="xrow">
       <svg class="xprof" id="xprof" viewBox="0 0 900 41" preserveAspectRatio="none" aria-hidden="true"><path/></svg>
       <i class="xb dx"></i>
@@ -148,10 +157,52 @@
   </div>
 </section>
 
+<section class="sec" id="compare">
+  <div class="wrap">
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="07 Compare">07 Compare</span></span><h2 class="split">Enterprise threat-intel output <span class="ac">without the enterprise price.</span></h2></div>
+    <div class="off">
+      <table class="cmp rv">
+        <caption class="sr">Enterprise dark-web intel platforms compared with VoidAccess</caption>
+        <thead><tr><td></td><th scope="col">Enterprise dark-web intel platforms</th><th scope="col">VoidAccess</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Price</th><td data-col="Enterprise dark-web intel platforms">From ~$40k a year, sales call first</td><td class="va" data-col="VoidAccess">Free, then from __VA_PRO_PRICE__/mo</td></tr>
+          <tr><th scope="row">Setup</th><td data-col="Enterprise dark-web intel platforms">Procurement and onboarding</td><td class="va" data-col="VoidAccess">Sign in and search</td></tr>
+          <tr><th scope="row">STIX / MISP export</th><td data-col="Enterprise dark-web intel platforms">Yes</td><td class="va" data-col="VoidAccess">Yes</td></tr>
+          <tr><th scope="row">Open source</th><td data-col="Enterprise dark-web intel platforms">No</td><td class="va" data-col="VoidAccess">Yes, MIT. Self-host free forever</td></tr>
+        </tbody>
+      </table>
+      <p class="secnote rv">They have closed-forum access, analyst teams and years of archives. We don't. VoidAccess is for researchers and small teams who need answers today, not a contract.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="open-source">
+  <div class="wrap">
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="08 Open source">08 Open source</span></span><h2 class="split">Open source at the core.</h2><p class="rv">The engine is MIT-licensed on GitHub with __VA_STARS__★. Run it yourself for free, or skip setting up Tor, Docker and API keys from __VA_PRO_PRICE__ a month.</p></div>
+    <div class="off osrow rv">
+      <button class="cmd" type="button" data-copy="pip install voidaccess" aria-label="Copy command: pip install voidaccess"><span class="pr" aria-hidden="true">$</span><span class="tx">pip install voidaccess</span><span class="cp">Copy</span></button>
+      <a class="btn btn-line" href="https://github.com/KatrielMoses/VoidAccess" target="_blank" rel="noopener"><span>View on GitHub</span><span class="arr" aria-hidden="true"></span></a>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="faq">
+  <div class="wrap">
+    <div class="shead"><span class="n"><i class="dx"></i><span data-t="09 Questions">09 Questions</span></span><h2 class="split">Questions security teams ask first</h2></div>
+    <div class="off faq rv">
+      <details><summary><span>Is this legal?</span><i aria-hidden="true"></i></summary><div class="a"><p>VoidAccess searches publicly reachable sources: Tor search engines, code hosts and public threat feeds. It doesn't log into closed forums or buy data. Every account agrees to our <a class="inl" href="/acceptable-use">Acceptable Use Policy</a>, which limits use to security research and authorised investigation.</p></div></details>
+      <details><summary><span>Will it show me illegal content?</span><i aria-hidden="true"></i></summary><div class="a"><p>Safety filters block prohibited queries, links and page content before anything reaches you, and results never link to dark-web pages. Found addresses are shown as text you can copy, not links.</p></div></details>
+      <details><summary><span>What happens to my queries?</span><i aria-hidden="true"></i></summary><div class="a"><p>Your investigations are kept while your account is open and deleted when you delete it. Queries and collected text go to our AI providers to refine the search and write the summary, never with your account details. Findings go into an anonymous, dated archive that never contains your identity or your query text. <a class="inl" href="/privacy">Read the privacy policy.</a></p></div></details>
+      <details><summary><span>Who is it not for?</span><i aria-hidden="true"></i></summary><div class="a"><p>Stalking, doxxing, harassment, or anyone looking for illegal content or services. We close accounts that try.</p></div></details>
+      <details><summary><span>Can I self-host instead?</span><i aria-hidden="true"></i></summary><div class="a"><p>Yes. <code>pip install voidaccess</code>, MIT licence, free forever.</p></div></details>
+    </div>
+  </div>
+</section>
+
 <section class="final" id="start">
   <div class="wrap">
     <h2 class="split">What will you hunt <span class="ac">today?</span></h2>
-    <p class="sub rv">Hosted, nothing to install. For security researchers, threat-intel teams and authorised investigators.</p>
+    <p class="sub rv">Hosted, nothing to install. __VA_FREE_CREDITS__ free credits every month, about __VA_FREE_QUICK__ Quick or __VA_FREE_STANDARD__ Standard investigations. No card.</p>
     <div class="hl rv">
       <form class="hunt" id="hunt" action="/sign-in" onsubmit="return false">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.75"/><path d="M13 13l4.5 4.5" stroke-linecap="round"/></svg>
@@ -159,7 +210,7 @@
         <button class="mag" type="submit"><span>Hunt</span><span class="arr" aria-hidden="true"></span></button>
       </form>
     </div>
-    <div class="alt rv">Free to start. Already have an account? <a class="ul-link" href="/sign-in">Sign in</a><span class="self">Prefer to self-host? <button class="cc" type="button" data-copy="pip install voidaccess" aria-label="Copy command: pip install voidaccess"><code>pip install voidaccess</code><span>Copy</span></button></span></div>
+    <div class="alt rv">Already have an account? <a class="ul-link" href="/sign-in">Sign in</a><span class="self">Prefer to self-host? <button class="cc" type="button" data-copy="pip install voidaccess" aria-label="Copy command: pip install voidaccess"><code>pip install voidaccess</code><span>Copy</span></button></span></div>
   </div>
   <div class="tcv" id="tFinal" aria-hidden="true"></div>
 </section>

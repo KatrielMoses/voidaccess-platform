@@ -2,7 +2,7 @@ import { FOUNDING, PLANS, type Feature, type PlanId } from "@voidaccess/config";
 import { SUPPORT_EMAIL } from "@content/legal-common";
 import * as pricing from "@content/pricing";
 import { APP_URL } from "@/lib/auth/config";
-import { money, number, resolve, topupRows } from "@/lib/facts";
+import { money, resolve, topupRows } from "@/lib/facts";
 import { pageMetadata } from "@/lib/metadata";
 import { Reveal } from "@/components/motion";
 
@@ -13,22 +13,69 @@ const r = resolve;
 const billingNext = `/sign-in?next=${encodeURIComponent(`${APP_URL}/billing`)}`;
 const ctaHref = (id: PlanId) => (id === "free" ? "/sign-in" : billingNext);
 
-function Features({ features, extras }: { features: readonly Feature[]; extras: readonly string[] }) {
+/**
+ * A plan's list: its lead lines (credits first, in paper), its extras, then its features from config. With
+ * `roadmap`, features that haven't shipped move to their own group under a heading instead of carrying a "soon" note.
+ */
+function Features({
+  features,
+  lead,
+  extras,
+  roadmap = false,
+}: {
+  features: readonly Feature[];
+  lead: readonly string[];
+  extras: readonly string[];
+  roadmap?: boolean;
+}) {
+  const all = features
+    .filter((f) => f !== "deep" && pricing.featureLabels[f])
+    .map((f) => ({ key: f, label: pricing.featureLabels[f]!.label, soon: !!pricing.featureLabels[f]!.soon }));
   const rows = [
-    ...extras.map((e) => ({ key: e, label: r(e), soon: false })),
-    ...features
-      .filter((f) => f !== "deep" && pricing.featureLabels[f])
-      .map((f) => ({ key: f, label: pricing.featureLabels[f]!.label, soon: !!pricing.featureLabels[f]!.soon })),
+    ...lead.map((e) => ({ key: e, label: r(e), soon: false, lead: true })),
+    ...extras.map((e) => ({ key: e, label: r(e), soon: false, lead: false })),
+    ...all.filter((x) => !roadmap || !x.soon).map((x) => ({ ...x, lead: false })),
   ];
+  const later = roadmap ? all.filter((x) => x.soon) : [];
   return (
-    <ul className="mt-6 flex flex-1 flex-col border-t border-line text-[15px] leading-snug text-dim">
-      {rows.map((x) => (
-        <li key={x.key} className="border-b border-line py-3">
-          {x.label}
-          {x.soon && <span className="ml-2 font-mono text-[12px] text-mute">{pricing.planCopy.soonNote.toLowerCase()}</span>}
-        </li>
-      ))}
-    </ul>
+    <div className="mt-6 flex flex-1 flex-col">
+      <ul className="flex flex-col border-t border-line text-[15px] leading-snug text-dim">
+        {rows.map((x) => (
+          <li key={x.key} className={`border-b border-line py-3 ${x.lead ? "text-paper" : ""}`}>
+            {x.label}
+            {x.soon && <span className="ml-2 font-mono text-[12px] text-mute">{pricing.planCopy.soonNote.toLowerCase()}</span>}
+          </li>
+        ))}
+      </ul>
+      {later.length > 0 && (
+        <>
+          <p className="mt-7 font-mono text-[12px] text-mute">{pricing.planCopy.roadmapHeading}</p>
+          <ul className="mt-3 flex flex-col border-t border-line text-[15px] leading-snug text-mute">
+            {later.map((x) => (
+              <li key={x.key} className="border-b border-line py-3">
+                {x.label}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Pro's monthly price during the founding offer: the regular price struck through, then the founding price. */
+function FoundingPrice() {
+  return (
+    <>
+      <p className="mt-8 font-mono tabular-nums group-has-[#bill-annual:checked]/bill:hidden">
+        <span className="sr-only">{pricing.planCopy.regularPrice} </span>
+        <s className="text-[22px] leading-none tracking-[-0.03em] text-mute">{money(PLANS[FOUNDING.plan].monthlyUsd)}</s>
+        <span className="sr-only">, {pricing.planCopy.foundingPriceLabel} </span>
+        <span className="ml-3 text-[40px] leading-none tracking-[-0.04em]">{money(FOUNDING.monthlyUsd)}</span>
+        <span className="ml-1 text-[13px] text-mute">{pricing.planCopy.perMonth}</span>
+      </p>
+      <p className="mt-3 font-mono text-[13px] text-paper group-has-[#bill-annual:checked]/bill:hidden">{r(pricing.planCopy.foundingNote)}</p>
+    </>
   );
 }
 
@@ -95,20 +142,21 @@ export default function PricingPage() {
               <div key={p.id} className="flex flex-col bg-bg p-7 min-[961px]:p-8">
                 <h3 className="text-[24px] leading-none tracking-[-0.03em]">{p.name}</h3>
                 <p className="mt-2 text-[15px] text-dim">{copy.tagline}</p>
-                <p className="mt-8 font-mono tabular-nums group-has-[#bill-annual:checked]/bill:hidden">
-                  <span className="text-[40px] leading-none tracking-[-0.04em]">{money(p.monthlyUsd)}</span>
-                  <span className="ml-1 text-[13px] text-mute">{pricing.planCopy.perMonth}</span>
-                </p>
+                {p.id === FOUNDING.plan ? (
+                  <FoundingPrice />
+                ) : (
+                  <p className="mt-8 font-mono tabular-nums group-has-[#bill-annual:checked]/bill:hidden">
+                    <span className="text-[40px] leading-none tracking-[-0.04em]">{money(p.monthlyUsd)}</span>
+                    <span className="ml-1 text-[13px] text-mute">{pricing.planCopy.perMonth}</span>
+                  </p>
+                )}
                 <p className="mt-8 hidden font-mono tabular-nums group-has-[#bill-annual:checked]/bill:block">
                   <span className="text-[40px] leading-none tracking-[-0.04em]">{money(p.annualUsd ?? p.monthlyUsd)}</span>
                   <span className="ml-1 text-[13px] text-mute">
                     {p.annualUsd ? pricing.planCopy.perYear : pricing.planCopy.perMonth}
                   </span>
                 </p>
-                <p className="mt-3 font-mono text-[13px] text-paper">
-                  {number(p.monthlyCredits)} {pricing.planCopy.credits}
-                </p>
-                <Features features={p.features} extras={copy.extras} />
+                <Features features={p.features} lead={copy.lead} extras={copy.extras} roadmap={p.id === "pro_plus"} />
                 <a href={ctaHref(p.id)} className={`va-btn va-btn-block mt-8 ${p.id === "pro" ? "va-btn-light" : "va-btn-line"}`}>
                   <span>{copy.cta}</span>
                 </a>
@@ -118,23 +166,31 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Founding seats: the page's one violet field. */}
+      {/* Founding seats: the page's one violet field. The rules sit in a native disclosure (closed; works without JavaScript). */}
       <section id="founding" aria-labelledby="founding-h" className="mt-24 rounded-[6px] bg-v-600 p-8 text-paper min-[961px]:mt-[150px] min-[961px]:p-12">
-        <div className="grid grid-cols-1 gap-10 min-[961px]:grid-cols-12">
-          <div className="min-[961px]:col-span-5">
+        <div className="grid grid-cols-1 gap-8 min-[961px]:grid-cols-12 min-[961px]:items-end">
+          <div className="min-[961px]:col-span-8">
             <p className="font-mono text-[13px] text-v-100">{pricing.founding.badge}</p>
             <h2 id="founding-h" className="mt-4 text-[clamp(32px,3.6vw,48px)] leading-none tracking-[-0.04em]">
               {r(pricing.founding.title)}
             </h2>
-            <p className="mt-5 text-[17px] leading-normal text-v-100">{r(pricing.founding.lead)}</p>
-            <p className="mt-5 font-mono text-[13px] text-v-100">
-              {FOUNDING.seats} seats, first come first served
-            </p>
-            <a href={billingNext} className="va-btn va-btn-light mt-7">
+            <p className="mt-5 max-w-[56ch] text-[17px] leading-normal text-v-100">{r(pricing.founding.lead)}</p>
+          </div>
+          <div className="min-[961px]:col-span-4 min-[961px]:justify-self-end">
+            <a href={billingNext} className="va-btn va-btn-light">
               <span>{pricing.founding.cta}</span>
             </a>
           </div>
-          <ol className="flex flex-col border-t border-paper/30 min-[961px]:col-span-7">
+        </div>
+        <details className="group/rules mt-10 border-t border-paper/30">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-4 font-mono text-[13px] text-v-100 transition-colors duration-300 hover:text-paper [&::-webkit-details-marker]:hidden">
+            {pricing.founding.rulesSummary}
+            <span
+              aria-hidden
+              className="relative inline-block h-3 w-3 before:absolute before:inset-x-0 before:top-1/2 before:h-px before:bg-current after:absolute after:inset-x-0 after:top-1/2 after:h-px after:rotate-90 after:bg-current after:transition-transform after:duration-500 group-open/rules:after:rotate-0"
+            />
+          </summary>
+          <ol className="flex flex-col border-t border-paper/30">
             {pricing.founding.rules.map((x, i) => (
               <li key={x} className="grid grid-cols-[40px_1fr] border-b border-paper/30 py-4 text-[15px] leading-normal">
                 <span className="font-mono text-[12px] text-v-100">{String(i + 1).padStart(2, "0")}</span>
@@ -142,7 +198,7 @@ export default function PricingPage() {
               </li>
             ))}
           </ol>
-        </div>
+        </details>
       </section>
 
       <section id="credits" aria-labelledby="credits-h" className="mt-24 min-[961px]:mt-[150px]">

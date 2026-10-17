@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 
 const root = join(import.meta.dirname, "..");
 const SCAN = ["src", "content"];
-const EXT = new Set([".ts", ".tsx", ".md", ".mdx", ".json", ".css"]);
+// .html covers the static home page (src/home/index.html), whose prices and credits are __VA_*__ tokens.
+const EXT = new Set([".ts", ".tsx", ".md", ".mdx", ".json", ".css", ".html"]);
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {
@@ -20,6 +21,12 @@ const RULES: [string, RegExp][] = [
   ["credit amount", /\b\d+\s*credits?\b|\bcredits?\s*[:=]?\s*\d/i],
 ];
 
+/**
+ * Figures that are not ours, allowed on purpose: the comparison table quotes what enterprise platforms cost
+ * ("From ~$40k a year"). Matched text is removed before the rules run, so the rest of the line is still checked.
+ */
+const ALLOWED: RegExp[] = [/From ~\$\d+k a year/g];
+
 describe("prices come only from @voidaccess/config", () => {
   const files = SCAN.flatMap((d) => walk(join(root, d)));
   it("scans a meaningful number of files", () => expect(files.length).toBeGreaterThan(30));
@@ -29,7 +36,8 @@ describe("prices come only from @voidaccess/config", () => {
       for (const f of files) {
         readFileSync(f, "utf8")
           .split("\n")
-          .forEach((line, i) => {
+          .forEach((raw, i) => {
+            const line = ALLOWED.reduce((l, a) => l.replace(a, ""), raw);
             if (re.test(line)) hits.push(`${f.replace(root + "/", "")}:${i + 1}: ${line.trim().slice(0, 100)}`);
           });
       }

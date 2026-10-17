@@ -1,5 +1,5 @@
 /* WebGL terrain fields (three.js r186). Locked from mockup 81. */
-/* The home page's three fields (hero, pipeline, final). The shaders and the Field class live in terrain-field.js,
+/* The home page's two fields (hero, final). The shaders and the Field class live in terrain-field.js,
    shared with the React pages. */
 import * as THREE from 'three';
 import { Field, calmField } from './terrain-field.js';
@@ -55,22 +55,6 @@ try {
     },
   });
   fields.push(hero);
-
-  /* ---- pipeline: a flyover; the ground flattens stage by stage into one clean wave ---- */
-  let flow = 0, lastPP = -1;
-  const pipe = new Field(document.getElementById('tPipe'), {
-    still, mode: 1, fov: 34, W: 24, D: 30, sx: 340, sz: 320, cz: -8, spacing: .18, scale: .9, far: 30, sig0: -3,
-    update(f, dt) {
-      const P = SIG.pipe.P, mob = small();
-      flow += dt * (.55 * (1 - T.sm(.55, .95, P)) + .02);
-      f.u.uFlow.value = flow; f.u.uP.value = P; f.u.uOn.value = SIG.pipe.on;
-      const lift = T.sm(.4, 1, P);
-      f.cam.position.set(0, (mob ? 2.6 : 1.9) + lift * 1.6, mob ? 11 : 8.5);
-      f.cam.lookAt(0, f.cam.position.y - (mob ? 1.7 : 1.12), -4);
-      const ch = P !== lastPP; lastPP = P; return ch;
-    },
-  });
-  fields.push(pipe);
 
   /* ---- final: calm water-like field; keystrokes ripple outward like the logo's rings ---- */
   const fin = calmField(document.getElementById('tFinal'), SIG.final, { still, small });

@@ -6,6 +6,7 @@ import { auth } from "@content/auth";
 import { getConsent, getFirstTouch } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import { APP_URL, CAPTCHA_HEADER } from "@/lib/auth/config";
+import { GITHUB_URL } from "@/lib/site";
 import { firstTouchPayload } from "@/lib/auth/first-touch";
 import { safeNext } from "@/lib/auth/safe-next";
 import { leave } from "@/lib/motion";
@@ -19,9 +20,10 @@ const RESEND_COOLDOWN_S = 30;
 
 /**
  * One page for everyone: Google, Microsoft, GitHub, or a 6-digit code by email. The first sign-in creates the
- * account; afterwards the same steps simply sign the user back in.
+ * account; afterwards the same steps simply sign the user back in. `description` (credit numbers from config) and
+ * `github` (the live star count) are resolved on the server by the page.
  */
-export function SignInForm() {
+export function SignInForm({ description, github }: { description: string; github: string }) {
   const params = useSearchParams();
   const target = safeNext(params.get("next"), APP_URL);
   const [step, setStep] = useState<"email" | "code">("email");
@@ -117,7 +119,7 @@ export function SignInForm() {
   if (step === "code") {
     return (
       <div ref={card} key="code">
-        <AuthCard index={t.steps[1]} title={t.codeTitle} description={t.codeSent.replace("{email}", email)} entrance={entrance}>
+        <AuthCard title={t.codeTitle} description={t.codeSent.replace("{email}", email)} entrance={entrance}>
           <form onSubmit={onCode} className="flex flex-col gap-5">
             <Field
               id="code"
@@ -173,7 +175,7 @@ export function SignInForm() {
   const [before, between, after] = splitTerms(t.terms);
   return (
     <div ref={card} key="email">
-      <AuthCard index={t.steps[0]} title={t.title} description={t.description} entrance={entrance}>
+      <AuthCard title={t.title} description={description} entrance={entrance}>
         <ProviderButtons callbackURL={target} />
         <OrDivider />
         <form onSubmit={onEmail} className="flex flex-col gap-5">
@@ -190,6 +192,11 @@ export function SignInForm() {
           {between}
           <TextLink href="/acceptable-use">{t.aupLink}</TextLink>
           {after}
+        </p>
+        <p className="text-[15px] leading-normal text-mute" data-va-up>
+          <a className="va-tl" href={GITHUB_URL} target="_blank" rel="noopener">
+            {github}
+          </a>
         </p>
       </AuthCard>
     </div>

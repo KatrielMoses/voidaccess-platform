@@ -38,6 +38,7 @@ const STATIC: Record<string, RegExp> = {
   "/assets/og.png": /^image\/png/,
   "/assets/cloud-graph.png": /^image\/png/,
   "/assets/cloud-summary.png": /^image\/png/,
+  "/assets/product-graph.webp": /^image\/webp/,
 };
 const BLOCKED = ["/features", "/trust", "/open-source", "/waitlist", "/waitlist/check-email", "/waitlist/confirmed", "/llms.txt", "/llms-full.txt", "/og", "/sitemap.xml", "/api/waitlist", "/api/waitlist/confirm", "/api/founding/seats", "/pl/event", "/pl/script.js"];
 
@@ -55,12 +56,22 @@ test.describe("routes", () => {
     });
   }
 
-  test("/ is the static home page with the app's origin filled in, and every file it references is served", async ({ request }) => {
+  test("/ is the static home page with the app's origin, prices and live numbers filled in, and every file it references is served", async ({ request }) => {
     const res = await request.get("/");
     expect(res.headers()["content-type"]).toMatch(/^text\/html/);
     const html = await res.text();
     const source = readFileSync(path.join(import.meta.dirname, "../../src/home/index.html"), "utf8");
-    expect(html).toBe(source.replace("__VA_APP_URL__", APP));
+    // Byte-for-byte the source, with every __VA_*__ token filled: the app origin exactly, the rest with short values
+    // (prices from config, stars and downloads live or their fallback).
+    const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = source
+      .split(/(__VA_[A-Z_]+?__)/)
+      .map((part) => (part === "__VA_APP_URL__" ? esc(APP) : part.startsWith("__VA_") ? "[$\\w.]{1,8}" : esc(part)))
+      .join("");
+    expect(html).toMatch(new RegExp(`^${pattern}$`));
+    expect(html).not.toContain("__VA_");
+    expect(html).toMatch(/\d[\d.]*k?★ on GitHub/);
+    expect(html).toMatch(/\d[\d.]*[kM]?\+ downloads/);
     const refs = new Set([...html.matchAll(/(?:href|src)="(\/[^"#]*)"/g)].map((m) => m[1]!).filter((u) => /^\/(assets|css|js|vendor|fonts)\/|^\/site\.webmanifest$/.test(u)));
     refs.add("/vendor/three/three.module.min.js"); // the importmap target
     for (const ref of refs) {
@@ -125,6 +136,28 @@ test.describe("routes", () => {
     await expect(page).toHaveURL(`${APP}/investigations/new?q=LockBit%20ransomware%20group`);
   });
 
+  test("home FAQ answers open from the keyboard; the pricing page keeps the founding rules in a closed disclosure", async ({ page }) => {
+    await page.goto("/?static");
+    const legal = page.locator("#faq details").first();
+    await expect(legal).not.toHaveAttribute("open", "");
+    await legal.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(legal).toHaveAttribute("open", "");
+    await expect(legal.getByRole("link", { name: "Acceptable Use Policy" })).toHaveAttribute("href", "/acceptable-use");
+    await page.goto("/pricing");
+    const rules = page.locator("#founding details");
+    await expect(rules).not.toHaveAttribute("open", "");
+    await rules.locator("summary").click();
+    await expect(rules.getByText("It is not locked for life.", { exact: false })).toBeVisible();
+  });
+
+  test("the sign-in page invites new accounts and links the open-source repo", async ({ page }) => {
+    await page.goto("/sign-in");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Create your free account");
+    await expect(page.getByText("01 Identify")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^Open source on GitHub \(\d[\d.]*k?★\)$/ })).toHaveAttribute("href", "https://github.com/KatrielMoses/VoidAccess");
+  });
+
   test("sign-in, legal and 404 pages offer sign-in in the nav (not on the sign-in page itself)", async ({ page }) => {
     for (const p of ["/terms", "/privacy", "/acceptable-use", "/pricing", "/features"]) {
       await page.goto(p);
@@ -143,7 +176,7 @@ test.describe("routes", () => {
 
   test("home, sign-in, legal and 404 pages link only to pages that exist", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Flatten the noise\.\s*Follow the signal\.$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Dark-web threat intel\s*in your browser\.$/);
     for (const url of ["/", "/pricing", "/sign-in", "/terms", "/privacy", "/acceptable-use", "/features"]) {
       await page.goto(url);
       const hrefs = await page.locator("a[href]").evaluateAll((els) => els.map((a) => a.getAttribute("href") as string));

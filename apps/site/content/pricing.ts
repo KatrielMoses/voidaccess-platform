@@ -22,18 +22,38 @@ export const featureLabels: Record<string, { label: string; soon?: boolean }> = 
   monitors: { label: "Monitors and alerts", soon: true },
   actor_library: { label: "Cross-investigation actor library", soon: true },
   byo_keys: { label: "Bring your own API keys", soon: true },
-  priority_queue: { label: "Priority queue" },
+  priority_queue: { label: "Priority queue", soon: true },
 };
 
+/** `lead` lines open each card's list (credits first); `extras` follow, then the plan's features from config. */
 export const planCopy = {
-  free: { tagline: "Try it on a real question.", cta: "Start free", extras: ["Quick and Standard investigations", "{{free.historyDays}}-day history", "No card required"] },
-  pro: { tagline: "For regular investigations.", cta: "Choose Pro", extras: ["Quick and Standard investigations", "Deep investigations are not available at launch"] },
-  pro_plus: { tagline: "For analysts who live in it.", cta: "Choose Pro+", extras: ["Everything in Pro"] },
+  free: {
+    tagline: "Try it on a real question.",
+    cta: "Start free",
+    lead: ["{{free.credits}} credits a month, about {{free.quickRuns}} Quick or {{free.standardRuns}} Standard investigations", "No card"],
+    extras: ["Quick and Standard investigations", "{{free.historyDays}}-day history"],
+  },
+  pro: {
+    tagline: "For regular investigations.",
+    cta: "Choose Pro",
+    lead: ["{{pro.credits}} credits a month, about {{pro.standardRuns}} Standard investigations"],
+    extras: ["Quick and Standard investigations", "Deep investigations are not available at launch"],
+  },
+  pro_plus: {
+    tagline: "For analysts who live in it.",
+    cta: "Choose Pro+",
+    lead: ["{{plus.credits}} credits a month, about {{plus.standardRuns}} Standard investigations"],
+    extras: ["Everything in Pro"],
+  },
+  /** Pro+ lists its unreleased features in their own group, under this heading. */
+  roadmapHeading: "On the roadmap (Pro+ gets them first)",
+  regularPrice: "Regular price",
+  foundingPriceLabel: "founding price",
+  foundingNote: "{{founding.price}}/mo founding price, first {{founding.seats}} subscribers",
   soonNote: "Coming after launch",
   proBadge: "Founding seats open",
   perMonth: "/mo",
   perYear: "/yr billed annually",
-  credits: "credits every month",
 };
 
 export const explainer = {
@@ -57,7 +77,8 @@ export const topups = {
 export const founding = {
   badge: "Founding seats",
   title: "Founding price {{founding.price}}/mo",
-  lead: "{{founding.copy}}",
+  lead: "Founding seats: {{founding.price}}/mo for the first {{founding.seats}} Pro subscribers. Your price renews every year you stay active. Monthly billing only.",
+  rulesSummary: "Full rules",
   counterLabel: "seats available",
   counterOf: "of",
   counterLoading: "checking seats…",

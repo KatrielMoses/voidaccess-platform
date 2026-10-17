@@ -15,6 +15,7 @@
  *   scroll  none | flatten | spread           what scrolling past it does      (default flatten)
  *   chrome  mac | minimal | none              window title-bar style           (default minimal)
  *   rx, ry  resting rotation in degrees        (layout defaults otherwise)
+ *   pos     card positions overriding the layout's: "x y z s, x y z s, …" (x,y in card widths, z in px, s scale)
  *   delay   entrance delay in ms                                               (default 150)
  * Or supply your own cards as children: <figure data-label="Title"><img src="…"></figure> (or any element).
  * Custom children are slotted (they stay in the light DOM), so ordinary page CSS styles them.
@@ -51,8 +52,10 @@
     connectedCallback() {
       if (this._built) return; this._built = true;
       const th = THEMES[this.getAttribute('theme')] || THEMES.dark;
-      const L = LAYOUTS[this.getAttribute('layout')] || LAYOUTS.fan;
-      this._L = L;
+      const base = LAYOUTS[this.getAttribute('layout')] || LAYOUTS.fan;
+      const pos = (this.getAttribute('pos') || '').split(',').map(t => t.trim().split(/\s+/).map(Number)).filter(p => p.length === 4 && p.every(Number.isFinite));
+      const L = pos.length ? { ...base, pos } : base;
+      this._L = L; this._tower = base === LAYOUTS.tower;
       this._rx0 = parseFloat(this.getAttribute('rx') ?? L.rx);
       this._ry0 = parseFloat(this.getAttribute('ry') ?? L.ry);
       this._rz0 = L.rz;
@@ -197,7 +200,7 @@
       const P = this._L.pos;
       const ex = Math.max(...P.map(([x, , , sc]) => Math.abs(x) + sc / 2)) * 2;
       const ey = Math.max(...P.map(([, y, , sc]) => Math.abs(y) + sc * .3)) * 2;
-      const tower = this._L === LAYOUTS.tower;
+      const tower = this._tower;
       const W = Math.min(maxW, (w * (tower ? .6 : .9)) / ex, (h * (tower ? .95 : .9)) / ey);
       const spread = this._scrollMode === 'spread' ? 1 + this._spread * .55 : 1;
       this._cards.forEach((card, i) => {
