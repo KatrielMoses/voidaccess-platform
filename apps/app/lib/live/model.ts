@@ -155,6 +155,7 @@ export class LiveModel {
     number
   >;
   truncated: Record<string, number> = {};
+  private unseen = new Set<string>();
   stages: Partial<Record<Stage, StageState>> = {};
   counts: Record<string, number> = {};
   kept = 0;
@@ -194,6 +195,26 @@ export class LiveModel {
   signal(): number {
     const n = Math.max(this.entities.size, this.counts.entities_found ?? 0);
     return n === 0 ? 0 : Math.min(1, 0.18 + 0.82 * (1 - Math.exp(-n / 60)));
+  }
+
+  /**
+   * Pages read: the trace count when traces are on (the engine's pages_fetched also counts failed attempts), the
+   * progress count when traces are off or page.fetched was truncated.
+   */
+  pagesRead(): number {
+    const traced = this.found > 0 && !this.truncated["page.fetched"];
+    return traced ? this.fetchedOk : Math.max(this.fetchedOk, this.counts.pages_fetched ?? 0);
+  }
+
+  /**
+   * Entities extracted from pages (what the engine's entities_found counts). Enrichment adds entities with no page;
+   * those are in the graph, not in this number. Falls back to the progress count like pagesRead().
+   */
+  pageEntities(): number {
+    const traced = this.found > 0 && !this.truncated["entity.found"];
+    let fromPages = 0;
+    for (const e of this.entities.values()) if (e.urlId) fromPages++;
+    return traced ? fromPages : Math.max(fromPages, this.counts.entities_found ?? 0);
   }
 
   /** The current stage: the last one started and not finished, else the furthest finished one. */
@@ -336,7 +357,8 @@ export class LiveModel {
       case "url.dropped": {
         const u = this.url(str(d.url_id));
         const reason = str(d.reason);
-        if (!u || !reason || u.state === "dropped") return [];
+        if (!u) return this.unseenDrop(str(d.url_id), reason === "safety" ? "safety" : reason);
+        if (!reason || u.state === "dropped") return [];
         if (u.state === "kept") this.kept--;
         const bucket: TrayBucket = reason === "safety" ? "safety" : (reason as TrayBucket);
         if (!(bucket in this.tray)) return [];
@@ -349,7 +371,8 @@ export class LiveModel {
       case "page.fetched": {
         const u = this.url(str(d.url_id));
         const outcome = str(d.outcome);
-        if (!u || !outcome) return [];
+        if (!u) return outcome === "safety_dropped" ? this.unseenDrop(str(d.url_id), "safety") : [];
+        if (!outcome) return [];
         if (u.fetch) {
           // The latest outcome wins only for the post-scrape safety gate: a page first read "ok" can still be
           // removed. Undo what the earlier outcome counted, then fall through as a safety drop.
@@ -437,6 +460,17 @@ export class LiveModel {
     return id ? this.urls.get(id) : undefined;
   }
 
+  /**
+   * A drop for a link that was never announced: the engine's safety filter can remove a link before its
+   * `url.found` goes out, so it has no host and no mark. It still counts in the tray, once per id.
+   */
+  private unseenDrop(id: string | undefined, reason: string | undefined): Effect[] {
+    if (!id || !reason || !(reason in this.tray) || this.unseen.has(id)) return [];
+    this.unseen.add(id);
+    this.tray[reason as TrayBucket]++;
+    return [];
+  }
+
   private markSafety(u: UrlTrail) {
     u.safety = true;
     u.host = null;
@@ -461,9 +495,9 @@ export class LiveModel {
       case "filter":
         return `Filter: ${found} links found, ${this.kept} kept, ${this.discarded} discarded`;
       case "fetch":
-        return `Fetch: ${Math.max(this.fetchedOk, this.counts.pages_fetched ?? 0)} pages read, ${this.discarded} discarded`;
+        return `Fetch: ${this.pagesRead()} pages read, ${this.discarded} discarded`;
       case "extract":
-        return `Extract: ${Math.max(this.entities.size, this.counts.entities_found ?? 0)} entities found`;
+        return `Extract: ${this.pageEntities()} entities found`;
       case "enrich":
         return `Enrich: ${this.enrich.size} sources checked`;
       case "graph":

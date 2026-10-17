@@ -30,11 +30,11 @@ export function stageStat(m: LiveModel, s: Stage, done: boolean): string {
     case "filter":
       return m.kept || m.discarded ? `${n(m.kept)} kept` : "";
     case "fetch": {
-      const read = Math.max(m.fetchedOk, c.pages_fetched ?? 0);
+      const read = m.pagesRead();
       return read ? `${n(read)} read` : "";
     }
     case "extract": {
-      const e = Math.max(m.entities.size, c.entities_found ?? 0);
+      const e = m.pageEntities();
       return e ? `${n(e)} entities` : "";
     }
     case "enrich":

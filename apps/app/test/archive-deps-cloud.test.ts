@@ -2,7 +2,7 @@ import { gzipSync } from "node:zlib";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const objects = new Map<string, Uint8Array>();
-vi.mock("@/lib/launcher", () => ({ launcherKind: () => "cloudrun" }));
+vi.mock("@/lib/launcher", () => ({ launcherKind: () => "cloudrun", usesLocalArtifacts: () => false }));
 vi.mock("@/lib/launcher/artifacts-gcs", () => ({
   gcsArtifactDeps: () => ({
     readBundle: async (runId: string) => ({ run: runId }),

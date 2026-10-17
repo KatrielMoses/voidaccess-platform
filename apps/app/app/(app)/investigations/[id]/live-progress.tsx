@@ -133,6 +133,18 @@ export function LiveProgress({ initial }: { initial: RunSnapshot }) {
     return { model, player: new Player(model) };
   });
 
+  // The Found counts below read the model too; re-render when it changed (cheap, at most twice a second).
+  const [, setModelVersion] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setModelVersion(live.model.version), 500);
+    return () => clearInterval(t);
+  }, [live]);
+  // With traces, pages read and entities follow the instrument (the engine's pages_fetched counts attempts).
+  const shownCounts =
+    live.model.found > 0
+      ? { ...state.counts, pages_fetched: live.model.pagesRead(), entities_found: live.model.pageEntities() }
+      : state.counts;
+
   // A finished run opened directly: show its final state at rest (no motion).
   useEffect(() => {
     if (!TERMINAL.has(initial.status)) return;
@@ -306,7 +318,7 @@ export function LiveProgress({ initial }: { initial: RunSnapshot }) {
                     className="font-mono text-[28px] leading-none tracking-[-0.04em] text-paper tabular-nums max-[960px]:text-[22px]"
                     data-testid={`count-${key}`}
                   >
-                    {(state.counts[key] ?? 0).toLocaleString("en-US")}
+                    {(shownCounts[key] ?? 0).toLocaleString("en-US")}
                   </p>
                 </div>
               ))}

@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
 vi.mock("@/lib/launcher", async (orig) => ({
   ...(await orig<typeof import("@/lib/launcher")>()),
   launcherKind: () => state.kind,
+  usesLocalArtifacts: () => state.kind !== "cloudrun",
 }));
 vi.mock("@voidaccess/ingest", async (orig) => ({
   ...(await orig<typeof import("@voidaccess/ingest")>()),

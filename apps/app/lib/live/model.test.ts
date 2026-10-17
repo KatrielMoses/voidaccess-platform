@@ -97,6 +97,29 @@ describe("LiveModel", () => {
     expect(m.discarded).toBe(2);
   });
 
+  it("a safety drop for a link that was never announced still counts, once, with no mark", () => {
+    const m = new LiveModel();
+    m.apply(tr("url.found", { url_id: "u1", host: "example[.]com" }));
+    expect(m.apply(tr("url.dropped", { url_id: "u81", reason: "safety" }, 0, "filter"))).toEqual([]);
+    m.apply(tr("page.fetched", { url_id: "u81", outcome: "safety_dropped" }, 0, "fetch"));
+    m.apply(tr("url.dropped", { url_id: "u82", reason: "boring" }, 0, "filter"));
+    expect(m.tray.safety).toBe(1);
+    expect(m.discarded).toBe(1);
+    expect(m.found).toBe(1);
+    expect(m.urls.has("u81")).toBe(false);
+  });
+
+  it("pages read follow the traces, not the engine's attempt count", () => {
+    const m = new LiveModel({ counts: { pages_fetched: 3 } });
+    for (const i of [1, 2, 3]) m.apply(tr("url.found", { url_id: `u${i}`, host: "example[.]com" }));
+    m.apply(tr("page.fetched", { url_id: "u1", outcome: "ok" }, 0, "fetch"));
+    m.apply(tr("page.fetched", { url_id: "u2", outcome: "timeout" }, 0, "fetch"));
+    expect(m.pagesRead()).toBe(1);
+    m.apply(tr("trace.truncated", { kind: "page.fetched", dropped: 40 }, 0, "fetch"));
+    expect(m.pagesRead()).toBe(3);
+    expect(new LiveModel({ counts: { pages_fetched: 5 } }).pagesRead()).toBe(5);
+  });
+
   it("never double-counts a replayed or reconnected event, and ignores unknown kinds", () => {
     const m = new LiveModel();
     const e = tr("url.found", { url_id: "u1", host: "example[.]com" });
