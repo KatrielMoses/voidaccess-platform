@@ -40,6 +40,8 @@ export const envSchema = z.object({
   MOCK_ENGINE_MODE: z.enum(["success", "failure", "cancel", "blocked", "deadline"]).default("success"),
   /** Mock engine total duration in ms (default 60s). */
   MOCK_ENGINE_DURATION_MS: z.coerce.number().int().positive().default(60_000),
+  /** Mock engine contract-v2 trace events: off | on (realistic volume) | full (volume up to the caps). */
+  MOCK_ENGINE_TRACE: z.enum(["off", "on", "full"]).default("on"),
   /** Where the mock engine's bundle upload is stored (default: OS temp dir). */
   MOCK_ARTIFACT_DIR: z.string().min(1).optional(),
   /** Dev shared secret for /api/cron/*. In production use the Cloud Scheduler OIDC identity. */

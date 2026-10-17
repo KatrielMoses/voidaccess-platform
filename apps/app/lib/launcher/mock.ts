@@ -10,6 +10,8 @@ export interface MockLauncherOptions {
   mode?: MockEngineMode;
   /** Default: MOCK_ENGINE_DURATION_MS (60s). Tests use a few hundred ms. */
   durationMs?: number;
+  /** Default: MOCK_ENGINE_TRACE ("on"). Contract-v2 trace events: false | true | "full". */
+  trace?: boolean | "full";
   /** All HTTP the mock engine does (spec fetch, callbacks, bundle PUT). Tests route this to the handlers. */
   fetchImpl?: typeof fetch;
 }
@@ -31,6 +33,8 @@ export class MockLauncher implements RunLauncher {
     const env = getEnv();
     const mode = this.opts.mode ?? env.MOCK_ENGINE_MODE;
     const durationMs = this.opts.durationMs ?? env.MOCK_ENGINE_DURATION_MS;
+    const traceEnv = env.MOCK_ENGINE_TRACE;
+    const trace = this.opts.trace ?? (traceEnv === "full" ? "full" : traceEnv === "on");
     const doFetch = this.opts.fetchImpl ?? fetch;
     const ac = new AbortController();
     const done = (async () => {
@@ -44,6 +48,7 @@ export class MockLauncher implements RunLauncher {
         signal: ac.signal,
         fetchImpl: doFetch,
         retries: 2,
+        trace,
       });
     })()
       .catch((e) => console.error(`mock engine ${req.runId}:`, e instanceof Error ? e.message : e))
