@@ -24,22 +24,27 @@ test("results: tabs, graph filter and node panel, entity search, exports", async
   await expect(page.getByRole("heading", { level: 1 })).toContainText("BlackCat");
   await expect(page.locator("a[href*='.onion']")).toHaveCount(0); // summary links are never clickable
 
-  // graph
-  await page.getByRole("link", { name: /^Graph/ }).click();
+  // graph: the default results route, a full-height workspace
+  await page.goto(base(S.big!));
+  await expect(page).toHaveURL(/\/results\/graph$/);
   // first visit compiles the graph route in `next dev`; allow for that on a loaded machine
   await expect(page.getByTestId("graph-canvas")).toBeVisible({ timeout: 30_000 });
   await page.waitForFunction(() => window.__vaGraph && window.__vaGraph.readyMs >= 0, null, {
     timeout: 30_000,
   });
+  // filters: hiding a group changes what is drawn, and the count and note say so
+  await page.getByTestId("filters-button").click();
   const before = await page.getByTestId("graph-counts").innerText();
-  await page.getByTestId("type-chip-ONION_URL").click();
+  await page.getByTestId("filter-group-onion").click();
   await expect(page.getByTestId("graph-counts")).not.toHaveText(before);
-  await page.getByTestId("type-chip-ONION_URL").click();
+  await expect(page.getByTestId("filters-count")).toHaveText("1");
+  await page.getByTestId("filter-group-onion").click();
   await expect(page.getByTestId("graph-counts")).toHaveText(before);
+  await page.keyboard.press("Escape");
 
-  // node panel: search to focus, which selects the node
-  await page.getByTestId("graph-search").fill("black");
-  await page.getByRole("listbox", { name: "Matching nodes" }).getByRole("option").first().click();
+  // node panel: search, Enter selects the top match
+  await page.getByTestId("value-search").fill("black");
+  await page.getByTestId("value-search").press("Enter");
   await expect(page.getByTestId("node-panel")).toBeVisible();
   await expect(page.getByTestId("node-value")).not.toBeEmpty();
 
@@ -120,8 +125,9 @@ test("performance: 375-entity graph renders in under 2 s; 5,000 nodes stay inter
   await as(page, S.pro!);
   const t0 = Date.now();
   await page.goto(`${base(S.big!)}/graph`);
+  // a cold `next dev` compiles the graph route on first open
   await page.waitForFunction(() => window.__vaGraph && window.__vaGraph.readyMs >= 0, null, {
-    timeout: 30_000,
+    timeout: 60_000,
   });
   const first = Date.now() - t0;
   // second open uses the cached layout: instant
@@ -146,8 +152,10 @@ test("performance: 375-entity graph renders in under 2 s; 5,000 nodes stay inter
   await page.waitForFunction(() => window.__vaGraph && window.__vaGraph.readyMs >= 0, null, {
     timeout: 60_000,
   });
+  await page.getByTestId("filters-button").click();
   await page.getByTestId("show-all").click();
-  await expect(page.getByTestId("graph-counts")).toContainText("5,000 nodes");
+  await expect(page.getByTestId("graph-counts")).toContainText("Showing 5,000 of 5,000 values");
+  await page.keyboard.press("Escape");
   const fps = await page.evaluate(
     () =>
       new Promise<{

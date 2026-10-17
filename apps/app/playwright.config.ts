@@ -40,7 +40,7 @@ export default defineConfig({
   outputDir: "test-results/app", // per suite, so suites can run side by side
   testDir: "./e2e",
   testMatch: /.*\.spec\.ts/,
-  testIgnore: /results\.spec\.ts/, // runs via playwright.results.config.ts
+  testIgnore: /results(-workspace)?\.spec\.ts/, // runs via playwright.results.config.ts
   timeout: 180_000,
   expect: { timeout: 20_000 },
   fullyParallel: false,

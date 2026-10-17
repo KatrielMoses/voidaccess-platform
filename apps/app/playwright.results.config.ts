@@ -11,7 +11,7 @@ export const RESULTS_EMAIL_LOG = join(tmpdir(), "va-p3-e2e-emails.jsonl");
 export default defineConfig({
   outputDir: "test-results/results", // per suite, so suites can run side by side
   testDir: "e2e",
-  testMatch: /results\.spec\.ts/,
+  testMatch: /results(-workspace)?\.spec\.ts/,
   globalSetup: "./e2e/results-global-setup.ts",
   timeout: 120_000,
   workers: 1,

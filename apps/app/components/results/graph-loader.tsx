@@ -1,14 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Skeleton } from "@voidaccess/ui";
 
-// sigma, graphology and the layout worker only load when the Graph tab is opened
-const GraphView = dynamic(() => import("./graph-view").then((m) => m.GraphView), {
+// sigma, graphology and the layout worker only load when the graph opens
+const Workspace = dynamic(() => import("./workspace/workspace").then((m) => m.Workspace), {
   ssr: false,
-  loading: () => <Skeleton className="h-[60vh]" />,
+  loading: () => <div className="h-[calc(100dvh-16rem)]" aria-busy />,
 });
 
 export function GraphLoader({ investigationId }: { investigationId: string }) {
-  return <GraphView investigationId={investigationId} />;
+  return <Workspace investigationId={investigationId} />;
 }

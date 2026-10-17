@@ -13,10 +13,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(search),
 }));
 
-import { TooltipProvider } from "@voidaccess/ui";
 import { EntitiesView } from "@/components/results/entities-view";
-import { GraphControls } from "@/components/results/graph-controls";
-import { DEFAULT_FILTERS } from "@/lib/results/graph-model";
 
 const page: EntityPage = {
   total: 2,
@@ -107,42 +104,5 @@ describe("EntitiesView", () => {
     screen.getAllByTestId("entity-row")[0]!.focus();
     await user.keyboard(" ");
     expect(screen.getAllByTestId("entity-row")[0]).toHaveAttribute("aria-selected", "true");
-  });
-});
-
-describe("GraphControls", () => {
-  const base = {
-    filters: DEFAULT_FILTERS,
-    types: [
-      ["CVE_NUMBER", 3],
-      ["ONION_URL", 5],
-    ] as [string, number][],
-    big: true,
-    truncated: 42,
-    totalNodes: 5000,
-    visibleNodes: 1500,
-    visibleEdges: 900,
-    onReset: vi.fn(),
-    onExportPng: vi.fn(),
-    onExportSvg: vi.fn(),
-    exporting: false,
-    tableHref: "/t",
-  };
-  it("toggles type chips, confidence, typed-only and show-all through onChange", async () => {
-    const onChange = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <TooltipProvider>
-        <GraphControls {...base} onChange={onChange} />
-      </TooltipProvider>,
-    );
-    await user.click(screen.getByTestId("type-chip-ONION_URL"));
-    expect([...onChange.mock.calls.at(-1)![0].hiddenTypes]).toEqual(["ONION_URL"]);
-    await user.click(screen.getByTestId("typed-only"));
-    expect(onChange.mock.calls.at(-1)![0].typedOnly).toBe(true);
-    await user.click(screen.getByTestId("show-all"));
-    expect(onChange.mock.calls.at(-1)![0].showAll).toBe(true);
-    expect(screen.getByRole("status")).toHaveTextContent("showing the top 1,500 of 5,000");
-    expect(screen.getByRole("link", { name: "View as table" })).toHaveAttribute("href", "/t");
   });
 });

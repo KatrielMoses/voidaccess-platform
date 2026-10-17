@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { cn } from "@voidaccess/ui";
 
 const TABS = [
-  { slug: "summary", label: "Summary" },
   { slug: "graph", label: "Graph" },
+  { slug: "summary", label: "Summary" },
   { slug: "entities", label: "Entities" },
   { slug: "actors", label: "Actors" },
   { slug: "sources", label: "Sources" },

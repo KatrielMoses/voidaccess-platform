@@ -58,10 +58,12 @@ test("two users: run 1 is archived anonymously; run 2's results show it as archi
   await pb.waitForFunction(() => window.__vaGraph && window.__vaGraph.readyMs >= 0, null, {
     timeout: 60_000,
   });
+  // archive context is one of the Filters (P9-6)
+  await pb.getByTestId("filters-button").click();
   await expect(pb.getByTestId("archive-status")).toHaveCount(0);
   await pb.getByTestId("archive-toggle").click();
   await expect(pb.getByTestId("archive-status")).toContainText(/Archive context.*: \d+/);
-  await pb.getByTestId("graph-canvas").scrollIntoViewIfNeeded();
+  await pb.keyboard.press("Escape");
   // hover only points where sigma's own hit test finds an archive edge (1px lines are otherwise flaky to hit)
   const pts = await pb.evaluate(() => {
     const sg = window.__vaGraph!.sigma;
@@ -90,6 +92,7 @@ test("two users: run 1 is archived anonymously; run 2's results show it as archi
     if (await t.count()) tip = await t.first().innerText();
   }
   expect(tip, "an archive edge tooltip appeared").toMatch(/a lead.*page.*independent.*site/);
+  await pb.getByTestId("filters-button").click();
   await pb.getByTestId("archive-toggle").click(); // off again removes the overlay
   await expect(pb.getByTestId("archive-status")).toHaveCount(0);
 
