@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from cloud.bundle import summary_points
 from cloud.metrics import enrichment_calls, lower_only
 
@@ -63,6 +65,7 @@ def test_the_committed_vectors_file_is_valid_json():
 
 
 def test_an_engine_summary_failure_string_becomes_the_engines_fallback_summary():
+    pytest.importorskip("hygiene", reason="engine tree not on PYTHONPATH")
     from cloud.bundle import RawSecrets, build_summary
 
     cli = {
@@ -84,6 +87,7 @@ def test_an_engine_summary_failure_string_becomes_the_engines_fallback_summary()
 
 
 def test_a_normal_llm_summary_is_untouched():
+    pytest.importorskip("hygiene", reason="engine tree not on PYTHONPATH")
     from cloud.bundle import RawSecrets, build_summary
 
     out = build_summary({"summary": "### Key Insights\n- A real finding.\n", "summary_kind": "llm"}, 20, RawSecrets())

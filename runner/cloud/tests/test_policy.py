@@ -61,6 +61,7 @@ def test_verify_policy_passes_when_in_effect_and_fails_closed_otherwise(monkeypa
 
 
 def test_policy_requires_the_full_cloud_deny_list(monkeypatch):
+    pytest.importorskip("sources.enrichment_allowlist", reason="engine tree not on PYTHONPATH")
     policy.apply_cloud_policy_base()
     policy.apply_cloud_profile()
     policy.verify_policy()
@@ -73,6 +74,7 @@ def test_policy_requires_the_full_cloud_deny_list(monkeypatch):
 
 
 def test_policy_requires_rss_snippet_only(monkeypatch):
+    pytest.importorskip("sources.enrichment_allowlist", reason="engine tree not on PYTHONPATH")
     policy.apply_cloud_policy_base()
     policy.apply_cloud_profile()
     policy.verify_policy()

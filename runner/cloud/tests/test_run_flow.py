@@ -33,11 +33,19 @@ class World:
     def handler(self, request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         self.requests.append(request)
-        self.order.append("event:" + body["type"])
+        self.order.append("batch" if "events" in body else "event:" + body["type"])
         return httpx.Response(200)
 
     def events(self) -> list[dict]:
-        return [json.loads(r.content) for r in self.requests]
+        """Every delivered event in delivery order, trace batches expanded."""
+        out: list[dict] = []
+        for r in self.requests:
+            body = json.loads(r.content)
+            out += body["events"] if "events" in body else [body]
+        return out
+
+    def traces(self) -> list[dict]:
+        return [e for e in self.events() if e["type"] == "trace"]
 
     def terminals(self) -> list[dict]:
         return [e for e in self.events() if e["type"] in ("completed", "failed", "cancelled")]
@@ -96,8 +104,9 @@ def make_run(monkeypatch, world, sp=None, key="sk-test-0123456789"):
     return run_mod.Run(env=env, tokens=None)
 
 
-def engine_events(run, *, terminal="completed", reason=None, stages=STAGES, crash=None):
-    """A fake engine: stage start/end for each stage, a refined event, counts, then its own terminal event."""
+def engine_events(run, *, terminal="completed", reason=None, stages=STAGES, crash=None, traces=False):
+    """A fake engine: stage start/end for each stage, a refined event, counts, then its own terminal event. With
+    `traces`, contract-v2 trace events too (as plain dicts: the engine's ProgressEvent may not carry them yet)."""
 
     async def fake(self, query, cli_depth, out_dir, timeout_s):
         emit = lambda **kw: self.on_engine_event(progress.ProgressEvent(**kw))  # noqa: E731
@@ -106,6 +115,11 @@ def engine_events(run, *, terminal="completed", reason=None, stages=STAGES, cras
             emit(type="stage", stage=stage, stage_index=i, status="start")
             if st == "refine":
                 emit(type="refined", refined_queries=["lockbit"])
+            if traces:
+                for n in range(3):
+                    self.on_engine_event(
+                        {"type": "trace", "schema": 2, "stage": st, "kind": "url.kept", "data": {"url_id": f"u{i}{n}"}}
+                    )
             emit(type="counts", counts={"sources_queried": 3, "results_found": 9, "pages_fetched": i, "entities_found": i, "actors_found": 0})
             emit(type="stage", stage=stage, stage_index=i, status="end", duration_ms=10 * i)
             await asyncio.sleep(0)
@@ -125,8 +139,10 @@ def restore_engine(monkeypatch):
 
 
 def seqs_ok(world):
-    seqs = [int(r.headers["x-va-seq"]) for r in world.requests]
+    seqs = [e["seq"] for e in world.events()]
     assert seqs == list(range(1, len(seqs) + 1)), seqs
+    headers = [int(r.headers["x-va-seq"]) for r in world.requests]
+    assert headers == [json.loads(r.content).get("seq") or json.loads(r.content)["events"][-1]["seq"] for r in world.requests]
 
 
 def test_completed_is_sent_once_and_only_after_the_upload(monkeypatch, world):
@@ -181,12 +197,14 @@ def test_blocked_query_fails_before_tor_or_any_collection(monkeypatch, world):
     from utils.content_safety import CONTENT_BLOCKLIST
 
     run = make_run(monkeypatch, world, spec(query=f"find {CONTENT_BLOCKLIST[0]} please"))
-    engine_events(run)
+    engine_events(run, traces=True)
     assert run.run() == 0
     (t,) = world.terminals()
     assert (t["type"], t["reason"]) == ("failed", "blocked_query") and t["stages_completed"] == []
     assert not world.tor_started
     assert not [e for e in world.events() if e["type"] == "stage"]
+    assert world.traces() == [] and "batch" not in world.order  # a blocked query emits no trace at all
+    assert [e["type"] for e in world.events()] == ["counts", "failed"]
 
 
 def test_an_already_expired_deadline_fails_with_deadline_immediately(monkeypatch, world):
@@ -304,3 +322,59 @@ def test_the_wall_clock_override_can_tighten_the_cap_but_not_loosen_it(monkeypat
     t0 = time.monotonic()
     assert run.run() == 0 and time.monotonic() - t0 < 10
     assert world.terminals()[0]["reason"] == "deadline"
+
+
+# ---- contract v2: trace events ----------------------------------------------------------------------------------
+
+
+def test_trace_events_are_forwarded_in_batches_in_seq_order_and_never_touch_the_run_state(monkeypatch, world):
+    run = make_run(monkeypatch, world)
+    engine_events(run, traces=True)
+    assert run.run() == 0 and run.delivered
+    seqs_ok(world)
+    traces = world.traces()
+    assert len(traces) == 3 * len(STAGES)
+    assert all(t["schema"] == 2 and t["run_id"] == RUN_ID and t["kind"] == "url.kept" for t in traces)
+    assert all(e["schema"] == 2 for e in world.events())
+    assert "batch" in world.order and world.order[-1] == "event:completed"
+    stage_ends = [i for i, e in enumerate(world.events()) if e["type"] == "stage" and e["status"] == "end"]
+    for st, end in zip(STAGES, stage_ends):  # each stage's traces arrive before that stage's end event
+        assert all(i < end for i, e in enumerate(world.events()) if e["type"] == "trace" and e["stage"] == st)
+    (terminal,) = world.terminals()
+    assert terminal["counts"]["pages_fetched"] == len(STAGES)  # last_counts came from counts events only
+
+
+def test_on_engine_event_forwards_traces_from_objects_and_dicts_without_recording_them(monkeypatch):
+    sent = []
+
+    class Sender:
+        def emit(self, d):
+            sent.append(d)
+            return True
+
+    class Obj:
+        def to_dict(self):
+            return {"type": "trace", "schema": 2, "stage": "fetch", "kind": "page.fetched",
+                    "data": {"url_id": "u1", "outcome": "ok"}, "counts": {"pages_fetched": 99}}
+
+    run = run_mod.Run(env={}, tokens=None)
+    run.sender = Sender()
+    run.on_engine_event(Obj())
+    run.on_engine_event({"type": "trace", "stage": "graph", "kind": "graph.progress", "data": {"nodes": 1, "edges": 0}})
+    assert [d["kind"] for d in sent] == ["page.fetched", "graph.progress"]
+    assert run.state.last_counts == {} and run.state.stages_completed == [] and run.state.engine_terminal is None
+
+
+def test_the_engine_env_setup_turns_trace_events_on(monkeypatch, tmp_path):
+    import os
+
+    saved = dict(os.environ)
+    monkeypatch.delenv("VOIDACCESS_TRACE_EVENTS", raising=False)
+    try:
+        run = run_mod.Run(env={}, tokens=None)
+        run.work = tmp_path
+        run._setup_engine_env("lockbit leak site", "quick")
+        assert os.environ["VOIDACCESS_TRACE_EVENTS"] == "1"
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)

@@ -12,6 +12,7 @@ signed progress events to the app, builds a contract-valid `ResultBundle`, uploa
 | `run.py` | entrypoint and orchestration; one terminal event per run (watchdog threads for cancel and deadline) |
 | `spec.py`, `identity.py` | fetch + validate the RunSpec (identity token for the private app, `RunSpec.json`) |
 | `events.py`, `signing.py` | signed (HMAC over `<ts>.<body>`), ordered, retrying, non-blocking callback sender |
+| `trace.py` | contract v2 `trace` events: the runner's mirror of engine-client `trace.ts` (kinds, limits, safety rule); `events.py` posts them in batches of up to 50 (or after 300 ms), best effort and dropped first under backpressure |
 | `policy.py`, `presets.yaml` | cloud policy G1-G10 env, depth presets, E1B `cloud_profile` (copied from `runner/baseline`, which stays untouched) |
 | `llm_budget.py` | per-call token accounting and the per-run token budget (raises `BudgetExceeded`) |
 | `tor.py` | Tor client with baked consensus, bootstrap retried, start jitter |

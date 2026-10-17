@@ -7,7 +7,8 @@ Flow
      and the callback secret with the log scrubber;
   3. a blocked query ends the run here (`failed: blocked_query`, before Tor or any collection);
   4. cloud policy, start jitter, Tor client (bootstrap retried), then the engine pipeline with a CallbackSink that
-     forwards its progress events to the signed, retrying sender (engine terminal events are held back);
+     forwards its progress events to the signed, retrying sender (engine terminal events are held back; the
+     contract-v2 `trace` events, turned on with VOIDACCESS_TRACE_EVENTS=1, are forwarded best effort in batches);
   5. build the bundle, the exports and the page archive, upload them (the bundle last), and only then send
      `completed`.
 Every run ends with exactly one terminal event, whatever happens: an engine crash, SIGTERM (cancel), the deadline
@@ -203,8 +204,12 @@ class Run:
     def on_engine_event(self, event: Any) -> None:
         """CallbackSink target (runs on the engine emitter's worker thread). Never blocks, never raises."""
         try:
-            d = event.to_dict()
+            d = event.to_dict() if hasattr(event, "to_dict") else dict(event)
             etype = d.get("type")
+            if etype == "trace":  # contract v2: best effort, batched by the sender; never part of the run's state
+                if self.sender is not None:
+                    self.sender.emit(d)
+                return
             if etype in TERMINAL_TYPES:
                 self.state.engine_terminal = (etype, d.get("reason"))  # the runner decides what to send
                 return
@@ -233,6 +238,8 @@ class Run:
         policy.apply_cloud_policy_base()
         cli_depth = policy.apply_depth_preset(depth)
         policy.apply_cloud_profile()
+        # Contract v2: the engine emits `trace` events (live run detail) only when asked to; the cloud always asks.
+        os.environ["VOIDACCESS_TRACE_EVENTS"] = "1"
         return cli_depth
 
     async def _run_engine(self, query: str, cli_depth: str, out_dir: Path, timeout_s: float) -> None:
@@ -351,7 +358,7 @@ class Run:
         spec = self.spec
         scrub.register(spec["query"])
         scrub.register(spec["callback_secret"])
-        self.sender = EventSender(spec["callback_url"], spec["callback_secret"], run_id, self.tokens)
+        self.sender = EventSender(spec["callback_url"], spec["callback_secret"], run_id, self.tokens, redact=[api_key])
 
         deadline = parse_deadline(spec["deadline_at"])
         if env.get("DEADLINE_AT"):
@@ -420,10 +427,17 @@ class Run:
         print(
             f"va-runner: terminal={self.terminal} delivered={self.delivered} "
             f"peak_rss_mb={_peak_rss_mb()} events_sent={self.sender.sent if self.sender else 0} "
-            f"counts_dropped={self.sender.dropped_counts if self.sender else 0}",
+            f"counts_dropped={self.sender.dropped_counts if self.sender else 0} "
+            f"traces_sent={self.sender.traces_sent if self.sender else 0} "
+            f"traces_lost={self._traces_lost()}",
             flush=True,
         )
         return self.exit_code
+
+
+    def _traces_lost(self) -> int:
+        s = self.sender
+        return (s.dropped_traces + s.evicted_traces + s.failed_traces) if s else 0
 
 
 def main() -> None:

@@ -41,13 +41,20 @@ TOR_STOP_GRACE_S = 5.0
 
 # --- callbacks -------------------------------------------------------------------------------------
 
-EVENT_QUEUE_MAX = 256                 # intermediate `counts` events are dropped beyond this
+EVENT_QUEUE_MAX = 256                 # beyond this a `counts` event evicts the oldest trace batch, else is dropped
 EVENT_RETRY_BASE_S = 0.5
 EVENT_RETRY_MAX_DELAY_S = 10.0
 EVENT_RETRY_BUDGET_S = 120.0          # per event; a 5xx or network error is retried until this is spent
 TERMINAL_RETRY_BUDGET_S = 240.0
 EVENT_HTTP_TIMEOUT_S = 10.0
 EVENT_FLUSH_TIMEOUT_S = 30.0          # wait for the queue to drain before the terminal event
+
+# Contract v2 trace events are posted in batches (`{schema: 2, run_id, events: [...]}`). They are best effort: a
+# slow or failing app must never hold back the engine or the stage/terminal events, so they have their own bounds.
+TRACE_BATCH_MAX_EVENTS = 50           # a batch is sent when it holds this many events (the app accepts up to 100)
+TRACE_BATCH_MAX_WAIT_S = 0.3          # ... or this long after its first event, whichever comes first
+TRACE_QUEUE_MAX_EVENTS = 1000         # trace events waiting to be sent; new traces are dropped (no seq) beyond this
+TRACE_RETRY_BUDGET_S = 5.0            # per batch; a batch that cannot be delivered in time is abandoned (a seq gap)
 
 # --- bundle ----------------------------------------------------------------------------------------
 
