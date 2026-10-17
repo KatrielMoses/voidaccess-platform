@@ -21,7 +21,10 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Build output under /_next (static chunks, images) and the dev server's own endpoints (/__nextjs_*: fonts,
-  // HMR helpers; absent in production) are public; everything else, including unknown paths, goes through the guard.
-  matcher: ["/((?!_next/|__nextjs|favicon.ico).*)"],
+  // Public without a session: build output under /_next, the dev server's own endpoints (/__nextjs_*), and the
+  // files in public/ (fonts, the logo and icons) so signed-out pages such as /unsubscribe render with the brand.
+  // Everything else, including unknown paths, goes through the guard. Keep this list in step with apps/app/public.
+  matcher: [
+    "/((?!_next/|__nextjs|favicon.ico|favicon-32.png|apple-touch-icon.png|icon-192.png|icon-512.png|logo.png|fonts/).*)",
+  ],
 };
