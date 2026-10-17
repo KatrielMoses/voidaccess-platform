@@ -327,6 +327,7 @@ export async function getGraph(userId: string, id: string, ctx?: QueryCtx): Prom
           degree: invEntities.degree,
           community: invEntities.community,
           sensitive: invEntities.sensitive,
+          tags: invEntities.tags,
         })
         .from(invEntities)
         .where(eq(invEntities.investigationId, id)),
@@ -351,6 +352,7 @@ export async function getGraph(userId: string, id: string, ctx?: QueryCtx): Prom
         n.degree,
         n.community,
         n.sensitive ? 1 : 0,
+        n.tags,
       ]),
       edges: edges.map((e) => [e.s, e.t, e.type, e.w]),
       communities: sum.communities

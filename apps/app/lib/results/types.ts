@@ -109,6 +109,8 @@ export type GraphNodeTuple = [
   degree: number,
   community: number | null,
   sensitive: 0 | 1,
+  /** visible tags (search matches them, P9-4) */
+  tags?: string[],
 ];
 export type GraphEdgeTuple = [source: string, target: string, type: string, weight: number];
 export interface GraphData {

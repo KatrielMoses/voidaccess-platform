@@ -2,7 +2,9 @@
  * Layout cache: computed positions are kept per investigation in localStorage. Snapshots are immutable, so
  * the cache is valid until the node set changes (checked with a cheap signature). Reopening is instant.
  */
-const KEY = (id: string) => `va:graph-layout:v1:${id}`;
+import { LAYOUT_VERSION } from "./layout-params";
+
+const KEY = (id: string) => `va:graph-layout:v${LAYOUT_VERSION}:${id}`;
 
 export function signature(ids: string[]): string {
   let h = 2166136261;
