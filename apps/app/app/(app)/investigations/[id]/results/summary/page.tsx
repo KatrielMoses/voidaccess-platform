@@ -3,10 +3,13 @@ import { notFound } from "next/navigation";
 import { getSessionUserId } from "@/lib/dev-session";
 import { formatDuration } from "@/lib/results/format";
 import { getInvestigation } from "@/lib/results/queries";
-import { SafeMarkdown } from "@/components/results/markdown";
+import { InlineMarkdown, SafeMarkdown, stripLeadingTitle } from "@/components/results/markdown";
 import { TypeBadge } from "@/components/results/type-badge";
 import { ArchivePanel } from "@/components/results/archive-panel";
 import { MaskedMark } from "@/components/results/ui";
+import { StarPrompt } from "@/components/results/star-prompt";
+import { starPromptVisible } from "@/lib/ops/star-prompt";
+import { GITHUB_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +39,9 @@ function Notes({ title, items, mark }: { title: string; items: string[]; mark?: 
             <span className="pt-[3px] font-mono text-[12px] text-mute tabular-nums">
               {mark ?? String(i + 1).padStart(2, "0")}
             </span>
-            <span className="min-w-0 [overflow-wrap:anywhere]">{f}</span>
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              <InlineMarkdown>{f}</InlineMarkdown>
+            </span>
           </li>
         ))}
       </ol>
@@ -50,8 +55,13 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
   const inv = userId ? await getInvestigation(userId, id) : null;
   if (!inv) notFound();
   const { summary } = inv;
+  // PRD §3.9: after a successful investigation, one dismissible prompt (never a banner), remembered per user.
+  // Shown on the Summary tab only, never over the graph.
+  const showStar = inv.status === "completed" && (await starPromptVisible(userId!));
   const stats = summary.stats;
-  const empty = summary.markdown.trim().length === 0;
+  // the page has its own "Intelligence summary" heading, so a leading duplicate in the body is dropped
+  const body = stripLeadingTitle(summary.markdown);
+  const empty = body.trim().length === 0;
   // summary_kind is set at ingest: llm | fallback | none (legacy seed rows: "ai"). Only a real fallback gets the notice.
   const fallback = inv.summaryKind === "fallback";
   const types = Object.entries(summary.entityCounts).sort((a, b) => b[1] - a[1]);
@@ -59,6 +69,7 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="flex flex-col gap-12">
+      {showStar ? <StarPrompt href={GITHUB_URL} /> : null}
       {fallback || empty ? (
         <div role="note" className="border-l border-line-3 pl-4 text-[15px] text-dim">
           <span className="font-medium text-paper">Note. </span>
@@ -96,7 +107,7 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
                 Intelligence summary
               </h2>
               <div data-testid="summary-markdown" className="border-t border-line pt-6">
-                <SafeMarkdown>{summary.markdown}</SafeMarkdown>
+                <SafeMarkdown>{body}</SafeMarkdown>
               </div>
             </section>
           ) : null}
