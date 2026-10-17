@@ -24,6 +24,8 @@ export const e2eEnv = {
   MOCK_ENGINE_MODE: "success",
   // long enough to cancel mid-run, short enough for a quick test (default is 60 s)
   MOCK_ENGINE_DURATION_MS: process.env.E2E_MOCK_MS ?? "12000",
+  // contract-v2 traces for the live view (P8): off | on | full (full = ~3000 events, the performance check)
+  MOCK_ENGINE_TRACE: process.env.E2E_MOCK_TRACE ?? "on",
   MOCK_ARTIFACT_DIR: join(tmpdir(), "va-p2-e2e-artifacts"),
   EMAIL_LOG_FILE: EMAIL_LOG,
   ENGINE_CALLBACK_SECRET: "e2e-engine-callback-secret-0123456789",

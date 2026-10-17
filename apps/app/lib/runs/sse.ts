@@ -4,6 +4,10 @@
  * any bytes are sent). Frames: `id: <seq>` + `event: progress` for each run_events row, `event: status` whenever
  * status/refined queries change, and a final `status` frame (with credits refunded) before the stream closes
  * after the run reaches a terminal state. Resume with the `Last-Event-ID` header (or ?lastEventId=).
+ * Contract v2 trace rows go out as `event: trace` frames in the same seq order (one id space, so resume covers both).
+ * Once the backlog that existed when the stream opened has been sent, one `event: live` frame marks "now": the live
+ * view applies everything before it without motion (late joiners and reloads fast-forward, then go live).
+ * At most SSE_BATCH_ROWS rows are read per poll; a full read is followed immediately by the next one.
  * The stream aborts with the request signal.
  */
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
@@ -28,7 +32,18 @@ export function parseLastEventId(raw: string | null): number {
   return Number(raw.trim());
 }
 
+/** Rows per poll: a 3000-event run catches up in a few quick reads instead of one large one. */
+export const SSE_BATCH_ROWS = 1000;
+
 type Row = typeof runEvents.$inferSelect;
+export const traceFrame = (r: Row) =>
+  `id: ${r.seq}\nevent: trace\ndata: ${JSON.stringify({
+    seq: r.seq,
+    stage: r.stage,
+    kind: r.kind,
+    data: r.data,
+    at: r.at.toISOString(),
+  })}\n\n`;
 const progressFrame = (r: Row) => {
   return `id: ${r.seq}\nevent: progress\ndata: ${JSON.stringify({
     seq: r.seq,
@@ -39,6 +54,8 @@ const progressFrame = (r: Row) => {
     at: r.at.toISOString(),
   })}\n\n`;
 };
+
+export const eventFrame = (r: Row) => (r.type === "trace" ? traceFrame(r) : progressFrame(r));
 
 export async function openEventStream(
   userId: string,
@@ -56,7 +73,8 @@ export async function openEventStream(
         .select()
         .from(runEvents)
         .where(and(eq(runEvents.runId, id), gt(runEvents.seq, after)))
-        .orderBy(asc(runEvents.seq));
+        .orderBy(asc(runEvents.seq))
+        .limit(SSE_BATCH_ROWS);
       let refunded = 0;
       if (isTerminalStatus(run.status)) {
         const l = await tx
@@ -101,12 +119,22 @@ export async function openEventStream(
       let statusKey = "";
       let snap: Awaited<ReturnType<typeof poll>> = first;
       let ticks = 0;
+      let live = false;
       try {
         while (!closed && snap) {
           touchViewer(id, lastTouch);
           for (const r of snap.evs) {
-            send(progressFrame(r));
+            send(eventFrame(r));
             after = Math.max(after, r.seq);
+          }
+          const more = snap.evs.length >= SSE_BATCH_ROWS;
+          if (!live && !more) {
+            live = true;
+            send(`event: live\ndata: ${JSON.stringify({ seq: after })}\n\n`);
+          }
+          if (more) {
+            snap = await poll(after);
+            continue;
           }
           const terminal = isTerminalStatus(snap.run.status);
           const status = {

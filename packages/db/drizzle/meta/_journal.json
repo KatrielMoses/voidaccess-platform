@@ -85,6 +85,13 @@
       "when": 1791904131192,
       "tag": "0011_rls_initplan",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792215908792,
+      "tag": "0012_p8_run_event_traces",
+      "breakpoints": true
     }
   ]
 }

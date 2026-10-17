@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import {
   Button,
+  buttonVariants,
   Dialog,
   DialogClose,
   DialogContent,
@@ -34,6 +36,13 @@ export function HeaderActions({ id }: { id: string }) {
 
   return (
     <div className="flex gap-2">
+      <Link
+        href={`/investigations/${id}/replay`}
+        className={buttonVariants({ variant: "secondary", size: "sm" })}
+        data-testid="replay-run"
+      >
+        Replay run
+      </Link>
       <Dialog open={open === "rename"} onOpenChange={(o) => setOpen(o ? "rename" : null)}>
         <DialogTrigger asChild>
           <Button variant="secondary" size="sm">

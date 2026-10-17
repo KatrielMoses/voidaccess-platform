@@ -1,13 +1,16 @@
 "use client";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import Link from "next/link";
-import { Button, ButtonArrow, buttonVariants, cn } from "@voidaccess/ui";
+import { Button, ButtonArrow, buttonVariants } from "@voidaccess/ui";
 import { STAGES, type Stage } from "@voidaccess/config";
-import { COUNT_LABELS, STAGE_LABELS, failureCopy } from "@/content/stages";
+import { COUNT_LABELS, failureCopy } from "@/content/stages";
 import { DEPTH_COPY } from "@/content/examples";
 import { StatusBadge } from "@/components/status-badge";
 import { FormError } from "@/components/field";
 import { Index } from "@/components/page-header";
+import { LiveInstrument } from "@/components/live/live-instrument";
+import { LiveModel, type LiveEvent, type StageState as LiveStageState } from "@/lib/live/model";
+import { Player } from "@/lib/live/player";
 
 export interface RunSnapshot {
   id: string;
@@ -123,15 +126,48 @@ export function LiveProgress({ initial }: { initial: RunSnapshot }) {
   const [error, setError] = useState<string | null>(null);
   const done = TERMINAL.has(state.status);
   const sourceRef = useRef<EventSource | null>(null);
+  // The live view's model and player live outside React state: events stream in far faster than renders.
+  const [live] = useState(() => {
+    const st = init(initial).stages as Partial<Record<Stage, LiveStageState>>;
+    const model = new LiveModel({ stages: st, counts: initial.counts });
+    return { model, player: new Player(model) };
+  });
+
+  // A finished run opened directly: show its final state at rest (no motion).
+  useEffect(() => {
+    if (!TERMINAL.has(initial.status)) return;
+    let dead = false;
+    fetch(`/api/investigations/${initial.id}/replay`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ events: LiveEvent[] }>) : null))
+      .then((b) => {
+        if (!dead && b) live.player.push(b.events, true);
+      })
+      .catch(() => undefined);
+    return () => {
+      dead = true;
+    };
+  }, [initial.id, initial.status, live]);
 
   // Live stream. Closed as soon as the run is terminal so the browser doesn't reconnect forever.
+  // Everything before the stream's `live` marker is backlog: applied at rest, so a late joiner fast-forwards.
   useEffect(() => {
     if (TERMINAL.has(initial.status)) return;
     const es = new EventSource(`/api/investigations/${initial.id}/events`);
     sourceRef.current = es;
-    es.addEventListener("progress", (e) =>
-      dispatch({ t: "progress", d: JSON.parse((e as MessageEvent).data) }),
-    );
+    let isLive = false;
+    const feed = (ev: LiveEvent) => live.player.push([ev], !isLive);
+    es.addEventListener("live", () => {
+      isLive = true;
+    });
+    es.addEventListener("error", () => {
+      isLive = false; // a reconnect resumes from Last-Event-ID; its backlog is applied at rest
+    });
+    es.addEventListener("trace", (e) => feed({ type: "trace", ...JSON.parse((e as MessageEvent).data) }));
+    es.addEventListener("progress", (e) => {
+      const d = JSON.parse((e as MessageEvent).data);
+      dispatch({ t: "progress", d });
+      feed(d);
+    });
     es.addEventListener("status", (e) => {
       const d = JSON.parse((e as MessageEvent).data);
       dispatch({ t: "status", d });
@@ -141,7 +177,7 @@ export function LiveProgress({ initial }: { initial: RunSnapshot }) {
       }
     });
     return () => es.close();
-  }, [initial.id, initial.status]);
+  }, [initial.id, initial.status, live]);
 
   useEffect(() => {
     if (done) return;
@@ -251,92 +287,16 @@ export function LiveProgress({ initial }: { initial: RunSnapshot }) {
         </section>
       ) : null}
 
-      <div className="grid grid-cols-12 gap-x-6 gap-y-12 max-[960px]:grid-cols-1">
-        <section
-          aria-labelledby="progress-h"
-          className="col-span-7 flex flex-col gap-6 max-[960px]:col-span-1"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <Index>
-              <span id="progress-h">Progress</span>
-            </Index>
-            <p className="font-mono text-[12.5px] text-dim tabular-nums">
-              Stage{" "}
-              <span className="text-paper">
-                {String(Math.min(doneCount + (done ? 0 : 1), STAGES.length)).padStart(2, "0")}
-              </span>{" "}
-              of {String(STAGES.length).padStart(2, "0")}
-            </p>
-          </div>
-          {/* The ruler: a hairline track with a paper fill for the stages that have run. */}
-          <div aria-hidden className="relative h-px bg-line-2">
-            <div
-              className="absolute inset-y-0 left-0 bg-paper transition-[width] duration-700 ease-out"
-              style={{ width: `${(doneCount / STAGES.length) * 100}%` }}
-            />
-          </div>
-          <ol className="flex flex-col" aria-label="Stages">
-            {STAGES.map((stage, i) => {
-              const s = state.stages[stage];
-              const finished = s === "end" || s === "skipped" || (state.status === "completed" && !s);
-              const current = !done && s === "start";
-              const failed = s === "failed";
-              const pending = !finished && !current && !failed;
-              return (
-                <li
-                  key={stage}
-                  aria-current={current ? "step" : undefined}
-                  data-state={failed ? "failed" : finished ? "done" : current ? "current" : "pending"}
-                  className="grid grid-cols-[44px_1fr_auto] items-baseline gap-x-3 border-b border-line py-4"
-                >
-                  <span
-                    className={cn(
-                      "font-mono text-[13px] tabular-nums transition-colors duration-[400ms]",
-                      pending ? "text-faint" : "text-dim",
-                      current && "text-paper",
-                    )}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <p
-                      className={cn(
-                        "text-[17px] leading-[1.3] font-medium tracking-[-0.01em] transition-colors duration-[400ms]",
-                        pending ? "text-mute" : "text-paper",
-                      )}
-                    >
-                      {STAGE_LABELS[stage].label}
-                      {current ? <span className="sr-only"> (in progress)</span> : null}
-                      {s === "skipped" ? (
-                        <span className="ml-2.5 font-mono text-[12px] font-normal text-mute">skipped</span>
-                      ) : null}
-                    </p>
-                    <p className={cn("text-[15px] leading-[1.5]", pending ? "text-mute" : "text-dim")}>
-                      {STAGE_LABELS[stage].detail}
-                    </p>
-                  </div>
-                  <span aria-hidden className="flex h-5 items-center font-mono text-[12px]">
-                    {finished ? (
-                      <span className="text-paper">✓</span>
-                    ) : failed ? (
-                      <span className="rounded-xs border border-line-3 px-1.5 py-0.5 text-paper">
-                        ✕ Failed
-                      </span>
-                    ) : current ? (
-                      <span className="flex items-center gap-2 text-paper">
-                        <span className="size-1.5 rounded-full bg-v-500" />
-                        Now
-                      </span>
-                    ) : null}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
+      <LiveInstrument
+        model={live.model}
+        player={live.player}
+        done={done}
+        label={`Stage ${String(Math.min(doneCount + (done ? 0 : 1), STAGES.length)).padStart(2, "0")} of ${String(STAGES.length).padStart(2, "0")}`}
+      />
 
-        <aside className="col-span-4 col-start-9 flex flex-col gap-12 max-[960px]:col-span-1 max-[960px]:col-start-1">
-          <section aria-label="Counts" className="flex flex-col gap-6">
+      <div className="grid grid-cols-12 gap-x-6 gap-y-12 max-[960px]:grid-cols-1">
+        <aside className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-12 max-[960px]:col-span-1 max-[960px]:grid-cols-1">
+          <section aria-label="Counts" className="col-span-5 flex flex-col gap-6 max-[960px]:col-span-1">
             <Index>Found</Index>
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line">
               {COUNT_LABELS.map(([key, label]) => (
@@ -354,7 +314,10 @@ export function LiveProgress({ initial }: { initial: RunSnapshot }) {
           </section>
 
           {state.refined.length > 0 ? (
-            <section className="flex flex-col gap-5" aria-labelledby="refined-h">
+            <section
+              className="col-span-6 col-start-7 flex flex-col gap-5 max-[960px]:col-span-1 max-[960px]:col-start-1"
+              aria-labelledby="refined-h"
+            >
               <Index>
                 <span id="refined-h">We&apos;re searching for</span>
               </Index>

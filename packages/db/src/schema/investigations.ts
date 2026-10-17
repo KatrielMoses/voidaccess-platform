@@ -89,12 +89,16 @@ export const runEvents = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     seq: integer("seq").notNull(),
-    /** engine event type: stage | counts | refined | completed | failed | cancelled */
+    /** engine event type: stage | counts | refined | completed | failed | cancelled | trace */
     type: text("type").notNull(),
     stage: text("stage"),
     /** lifecycle of a `stage` event (start | end | skipped | failed); null for every other type */
     status: text("status"),
     counts: jsonb("counts").$type<Record<string, number>>(),
+    /** contract v2 `trace` events only (type = 'trace'): the trace kind (url.found, page.fetched, ...) */
+    kind: text("kind"),
+    /** contract v2 `trace` events only: the validated, bounded trace data (hosts are display forms) */
+    data: jsonb("data").$type<Record<string, unknown>>(),
     at: tstz("at").notNull(),
     receivedAt: createdAt(),
   },
@@ -104,6 +108,10 @@ export const runEvents = pgTable(
     check(
       "run_events_status_check",
       sql`${t.status} IS NULL OR ${t.status} IN ('start', 'end', 'skipped', 'failed')`,
+    ),
+    check(
+      "run_events_trace_check",
+      sql`(${t.type} = 'trace') = (${t.kind} IS NOT NULL AND ${t.data} IS NOT NULL)`,
     ),
   ],
 );

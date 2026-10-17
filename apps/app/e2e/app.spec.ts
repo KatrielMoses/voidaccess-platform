@@ -33,17 +33,15 @@ test("sign up, run on the mock engine, watch it finish, then cancel a second run
   await expect.poll(() => pillBalance(page), { timeout: 20_000 }).toBe(afterFirst);
   console.log(`sign-up to finished run: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 
-  // second run: cancel once the "Search sources" stage is done -> partial refund
+  // second run: cancel once the collect stage is done -> partial refund
   await page.goto("/investigations/new");
   await page.getByLabel("What do you want to investigate?").fill("Lumma Stealer malware");
   await page.getByRole("radio", { name: /Quick/ }).check();
   await page.getByRole("button", { name: "Start investigation" }).click();
   await expect(page).toHaveURL(/\/investigations\/[0-9a-f-]{36}$/);
-  await expect(page.locator("li", { hasText: "Search sources" }).first()).toHaveAttribute(
-    "data-state",
-    "done",
-    { timeout: 60_000 },
-  );
+  await expect(page.locator('li[data-stage="collect"]')).toHaveAttribute("data-state", "done", {
+    timeout: 60_000,
+  });
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByTestId("run-cancelled")).toBeVisible({ timeout: 30_000 });
   const refunded = Number(await page.getByTestId("refunded").innerText());

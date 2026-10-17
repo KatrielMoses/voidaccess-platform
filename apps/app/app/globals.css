@@ -134,6 +134,31 @@
     text-decoration-color: var(--color-paper);
   }
 
+  /* Live instrument (P8): host and masked-value labels that follow their marks. Mono, text only, no pointer. */
+  .va-live-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font: 400 11px/1 var(--font-mono);
+    color: var(--color-dim);
+    white-space: nowrap;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+  .va-live-label[data-kind="entity"] {
+    color: var(--color-paper);
+  }
+  /* A stage column's top rule draws from the left while the stage runs (power3.inOut), then holds. */
+  @keyframes va-rule-draw {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  .va-rule-draw {
+    transform-origin: left;
+    animation: va-rule-draw 1.2s var(--ease-in-out) both;
+  }
+
   /* Entrance for page content: rise 16px through expo.out. */
   .va-rise {
     animation: va-rise 0.9s var(--ease-out) both;

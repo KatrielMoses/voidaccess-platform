@@ -7,6 +7,7 @@
  *  - terminal events settle inside the same transaction as the event insert, so a crash cannot leave an
  *    event recorded but unsettled (the engine's retry would otherwise be deduped away);
  *  - `completed` moves to `ingesting` in that transaction and runs the ingest hook afterwards (complete.ts).
+ * Trace events (contract v2) are handled by traces.ts: batched, validated per event, capped, never settling.
  * Stage events are stored as type `stage` with `run_events.status` = start | end | skipped | failed, so the cancel
  * timeout can derive completed stages (type `stage`, status `end`) and the SSE stream maps them straight back.
  */
@@ -17,6 +18,7 @@ import { finishIngest } from "./complete";
 import { recordRunCost } from "./cost";
 import { deriveCallbackSecret } from "./secrets";
 import { isTerminalStatus, lockRun, settleLockedRun } from "./settle";
+import { handleTraceCallback, isTraceBody } from "./traces";
 
 export type CallbackResult = { status: number; body: Record<string, unknown> };
 
@@ -44,6 +46,8 @@ export async function handleEngineCallback(
   } catch {
     return { status: 400, body: { error: "invalid json" } };
   }
+  // contract v2: traces arrive in batches (or alone) and never change settlement (lib/runs/traces.ts)
+  if (isTraceBody(json)) return handleTraceCallback(runId, v.seq, json);
   const parsed = ProgressEvent.safeParse(json);
   if (!parsed.success) return { status: 400, body: { error: "invalid event" } };
   const ev = parsed.data;

@@ -1,5 +1,5 @@
 /** Run lifecycle service: start, launch, cancel, rename, delete, read. All user paths go through withUser. */
-import { and, count, desc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { DEPTHS, type Depth, type PlanId } from "@voidaccess/config";
 import { creditLedger, getDatabase, investigations, reserve, runEvents, users } from "@voidaccess/db";
 import { trackEvent } from "../analytics";
@@ -302,7 +302,7 @@ export async function getInvestigation(userId: string, id: string) {
         seq: runEvents.seq,
       })
       .from(runEvents)
-      .where(eq(runEvents.runId, id))
+      .where(and(eq(runEvents.runId, id), ne(runEvents.type, "trace"))) // traces are read by the live view
       .orderBy(runEvents.seq);
     const stagesCompleted = [
       ...new Set(events.filter((e) => e.type === "stage" && e.status === "end").map((e) => e.stage!)),
