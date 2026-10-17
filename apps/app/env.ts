@@ -35,7 +35,9 @@ export const envSchema = z.object({
   RUNNER_VCPU: z.coerce.number().positive().default(1),
   RUNNER_MEMORY_GIB: z.coerce.number().positive().default(2),
   /** Which launcher starts runs. Default: mock outside production, cloudrun in production. */
-  ENGINE_LAUNCHER: z.enum(["mock", "cloudrun"]).optional(),
+  ENGINE_LAUNCHER: z.enum(["mock", "cloudrun", "process"]).optional(),
+  /** ENGINE_LAUNCHER=process (development only): the command that starts the real runner locally. */
+  LOCAL_RUNNER_CMD: z.string().min(1).optional(),
   /** Mock engine behaviour: success | failure | cancel | blocked | deadline. */
   MOCK_ENGINE_MODE: z.enum(["success", "failure", "cancel", "blocked", "deadline"]).default("success"),
   /** Mock engine total duration in ms (default 60s). */

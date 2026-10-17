@@ -1,6 +1,7 @@
 import { getEnv } from "../../env";
 import { CloudRunLauncher } from "./cloudrun";
 import { MockLauncher } from "./mock";
+import { ProcessLauncher } from "./process";
 import type { RunLauncher } from "./types";
 
 export * from "./types";
@@ -10,15 +11,27 @@ export { CloudRunLauncher } from "./cloudrun";
 let override: RunLauncher | null = null;
 let cached: RunLauncher | undefined;
 
-/** ENGINE_LAUNCHER=mock|cloudrun; unset means mock outside production and cloudrun in production. */
-export function launcherKind(): "mock" | "cloudrun" {
+/**
+ * ENGINE_LAUNCHER=mock|cloudrun|process; unset means mock outside production and cloudrun in production.
+ * `process` (development only) runs the real runner locally, see ProcessLauncher.
+ */
+export function launcherKind(): "mock" | "cloudrun" | "process" {
   const env = getEnv();
   return env.ENGINE_LAUNCHER ?? (env.NODE_ENV === "production" ? "cloudrun" : "mock");
 }
 
+/** Artifacts go to the dev mock store (mock engine or a local runner), not the runs bucket. */
+export const usesLocalArtifacts = (): boolean => launcherKind() !== "cloudrun";
+
 export function getLauncher(): RunLauncher {
   if (override) return override;
-  return (cached ??= launcherKind() === "mock" ? new MockLauncher() : new CloudRunLauncher());
+  const kind = launcherKind();
+  return (cached ??=
+    kind === "mock"
+      ? new MockLauncher()
+      : kind === "process"
+        ? new ProcessLauncher()
+        : new CloudRunLauncher());
 }
 
 /** Tests: force a launcher (or pass null to go back to the env-selected one). */

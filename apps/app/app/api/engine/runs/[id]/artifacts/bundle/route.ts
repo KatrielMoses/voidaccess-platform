@@ -1,4 +1,4 @@
-import { launcherKind } from "@/lib/launcher";
+import { usesLocalArtifacts } from "@/lib/launcher";
 import { putMockBundle } from "@/lib/launcher/artifacts";
 import { json } from "@/lib/runs/http";
 import { deriveArtifactToken, safeEqualHex } from "@/lib/runs/secrets";
@@ -16,7 +16,7 @@ const MAX_BYTES = 25 * 1024 * 1024;
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const t = new URL(req.url).searchParams.get("t") ?? "";
-  if (launcherKind() !== "mock" || !isUuid(id) || !safeEqualHex(t, deriveArtifactToken(id)))
+  if (!usesLocalArtifacts() || !isUuid(id) || !safeEqualHex(t, deriveArtifactToken(id)))
     return json({ error: "not_found" }, 404);
   const body = await req.text();
   if (body.length > MAX_BYTES) return json({ error: "too_large" }, 413);

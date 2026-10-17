@@ -7,13 +7,13 @@
 import { gunzipSync } from "node:zlib";
 import { GcsObjectStore, mockArchiveDeps, type ArchiveDeps, type PageRecord } from "@voidaccess/archive";
 import { getEnv } from "../../env";
-import { launcherKind } from "../launcher";
+import { usesLocalArtifacts } from "../launcher";
 import { PAGES_NAME } from "../launcher/artifact-paths";
 import { gcsArtifactDeps, gcsRunObjectReader } from "../launcher/artifacts-gcs";
 import { defaultTokenProvider } from "../launcher/gcp-auth";
 
 export function archiveDepsFor(): ArchiveDeps {
-  if (launcherKind() === "mock") return mockArchiveDeps();
+  if (usesLocalArtifacts()) return mockArchiveDeps();
   const runs = gcsArtifactDeps();
   const readRunObject = gcsRunObjectReader();
   return {

@@ -16,7 +16,7 @@
  *    call useNoopIngest().
  */
 import { ingestBundle as runIngest, type IngestDeps } from "@voidaccess/ingest";
-import { launcherKind } from "../launcher";
+import { usesLocalArtifacts } from "../launcher";
 import { readMockBundle } from "../launcher/artifacts";
 import { gcsArtifactDeps } from "../launcher/artifacts-gcs";
 
@@ -24,7 +24,7 @@ export type IngestFn = (runId: string) => Promise<void>;
 
 /** Where ingest reads artifacts from. Mock launcher: the local artifact store. Cloud Run: R0's GCS readers. */
 function artifactDeps(): IngestDeps {
-  if (launcherKind() === "mock") {
+  if (usesLocalArtifacts()) {
     return {
       async readBundle(runId) {
         const raw = await readMockBundle(runId);
