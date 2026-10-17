@@ -73,6 +73,30 @@ describe("LiveModel", () => {
     expect(JSON.stringify([...m.urls.values()])).not.toContain("[.]onion");
   });
 
+  it("a page read ok and then removed by the safety gate moves to the safety tray and loses its host", () => {
+    const m = new LiveModel();
+    m.apply(
+      tr("url.found", { url_id: "u1", host: "abcdefgh…wxyz[.]onion", engine: "Ahmia (Clearnet Proxy)" }),
+    );
+    m.apply(tr("url.found", { url_id: "u2", host: "ijklmnop…wxyz[.]onion" }));
+    m.apply(tr("url.kept", { url_id: "u1" }));
+    m.apply(tr("url.kept", { url_id: "u2" }));
+    m.apply(tr("page.fetched", { url_id: "u1", outcome: "ok", bytes: 900 }, 0, "fetch"));
+    m.apply(tr("page.fetched", { url_id: "u2", outcome: "error" }, 0, "fetch"));
+    expect(m.tray.error).toBe(1);
+    expect(m.apply(tr("page.fetched", { url_id: "u1", outcome: "safety_dropped" }, 0, "fetch"))).toEqual([
+      { e: "fail", id: "u1", bucket: "safety" },
+    ]);
+    m.apply(tr("page.fetched", { url_id: "u2", outcome: "safety_dropped" }, 0, "fetch"));
+    expect(m.fetchedOk).toBe(0);
+    expect(m.tray).toMatchObject({ safety: 2, error: 0 });
+    expect(m.urls.get("u1")).toMatchObject({ host: null, engine: null, state: "failed", safety: true });
+    expect(m.urls.get("u1")!.fetch).toEqual({ outcome: "safety_dropped" });
+    // anything after the safety drop is ignored
+    expect(m.apply(tr("page.fetched", { url_id: "u1", outcome: "ok" }, 0, "fetch"))).toEqual([]);
+    expect(m.discarded).toBe(2);
+  });
+
   it("never double-counts a replayed or reconnected event, and ignores unknown kinds", () => {
     const m = new LiveModel();
     const e = tr("url.found", { url_id: "u1", host: "example[.]com" });

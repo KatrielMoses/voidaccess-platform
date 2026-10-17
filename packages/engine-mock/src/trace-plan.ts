@@ -36,15 +36,16 @@ export interface TracePlan {
   totals: { results_found: number; pages_fetched: number; entities_found: number };
 }
 
+/** As the engine names them (spaces and brackets included). */
 export const SEARCH_ENGINES = [
-  "ahmia",
-  "torch",
-  "haystak",
-  "tordex",
-  "excavator",
-  "onionland",
-  "darksearch",
-  "tor66",
+  "Ahmia",
+  "Torch",
+  "Excavator",
+  "OnionLand",
+  "Tor66",
+  "The Deep Searches",
+  "Ahmia (Clearnet Proxy)",
+  "Torgle",
 ] as const;
 
 const QUERY_SUFFIXES = [
@@ -241,8 +242,8 @@ export function planTrace(fx: ResultBundle, opts: { seed: string; level: TraceLe
     status: TraceDataOf<"search.result">["status"];
     ms?: number;
   };
-  const engineMode = (e: string): "ok" | "no_key" | "disabled" =>
-    e === "darksearch" ? "no_key" : e === "onionland" && !full ? "disabled" : "ok";
+  const engineMode = (e: string): "ok" | "disabled" =>
+    e === "Torgle" || (e === "OnionLand" && !full) ? "disabled" : "ok";
   const slot = 0.8 / queries.length;
   const results: Res[] = [];
   queries.forEach((_, q) => {
@@ -262,7 +263,7 @@ export function planTrace(fx: ResultBundle, opts: { seed: string; level: TraceLe
           ? 30_000
           : status === "error"
             ? rng.int(150, 3_000)
-            : rng.int(engine === "ahmia" ? 400 : 900, 24_000);
+            : rng.int(engine === "Ahmia" ? 400 : 900, 24_000);
       results.push({ q, engine, at: s + slot * Math.min(0.9, 0.03 + (ms / 30_000) * 0.85), status, ms });
     });
   });
@@ -272,7 +273,7 @@ export function planTrace(fx: ResultBundle, opts: { seed: string; level: TraceLe
   const depth0 = target - depth1;
   const okRes = results.filter((r) => r.status === "ok").sort((a, b) => a.at - b.at);
   const weights = okRes.map(
-    (r) => (r.engine === "ahmia" ? 3 : r.engine === "torch" ? 2 : 1) * rng.range(0.4, 1.6),
+    (r) => (r.engine === "Ahmia" ? 3 : r.engine === "Torch" ? 2 : 1) * rng.range(0.4, 1.6),
   );
   const wsum = weights.reduce((a, b) => a + b, 0);
   const alloc = okRes.map(() => 0);
@@ -287,7 +288,10 @@ export function planTrace(fx: ResultBundle, opts: { seed: string; level: TraceLe
   const sites: { host: string; onion: boolean }[] = [];
   const newSite = () => {
     const onion = !rng.chance(0.15);
-    const site = { host: displayHost(onion ? onionHost(rng) : rng.pick(CLEARNET_HOSTS))!, onion };
+    let host = displayHost(onion ? onionHost(rng) : rng.pick(CLEARNET_HOSTS))!;
+    // the engine masks an onion name that contains an abuse term ("********…fcid[.]onion")
+    if (onion && rng.chance(0.03)) host = "*".repeat(8) + host.slice(8);
+    const site = { host, onion };
     sites.push(site);
     return site;
   };
@@ -399,7 +403,7 @@ export function planTrace(fx: ResultBundle, opts: { seed: string; level: TraceLe
     ["http_5xx", 0.05, 1],
     ["timeout", 0.1, 2],
     ["tor_error", 0.08, 2],
-    ["too_large", 0.02, 1],
+    ["error", 0.02, 1],
     ["empty", 0.04, 1],
     ["safety_dropped", 0.03, 2],
   ];
@@ -454,10 +458,6 @@ export function planTrace(fx: ResultBundle, opts: { seed: string; level: TraceLe
       case "http_5xx":
         data = { ...base, outcome: "http_5xx", http_status: rng.pick([500, 502, 503]), ms: f.ms };
         break;
-      case "too_large":
-        // no `bytes`: the body is cut off at the size limit (and the contract caps bytes at 1e6, see Count)
-        data = { ...base, outcome: "too_large", http_status: 200, ms: f.ms };
-        break;
       case "empty":
         data = { ...base, outcome: "empty", http_status: 200, bytes: rng.int(0, 180), ms: f.ms };
         break;
@@ -465,6 +465,12 @@ export function planTrace(fx: ResultBundle, opts: { seed: string; level: TraceLe
         data = { ...base, outcome: f.outcome, ms: f.ms };
     }
     stages.fetch.push(item(at, "page.fetched", data, f.outcome === "ok" ? "page" : undefined));
+  }
+  // The engine's post-scrape safety gate can remove a page that was already reported read: a second
+  // page.fetched for the same url, and the latest wins.
+  if (okPages.length > 4) {
+    const gone = okPages.splice(rng.int(0, okPages.length - 1), 1)[0]!;
+    stages.fetch.push(item(0.97, "page.fetched", { url_id: gone.id, outcome: "safety_dropped" }));
   }
   stages.fetch.sort(byAt);
 

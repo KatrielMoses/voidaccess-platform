@@ -49,6 +49,7 @@ export const TRAY_BUCKETS = [
   ["tor_error", "Tor error"],
   ["too_large", "too large"],
   ["empty", "empty"],
+  ["error", "error"],
   ["safety", "safety"],
 ] as const;
 export type TrayBucket = (typeof TRAY_BUCKETS)[number][0];
@@ -348,7 +349,14 @@ export class LiveModel {
       case "page.fetched": {
         const u = this.url(str(d.url_id));
         const outcome = str(d.outcome);
-        if (!u || !outcome || u.fetch) return [];
+        if (!u || !outcome) return [];
+        if (u.fetch) {
+          // The latest outcome wins only for the post-scrape safety gate: a page first read "ok" can still be
+          // removed. Undo what the earlier outcome counted, then fall through as a safety drop.
+          if (outcome !== "safety_dropped" || u.safety) return [];
+          if (u.state === "fetched") this.fetchedOk--;
+          else if (u.dropReason && this.tray[u.dropReason] > 0) this.tray[u.dropReason]--;
+        }
         if (outcome === "safety_dropped") {
           this.markSafety(u);
           u.fetch = { outcome };

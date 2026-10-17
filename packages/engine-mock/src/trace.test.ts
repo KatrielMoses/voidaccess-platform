@@ -164,8 +164,16 @@ describe("mock engine: contract v2 trace", () => {
     expect(keptShare).toBeGreaterThan(0.15);
     expect(keptShare).toBeLessThan(0.25);
     expect(new Set(ofKind(traces, "search.result").map((t) => t.data.status))).toEqual(
-      new Set(["ok", "timeout", "error", "no_key", "disabled"]),
+      new Set(["ok", "timeout", "error", "disabled"]),
     );
+    // engine names as the engine writes them, spaces and brackets included
+    expect(ofKind(traces, "search.request").some((t) => /[ ()]/.test(t.data.engine))).toBe(true);
+    // a page read ok and later removed by the post-scrape safety gate: the latest outcome wins
+    const outcomesOf = new Map<string, string[]>();
+    for (const t of fetched)
+      outcomesOf.set(t.data.url_id, [...(outcomesOf.get(t.data.url_id) ?? []), t.data.outcome]);
+    const regated = [...outcomesOf.values()].filter((o) => o.length > 1);
+    expect(regated).toEqual([["ok", "safety_dropped"]]);
 
     // real duplicates: same host found by two different engines, the later one dropped as duplicate
     const found = ofKind(traces, "url.found");
@@ -179,6 +187,7 @@ describe("mock engine: contract v2 trace", () => {
     }
     expect(found.some((f) => f.data.depth === 1 && f.data.engine === undefined)).toBe(true);
     for (const f of found) expect(f.data.host).toMatch(/\[\.\](onion|[a-z]+)$/);
+    expect(found.some((f) => f.data.host.startsWith("********"))).toBe(true); // a masked onion name
 
     // safety drops carry nothing but the id and the reason/outcome (as sent, not just after sanitizing)
     const rawSafety = raw.filter((e) => {
@@ -196,7 +205,7 @@ describe("mock engine: contract v2 trace", () => {
     // counts follow the trace
     const last = rx.events.at(-1)!;
     expect(last.counts?.results_found).toBe(found.length);
-    expect(last.counts?.pages_fetched).toBe(fetched.filter((t) => t.data.outcome === "ok").length);
+    expect(last.counts?.pages_fetched).toBe([...outcomesOf.values()].filter((o) => o.at(-1) === "ok").length);
     expect(last.counts?.entities_found).toBe(ofKind(traces, "entity.found").length);
     expect(rx.events.find((e) => e.type === "refined")?.refined_queries).toEqual(
       ofKind(traces, "query.refined").map((t) => t.data.text),

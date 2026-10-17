@@ -45,7 +45,7 @@ BYTES_MAX = 1_000_000_000
 SEARCH_STATUS = ("ok", "error", "timeout", "disabled", "no_key")
 DROP_REASONS = ("duplicate", "irrelevant", "cap", "invalid", "ssrf", "safety", "disabled_source")
 FETCH_OUTCOMES = (
-    "ok", "http_404", "http_4xx", "http_5xx", "timeout", "tor_error", "too_large", "safety_dropped", "empty",
+    "ok", "http_404", "http_4xx", "http_5xx", "timeout", "tor_error", "too_large", "safety_dropped", "empty", "error",
 )
 ENRICH_STATUS = ("ok", "error", "timeout", "disabled", "no_key", "skipped")
 SUMMARY_KINDS = ("llm", "fallback", "none")
@@ -53,7 +53,10 @@ SUMMARY_KINDS = ("llm", "fallback", "none")
 _URL_ID = re.compile(r"^u[0-9]{1,6}$")
 _ENTITY_ID = re.compile(r"^e[0-9]{1,6}$")
 _NAME = re.compile(r"^[A-Za-z0-9_.-]{1,40}$")
-_HOST = re.compile(r"^[a-z0-9.\-…\[\]]+$", re.IGNORECASE)
+# search engines and enrichment sources keep the engine's own name ("Ahmia (Clearnet Proxy)")
+_SOURCE_NAME = re.compile(r"^[A-Za-z0-9_.() -]{1,40}$")
+# "*" is the engine's mask for a name that contains an abuse term ("********…fcid[.]onion")
+_HOST = re.compile(r"^[a-z0-9.\-…*\[\]]+$", re.IGNORECASE)
 _MARKUP = re.compile(r"[<>\x00-\x1f]")
 _SCHEME = re.compile(r"[a-z][a-z0-9+.-]*://", re.IGNORECASE)
 _CLEAR_EMAIL = re.compile(r"(^|[^*\w.])[\w.+-]*[A-Za-z0-9]{2}[\w.+-]*@[\w-]+\.[\w.-]+", re.ASCII)
@@ -156,15 +159,16 @@ def _by_type(v: Any) -> dict[str, int]:
 
 
 _name = _regex(_NAME)
+_source_name = _regex(_SOURCE_NAME)
 _url_id = _regex(_URL_ID)
 _entity_id = _regex(_ENTITY_ID)
 
 # kind -> {field: (required, check)}; fields not listed are dropped.
 _FIELDS: dict[str, dict[str, tuple[bool, Callable[[Any], Any]]]] = {
     "query.refined": {"index": (True, _count(50)), "text": (True, _text)},
-    "search.request": {"engine": (True, _name), "query_index": (True, _count(50))},
+    "search.request": {"engine": (True, _source_name), "query_index": (True, _count(50))},
     "search.result": {
-        "engine": (True, _name),
+        "engine": (True, _source_name),
         "query_index": (True, _count(50)),
         "status": (True, _enum(SEARCH_STATUS)),
         "results": (True, _count()),
@@ -173,7 +177,7 @@ _FIELDS: dict[str, dict[str, tuple[bool, Callable[[Any], Any]]]] = {
     "url.found": {
         "url_id": (True, _url_id),
         "host": (True, _host),
-        "engine": (False, _name),
+        "engine": (False, _source_name),
         "depth": (False, _count(10)),
     },
     "url.kept": {"url_id": (True, _url_id), "score": (False, _unit)},
@@ -194,7 +198,7 @@ _FIELDS: dict[str, dict[str, tuple[bool, Callable[[Any], Any]]]] = {
         "url_id": (False, _url_id),
     },
     "enrich.source": {
-        "source": (True, _name),
+        "source": (True, _source_name),
         "status": (True, _enum(ENRICH_STATUS)),
         "hits": (False, _count()),
     },

@@ -59,18 +59,25 @@ const Name = z
   .min(1)
   .max(40)
   .regex(/^[A-Za-z0-9_.-]+$/);
+/** A search engine or enrichment source as the engine names it ("Ahmia (Clearnet Proxy)"): text only, never markup. */
+const SourceName = z
+  .string()
+  .min(1)
+  .max(40)
+  .regex(/^[A-Za-z0-9_.() -]+$/);
 const Count = z.number().int().nonnegative().max(1_000_000);
 const Ms = z.number().int().nonnegative().max(3_600_000);
 
 /**
  * Host display form: never a full URL, path or query. Onion: first 8 + "…" + last 4 + "[.]onion".
  * Clearnet: defanged ("example[.]com"). A plain dot is allowed in subdomains, but the host must be defanged.
+ * The engine masks a name that contains an abuse term with "*" ("********…fcid[.]onion").
  */
 export const DisplayHost = z
   .string()
   .min(4)
   .max(80)
-  .regex(/^[a-z0-9.\-…[\]]+$/i, "host must be a display host")
+  .regex(/^[a-z0-9.\-…*[\]]+$/i, "host must be a display host")
   .refine((h) => h.includes("[.]"), "host must be defanged");
 
 /** Masked entity display: bounded, no markup, no URL scheme, no email with a clear local part. */
@@ -88,9 +95,9 @@ export const MaskedDisplay = z
 
 export const TraceData = {
   "query.refined": z.object({ index: Count.max(50), text: z.string().min(1).max(200) }),
-  "search.request": z.object({ engine: Name, query_index: Count.max(50) }),
+  "search.request": z.object({ engine: SourceName, query_index: Count.max(50) }),
   "search.result": z.object({
-    engine: Name,
+    engine: SourceName,
     query_index: Count.max(50),
     status: z.enum(["ok", "error", "timeout", "disabled", "no_key"]),
     results: Count,
@@ -99,7 +106,7 @@ export const TraceData = {
   "url.found": z.object({
     url_id: Id("u"),
     host: DisplayHost,
-    engine: Name.optional(),
+    engine: SourceName.optional(),
     depth: Count.max(10).optional(),
   }),
   "url.kept": z.object({ url_id: Id("u"), score: z.number().min(0).max(1).optional() }),
@@ -119,6 +126,7 @@ export const TraceData = {
       "too_large",
       "safety_dropped",
       "empty",
+      "error",
     ]),
     http_status: z.number().int().min(100).max(599).optional(),
     bytes: z.number().int().nonnegative().max(1_000_000_000).optional(),
@@ -136,7 +144,7 @@ export const TraceData = {
     url_id: Id("u").optional(),
   }),
   "enrich.source": z.object({
-    source: Name,
+    source: SourceName,
     status: z.enum(["ok", "error", "timeout", "disabled", "no_key", "skipped"]),
     hits: Count.optional(),
   }),

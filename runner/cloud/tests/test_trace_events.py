@@ -288,6 +288,20 @@ def test_url_found_hosts_must_be_display_hosts():
         assert sanitize_trace(trace("url.found", "collect", url_id="u1", host=host)) is None, host
 
 
+def test_what_the_real_engine_sends_passes_masked_hosts_named_sources_and_the_error_outcome():
+    events = [
+        trace("url.found", "collect", url_id="u1", host="********…fcid[.]onion", engine="The Deep Searches"),
+        trace("search.request", "collect", engine="Ahmia (Clearnet Proxy)", query_index=0),
+        trace("search.result", "collect", engine="Ahmia (Clearnet Proxy)", query_index=0, status="ok", results=12),
+        trace("enrich.source", "enrich", source="Shodan InternetDB", status="ok", hits=3),
+        trace("page.fetched", "fetch", url_id="u1", outcome="error"),
+    ]
+    for e in events:
+        assert sanitize_trace(e) is not None, e
+    for engine in ("<b>x</b>", "a/b", "x" * 41, "tab\there"):
+        assert sanitize_trace(trace("search.request", "collect", engine=engine, query_index=0)) is None, engine
+
+
 def test_text_and_display_are_truncated_and_unknown_fields_removed():
     q = sanitize_trace(trace("query.refined", "refine", index=1, text="q" * 500, extra="nope"))
     assert q["data"] == {"index": 1, "text": "q" * 200}

@@ -47,6 +47,22 @@ describe("contract v2 trace validation", () => {
     for (const e of ok) expect(checkTrace(e), JSON.stringify(e)).toMatchObject({ ok: true });
   });
 
+  it("accepts what the real engine sends: masked hosts, named sources and the error outcome", () => {
+    const ok = [
+      tr("url.found", { url_id: "u1", host: "********…fcid[.]onion", engine: "The Deep Searches" }),
+      tr("search.request", { engine: "Ahmia (Clearnet Proxy)", query_index: 0 }),
+      tr("search.result", { engine: "Ahmia (Clearnet Proxy)", query_index: 0, status: "ok", results: 12 }),
+      tr("enrich.source", { source: "Shodan InternetDB", status: "ok", hits: 3 }),
+      tr("page.fetched", { url_id: "u1", outcome: "error" }),
+    ];
+    for (const e of ok) expect(checkTrace(e), JSON.stringify(e)).toMatchObject({ ok: true });
+    for (const engine of ["<b>x</b>", "a/b", "x".repeat(41), "tab\there"])
+      expect(checkTrace(tr("search.request", { engine, query_index: 0 })), engine).toMatchObject({
+        ok: false,
+        ignored: false,
+      });
+  });
+
   it("ignores kinds it doesn't know yet (a newer engine) without rejecting", () => {
     expect(checkTrace(tr("page.screenshot", { url_id: "u1" }))).toEqual({ ok: false, ignored: true, seq: 7 });
   });

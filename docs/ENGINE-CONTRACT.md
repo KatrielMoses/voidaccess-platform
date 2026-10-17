@@ -76,6 +76,16 @@ page.fetched 400, entity.found 300, others 200; total 3000) are defined once in
   the rest stored in `run_events` (type `trace`, `kind`, `data`). A safety drop also strips the host from the URL's
   stored `url.found`. Traces never settle a run and are ignored once it is ingesting or terminal. The SSE stream
   sends them as `event: trace` and marks the end of the backlog with one `event: live`.
+- **What the engine actually sends** (checked against a real Tor run, 490 traces, all accepted):
+  - search engine and enrichment names are the engine's own ("Ahmia (Clearnet Proxy)"), so they allow spaces and
+    brackets; type names and `by_type` keys stay `[A-Za-z0-9_.-]`;
+  - an onion or clearnet name that contains an abuse term is masked with `*` ("********…fcid[.]onion");
+  - `page.fetched.outcome` also has `error` (a connection failure that fits no other value); `too_large` is not sent;
+  - a page reported `ok` can be followed by `safety_dropped` from the post-scrape safety gate; the safety drop wins
+    and the page moves to the safety tray with its host removed. No other outcome overrides an earlier one;
+  - successful fetches arrive in a burst after the scrape batch's safety scan, failures arrive as they happen;
+  - `trace.truncated` is sent once per kind just before the terminal event, with the final dropped count;
+  - `query.refined` can also arrive in `collect`, and entities found by enrichment have no `url_id`.
 
 ## 3. Result bundle (`bundle.json`, uploaded before the `completed` event)
 
