@@ -47,6 +47,8 @@ export const ProgressEvent = z.object({
   status: StageStatus.optional(),
   /** Additive (engine hook): on a stage `end`. */
   duration_ms: z.number().int().nonnegative().optional(),
+  /** Contract v2 stamps `schema: 2` on every event; v1 events omit it. */
+  schema: z.union([z.literal(1), z.literal(2)]).optional(),
 });
 export type ProgressEvent = z.infer<typeof ProgressEvent>;
 

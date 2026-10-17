@@ -2,6 +2,7 @@ export * from "./stages";
 export * from "./entities";
 export * from "./metrics";
 export * from "./events";
+export * from "./trace";
 export * from "./run-spec";
 export * from "./bundle";
 export * from "./hmac";

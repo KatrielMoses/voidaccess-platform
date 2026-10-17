@@ -59,6 +59,24 @@ type ProgressEvent = {
 - The job traps SIGTERM, stops at the next checkpoint, emits `cancelled` with `stages_completed`, and exits.
 - Checkpoints come between every stage and inside the collect, fetch and enrich loops.
 
+### 2.1 Contract v2: trace events (P8 / E3)
+
+Opt-in (`VOIDACCESS_TRACE_EVENTS=1` or CLI `--trace`; the cloud runner turns it on). Every event gains `schema: 2`;
+one event type is added: `{ type: "trace", schema: 2, run_id, seq, at, stage, kind, data }`. The kinds, their bounded
+fields, the host display form, the safety rule and the per-run caps (url.found 600, url.kept/dropped 600 each,
+page.fetched 400, entity.found 300, others 200; total 3000) are defined once in
+`packages/engine-client/src/trace.ts` (mirrored for the runner in `runner/cloud/trace.py`).
+
+- **Batches.** Trace events are POSTed to the same callback URL as `{ schema: 2, run_id, events: [...] }`, 1..50
+  events, signed like a single event with `X-VA-Seq` = the seq of the **last** event. Batches carry traces only; a
+  pending batch is flushed before any non-trace event, after 300 ms, or at 50 events, so delivery order is seq order.
+- **Backpressure.** Traces are dropped first (before they get a seq), then a queued trace batch is evicted to make
+  room for `counts`; stage, refined and terminal events are never dropped. Consumers tolerate seq gaps.
+- **Platform.** Each event is validated on its own: unknown kinds are ignored, malformed or oversized ones rejected,
+  the rest stored in `run_events` (type `trace`, `kind`, `data`). A safety drop also strips the host from the URL's
+  stored `url.found`. Traces never settle a run and are ignored once it is ingesting or terminal. The SSE stream
+  sends them as `event: trace` and marks the end of the backlog with one `event: live`.
+
 ## 3. Result bundle (`bundle.json`, uploaded before the `completed` event)
 
 ```ts
