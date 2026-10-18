@@ -54,5 +54,20 @@ contains a `.env`, a `*.db` or a key-shaped string.
   proof runs and can only **tighten** the built-in limits (`constants.py`).
 - Exit codes: 0 after any delivered terminal event except `failed: error`; 1 for a crash or an undelivered terminal
   event; 3 when no RunSpec could be fetched (the app's watchdog fails the run).
+- **Switch and rollback (R2, engine 2.1.0).** Images are never deleted from Artifact Registry, so rollback is re-pointing
+  the job. Switch from a saved, reviewed plan only:
+  ```bash
+  terraform -chdir=infra/terraform plan -target=module.runner \
+    -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:c66b9a0-8b4519c -out=/tmp/r2-switch.tfplan
+  terraform -chdir=infra/terraform apply /tmp/r2-switch.tfplan
+  ```
+  Rollback (previous production image, engine bf2213c), one command:
+  ```bash
+  terraform -chdir=infra/terraform apply -auto-approve -target=module.runner \
+    -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:bf2213c-95be6a1
+  ```
+  If Terraform is unavailable: `gcloud run jobs update va-runner --region us-central1 --image
+  us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:bf2213c-95be6a1` (then re-apply Terraform with the same
+  image so state matches). Running executions keep their image; only new runs pick up the change.
 - `scripts/check_artifacts.py` validates downloaded artifacts (schema, integrity, completeness, raw-credential scan);
   `scripts/check_logs.py` is the log-leak check over exported Cloud Logging JSON.
