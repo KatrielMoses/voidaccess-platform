@@ -12,9 +12,9 @@ import { getAuthDb } from "./auth-db";
 import { saveFirstTouch } from "./bootstrap";
 import { trackEvent } from "@/lib/analytics";
 import { sendLifecycle } from "@/lib/lifecycle/send";
-import { AUTH_RATE_LIMITS } from "../limits-auth";
+import { AUTH_RATE_LIMITS, EMAIL_CODE_LIMITS } from "../limits-auth";
 import { accountExists, isBlockedEmail, signUpRefused } from "./blocked-domains";
-import { createAuthRateLimitStorage } from "../rate-limit";
+import { createAuthRateLimitStorage, hashEmail } from "../rate-limit";
 import { parseAttribution } from "./attribution";
 import { cookieDomainCovers, trustedOrigins } from "./origins";
 
@@ -51,6 +51,7 @@ export const SIGN_IN_CODE_MINUTES = 10;
 const ipHeader = process.env.AUTH_IP_HEADER;
 
 function build(database?: Database) {
+  const emailCodeLimiter = createAuthRateLimitStorage(database ? () => database : undefined);
   if (isProd && !cookieDomain)
     throw new Error("COOKIE_DOMAIN is required in production (shared session cookie)");
   if (isProd && !turnstileSecret) throw new Error("TURNSTILE_SECRET_KEY is required in production");
@@ -87,6 +88,18 @@ function build(database?: Database) {
         // A code for an unknown address creates the account on first sign-in, so refuse blocked domains here for
         // new addresses (same generic error). Existing accounts on such a domain can still sign in.
         if (email && (await isBlockedEmail(email)) && !(await accountExists(email))) throw signUpRefused();
+        // Per-address limits (the per-IP rule lives in AUTH_RATE_LIMITS): one inbox can't be flooded from many IPs.
+        if (email)
+          for (const [window, rule] of EMAIL_CODE_LIMITS) {
+            const r = await emailCodeLimiter.consume(
+              `email:${hashEmail(email)}|${SEND_CODE_PATH}#${window}`,
+              rule,
+            );
+            if (!r.allowed)
+              throw new APIError("TOO_MANY_REQUESTS", {
+                message: "Too many sign-in codes for this address. Try again later.",
+              });
+          }
       }),
     },
     session: { expiresIn: 60 * 60 * 24 * 14, updateAge: 60 * 60 * 24 },

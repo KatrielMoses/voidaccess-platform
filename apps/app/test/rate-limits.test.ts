@@ -133,6 +133,34 @@ describe("H1-2: auth limits hold across two auth instances sharing one database"
     expect((await requestCode(authA, 6)).status).toBe(429);
     expect((await requestCode(authB, 7)).status).toBe(429);
   });
+
+  it("per address: at most 3 codes per 10 minutes for one email, from any IP or instance; other addresses unaffected", async () => {
+    const email = `flood-${randomUUID()}@test.local`;
+    const requestCode = (auth: typeof authA, address: string, ip: string) =>
+      auth.handler(
+        new Request("http://localhost:3000/api/auth/email-otp/send-verification-otp", {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: SITE_ORIGIN, "x-forwarded-for": ip },
+          body: JSON.stringify({ email: address, type: "sign-in" }),
+        }),
+      );
+    const ip = (i: number) => `10.81.${i}.${Math.floor(Math.random() * 250)}`;
+    const statuses = [];
+    // different IPs each time, alternating instances, mixed case: the per-IP limit never applies
+    for (let i = 0; i < 3; i++)
+      statuses.push(
+        (await requestCode(i % 2 ? authA : authB, i ? email : email.toUpperCase(), ip(i))).status,
+      );
+    expect(statuses).toEqual([200, 200, 200]);
+    expect((await requestCode(authA, email, ip(10))).status).toBe(429);
+    expect((await requestCode(authB, email, ip(11))).status).toBe(429);
+    expect((await requestCode(authA, `other-${randomUUID()}@test.local`, ip(12))).status).toBe(200);
+    // the stored key holds a hash, never the address
+    const leaked = await owner<{ n: number }>(`select count(*)::int n from rate_limits where key like $1`, [
+      `%${email}%`,
+    ]);
+    expect(leaked[0]!.n).toBe(0);
+  });
 });
 
 describe("H1-2: run creation caps are DB-backed and refusals are recorded", () => {

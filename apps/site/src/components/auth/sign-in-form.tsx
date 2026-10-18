@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { auth } from "@content/auth";
 import { getConsent, getFirstTouch } from "@/lib/analytics";
@@ -23,13 +23,33 @@ const RESEND_COOLDOWN_S = 30;
  * account; afterwards the same steps simply sign the user back in. `description` (credit numbers from config) and
  * `github` (the live star count) are resolved on the server by the page.
  */
+/** How long a send waits for the invisible captcha's token before asking the visitor to retry. */
+const CAPTCHA_WAIT_MS = 8000;
+
 export function SignInForm({ description, github }: { description: string; github: string }) {
   const params = useSearchParams();
   const target = safeNext(params.get("next"), APP_URL);
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const [token, setToken] = useState("");
+  // The captcha is invisible: its token arrives on its own shortly after load. Sending waits for it (CAPTCHA_WAIT_MS)
+  // instead of disabling the button; the widget only shows itself when Cloudflare wants a human check.
+  const token = useRef("");
+  const tokenWaiters = useRef<((t: string) => void)[]>([]);
+  const onToken = useCallback((t: string) => {
+    token.current = t;
+    if (t) for (const w of tokenWaiters.current.splice(0)) w(t);
+  }, []);
+  const nextToken = () =>
+    token.current
+      ? Promise.resolve(token.current)
+      : new Promise<string>((resolve) => {
+          const timer = setTimeout(() => resolve(""), CAPTCHA_WAIT_MS);
+          tokenWaiters.current.push((t) => {
+            clearTimeout(timer);
+            resolve(t);
+          });
+        });
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<string | null>(params.get("error") ? t.oauthFailed : null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -51,7 +71,8 @@ export function SignInForm({ description, github }: { description: string; githu
   }, [cooldown]);
 
   async function sendCode(address: string): Promise<boolean> {
-    if (!token) {
+    const captcha = await nextToken();
+    if (!captcha) {
       setError(t.captcha);
       return false;
     }
@@ -60,10 +81,10 @@ export function SignInForm({ description, github }: { description: string; githu
       { email: address, type: "sign-in", firstTouch: firstTouchPayload(getFirstTouch(), getConsent()) } as Parameters<
         typeof authClient.emailOtp.sendVerificationOtp
       >[0],
-      { headers: { [CAPTCHA_HEADER]: token } },
+      { headers: { [CAPTCHA_HEADER]: captcha } },
     );
     resetCaptcha.current();
-    setToken("");
+    token.current = "";
     if (res.error) {
       setError(t.sendFailed);
       return false;
@@ -143,9 +164,9 @@ export function SignInForm({ description, github }: { description: string; githu
             </p>
           ) : (
             <>
-              <Turnstile onToken={setToken} resetRef={resetCaptcha} />
+              <Turnstile onToken={onToken} resetRef={resetCaptcha} />
               <SecondaryButton
-                disabled={busy || !token}
+                disabled={busy}
                 onClick={async () => {
                   setError(null);
                   if (await sendCode(email)) setNotice(t.resent);
@@ -180,9 +201,9 @@ export function SignInForm({ description, github }: { description: string; githu
         <OrDivider />
         <form onSubmit={onEmail} className="flex flex-col gap-5">
           <Field id="email" label={t.emailLabel} type="email" autoComplete="email" required defaultValue={email} onKeyDown={rippleOnKey} />
-          <Turnstile onToken={setToken} resetRef={resetCaptcha} />
+          <Turnstile onToken={onToken} resetRef={resetCaptcha} />
           <FormError message={error} />
-          <SubmitButton busy={busy} disabled={!token}>
+          <SubmitButton busy={busy}>
             {t.sendCode}
           </SubmitButton>
         </form>

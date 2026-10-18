@@ -13,7 +13,7 @@ declare global {
 }
 
 /**
- * Explicit-render Turnstile widget (same pattern as the waitlist form). Reports the token, or "" when it expires.
+ * Explicit-render Turnstile widget, invisible unless a human check is needed. Reports the token, or "" when it expires.
  * The server (the app) verifies the token; `resetRef.current()` re-arms the widget after a failed attempt.
  */
 export function Turnstile({ onToken, resetRef }: { onToken: (token: string) => void; resetRef?: MutableRefObject<() => void> }) {
@@ -31,6 +31,9 @@ export function Turnstile({ onToken, resetRef }: { onToken: (token: string) => v
       id.current = window.turnstile.render(el.current, {
         sitekey: TURNSTILE_SITE_KEY,
         theme: "dark",
+        // invisible unless Cloudflare needs the visitor to interact (pair with Widget mode "Invisible" or
+        // "Managed" in the Cloudflare dashboard)
+        appearance: "interaction-only",
         callback: (t: string) => cb.current(t),
         "expired-callback": () => cb.current(""),
         "error-callback": () => cb.current(""),
@@ -59,5 +62,5 @@ export function Turnstile({ onToken, resetRef }: { onToken: (token: string) => v
     };
   }, [resetRef]);
 
-  return <div ref={el} className="min-h-[65px]" data-testid="turnstile" data-va-up />;
+  return <div ref={el} data-testid="turnstile" />;
 }

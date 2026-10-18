@@ -19,7 +19,7 @@ export const auth = {
     sendFailed: "Could not send the code. Try again in a moment.",
     codeFailed: "That code didn't work. Check it, or send a new one.",
     oauthFailed: "That sign-in did not complete. Try again, or use an email code.",
-    captcha: "Complete the check below first.",
+    captcha: "We couldn't check your browser just now. Complete the check if one appears, or try again.",
     terms: "By continuing you agree to our {terms} and {aup}.",
     termsLink: "Terms",
     aupLink: "Acceptable Use Policy",

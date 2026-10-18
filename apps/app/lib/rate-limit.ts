@@ -26,6 +26,12 @@ export function hashIp(ip: string): string {
   return createHmac("sha256", ipHashKey()).update(ip).digest("hex").slice(0, 32);
 }
 
+/** Keyed hash of a normalised email address, for per-address limits. Never store or log the address itself. */
+export function hashEmail(email: string): string {
+  const key = createHmac("sha256", ipHashKey()).update("rate-limit:email-hash:v1").digest("hex");
+  return createHmac("sha256", key).update(email.trim().toLowerCase()).digest("hex").slice(0, 32);
+}
+
 /**
  * The client address for abuse correlation only (never for enforcement). A single X-Forwarded-For value is taken
  * as is; with several, the LAST one, which the Google front end appended and the client cannot forge.

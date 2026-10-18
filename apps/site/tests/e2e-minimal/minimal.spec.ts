@@ -4,7 +4,20 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 
 const APP = "http://app.va.localhost:3600";
 
-const ALLOWED = ["/", "/pricing", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/check-email", "/verified", "/acceptable-use", "/privacy", "/terms", "/robots.txt"];
+const ALLOWED = [
+  "/",
+  "/pricing",
+  "/sign-in",
+  "/sign-up",
+  "/forgot-password",
+  "/reset-password",
+  "/check-email",
+  "/verified",
+  "/acceptable-use",
+  "/privacy",
+  "/terms",
+  "/robots.txt",
+];
 /** The home page's own files (src/home/index.html references them; public/ holds them). */
 const STATIC: Record<string, RegExp> = {
   "/site.webmanifest": /^application\/(manifest\+)?json/,
@@ -40,7 +53,23 @@ const STATIC: Record<string, RegExp> = {
   "/assets/cloud-summary.png": /^image\/png/,
   "/assets/product-graph.webp": /^image\/webp/,
 };
-const BLOCKED = ["/features", "/trust", "/open-source", "/waitlist", "/waitlist/check-email", "/waitlist/confirmed", "/llms.txt", "/llms-full.txt", "/og", "/sitemap.xml", "/api/waitlist", "/api/waitlist/confirm", "/api/founding/seats", "/pl/event", "/pl/script.js"];
+const BLOCKED = [
+  "/features",
+  "/trust",
+  "/open-source",
+  "/waitlist",
+  "/waitlist/check-email",
+  "/waitlist/confirmed",
+  "/llms.txt",
+  "/llms-full.txt",
+  "/og",
+  "/sitemap.xml",
+  "/api/waitlist",
+  "/api/waitlist/confirm",
+  "/api/founding/seats",
+  "/pl/event",
+  "/pl/script.js",
+];
 
 test.describe("routes", () => {
   for (const p of ALLOWED) {
@@ -56,7 +85,9 @@ test.describe("routes", () => {
     });
   }
 
-  test("/ is the static home page with the app's origin, prices and live numbers filled in, and every file it references is served", async ({ request }) => {
+  test("/ is the static home page with the app's origin, prices and live numbers filled in, and every file it references is served", async ({
+    request,
+  }) => {
     const res = await request.get("/");
     expect(res.headers()["content-type"]).toMatch(/^text\/html/);
     const html = await res.text();
@@ -66,13 +97,19 @@ test.describe("routes", () => {
     const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = source
       .split(/(__VA_[A-Z_]+?__)/)
-      .map((part) => (part === "__VA_APP_URL__" ? esc(APP) : part.startsWith("__VA_") ? "[$\\w.]{1,8}" : esc(part)))
+      .map((part) =>
+        part === "__VA_APP_URL__" ? esc(APP) : part.startsWith("__VA_") ? "[$\\w.]{1,8}" : esc(part),
+      )
       .join("");
     expect(html).toMatch(new RegExp(`^${pattern}$`));
     expect(html).not.toContain("__VA_");
     expect(html).toMatch(/\d[\d.]*k?★ on GitHub/);
     expect(html).toMatch(/\d[\d.]*[kM]?\+ downloads/);
-    const refs = new Set([...html.matchAll(/(?:href|src)="(\/[^"#]*)"/g)].map((m) => m[1]!).filter((u) => /^\/(assets|css|js|vendor|fonts)\/|^\/site\.webmanifest$/.test(u)));
+    const refs = new Set(
+      [...html.matchAll(/(?:href|src)="(\/[^"#]*)"/g)]
+        .map((m) => m[1]!)
+        .filter((u) => /^\/(assets|css|js|vendor|fonts)\/|^\/site\.webmanifest$/.test(u)),
+    );
     refs.add("/vendor/three/three.module.min.js"); // the importmap target
     for (const ref of refs) {
       expect(STATIC[ref], `${ref} is listed in STATIC`).toBeDefined();
@@ -99,7 +136,10 @@ test.describe("routes", () => {
   });
 
   test("www redirects to the bare host with a 301", async ({ request }) => {
-    const res = await request.get("/sign-in?next=x", { headers: { host: "www.voidaccess.pro" }, maxRedirects: 0 });
+    const res = await request.get("/sign-in?next=x", {
+      headers: { host: "www.voidaccess.pro" },
+      maxRedirects: 0,
+    });
     expect(res.status()).toBe(301);
     expect(res.headers().location).toBe("https://voidaccess.pro/sign-in?next=x");
   });
@@ -122,28 +162,50 @@ test.describe("routes", () => {
 
   test("the home page leads to sign-in: nav, hero and the hunt field", async ({ page }) => {
     await page.goto("/?static");
-    await expect(page.locator("#nav").getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/sign-in");
-    await expect(page.locator("#nav").getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/sign-in");
-    await expect(page.locator(".hside").getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/sign-in");
-    await expect(page.locator("#start").getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/sign-in");
-    await expect(page.locator("footer").getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+    await expect(page.locator("#nav").getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
+    await expect(page.locator("#nav").getByRole("link", { name: "Start free" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
+    await expect(page.locator(".hside").getByRole("link", { name: "Start free" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
+    await expect(page.locator("#start").getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
+    await expect(page.locator("footer").getByRole("link", { name: "Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
     // nothing on the page offers the self-hosted install as the way in
     await expect(page.getByRole("link", { name: "Install" })).toHaveCount(0);
     // a hunt opens a new investigation in the app with the query filled in (the app sends signed-out visitors to sign in)
-    await page.route(`${APP}/**`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<h1>app</h1>" }));
+    await page.route(`${APP}/**`, (route) =>
+      route.fulfill({ status: 200, contentType: "text/html", body: "<h1>app</h1>" }),
+    );
     await page.locator("#q").fill("LockBit ransomware group");
     await page.locator("#hunt").getByRole("button", { name: /Hunt/ }).click();
     await expect(page).toHaveURL(`${APP}/investigations/new?q=LockBit%20ransomware%20group`);
   });
 
-  test("home FAQ answers open from the keyboard; the pricing page keeps the founding rules in a closed disclosure", async ({ page }) => {
+  test("home FAQ answers open from the keyboard; the pricing page keeps the founding rules in a closed disclosure", async ({
+    page,
+  }) => {
     await page.goto("/?static");
     const legal = page.locator("#faq details").first();
     await expect(legal).not.toHaveAttribute("open", "");
     await legal.locator("summary").focus();
     await page.keyboard.press("Enter");
     await expect(legal).toHaveAttribute("open", "");
-    await expect(legal.getByRole("link", { name: "Acceptable Use Policy" })).toHaveAttribute("href", "/acceptable-use");
+    await expect(legal.getByRole("link", { name: "Acceptable Use Policy" })).toHaveAttribute(
+      "href",
+      "/acceptable-use",
+    );
     await page.goto("/pricing");
     const rules = page.locator("#founding details");
     await expect(rules).not.toHaveAttribute("open", "");
@@ -155,20 +217,35 @@ test.describe("routes", () => {
     await page.goto("/sign-in");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Create your free account");
     await expect(page.getByText("01 Identify")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /^Open source on GitHub \(\d[\d.]*k?★\)$/ })).toHaveAttribute("href", "https://github.com/KatrielMoses/VoidAccess");
+    await expect(page.getByRole("link", { name: /^Open source on GitHub \(\d[\d.]*k?★\)$/ })).toHaveAttribute(
+      "href",
+      "https://github.com/KatrielMoses/VoidAccess",
+    );
   });
 
-  test("sign-in, legal and 404 pages offer sign-in in the nav (not on the sign-in page itself)", async ({ page }) => {
+  test("sign-in, legal and 404 pages offer sign-in in the nav (not on the sign-in page itself)", async ({
+    page,
+  }) => {
     for (const p of ["/terms", "/privacy", "/acceptable-use", "/pricing", "/features"]) {
       await page.goto(p);
-      await expect(page.locator("#nav").getByRole("link", { name: "Sign in" }), p).toHaveAttribute("href", "/sign-in");
+      await expect(page.locator("#nav").getByRole("link", { name: "Sign in" }), p).toHaveAttribute(
+        "href",
+        "/sign-in",
+      );
     }
     await page.goto("/sign-in");
     await expect(page.locator("#nav").getByRole("link", { name: "Sign in" })).toHaveCount(0);
   });
 
   test("auth pages are noindex", async ({ page }) => {
-    for (const p of ["/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/check-email", "/verified"]) {
+    for (const p of [
+      "/sign-in",
+      "/sign-up",
+      "/forgot-password",
+      "/reset-password",
+      "/check-email",
+      "/verified",
+    ]) {
       await page.goto(p);
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     }
@@ -176,10 +253,14 @@ test.describe("routes", () => {
 
   test("home, sign-in, legal and 404 pages link only to pages that exist", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Dark-web threat intel\s*in your browser\.$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      /^Dark-web threat intel\s*in your browser\.$/,
+    );
     for (const url of ["/", "/pricing", "/sign-in", "/terms", "/privacy", "/acceptable-use", "/features"]) {
       await page.goto(url);
-      const hrefs = await page.locator("a[href]").evaluateAll((els) => els.map((a) => a.getAttribute("href") as string));
+      const hrefs = await page
+        .locator("a[href]")
+        .evaluateAll((els) => els.map((a) => a.getAttribute("href") as string));
       for (const href of new Set(hrefs)) {
         // in-page anchors and external links (GitHub) are not pages of this site
         if (href.startsWith("#") || /^[a-z]+:/i.test(href)) continue;
@@ -194,11 +275,12 @@ test.describe("routes", () => {
 });
 
 /** Replaces Turnstile with a stub that issues a token, so the test needs no network. */
-async function stubTurnstile(page: Page) {
+/** A Turnstile stand-in: records the render options and answers with a token after `delayMs`. */
+async function stubTurnstile(page: Page, delayMs = 50) {
   await page.route("https://challenges.cloudflare.com/**", (route) =>
     route.fulfill({
       contentType: "text/javascript",
-      body: "window.turnstile={render:function(_e,o){setTimeout(function(){o.callback('test-token')},50);return 'w1'},reset:function(){}};",
+      body: `window.turnstile={render:function(_e,o){window.__tsOpts=o;setTimeout(function(){o.callback('test-token')},${delayMs});return 'w1'},reset:function(){}};`,
     }),
   );
 }
@@ -208,43 +290,81 @@ interface Captured {
   headers: Record<string, string>;
 }
 
-const CORS = { "access-control-allow-origin": "http://localhost:3701", "access-control-allow-credentials": "true", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" };
+const CORS = {
+  "access-control-allow-origin": "http://localhost:3701",
+  "access-control-allow-credentials": "true",
+  "access-control-allow-headers": "*",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
 
 /** Mocks the app's two email-code endpoints (cross-origin, so they also answer the CORS preflight). */
-async function mockCodeSignIn(page: Page, opts: { codeOk?: boolean } = {}): Promise<{ send: Captured[]; verify: Captured[] }> {
+async function mockCodeSignIn(
+  page: Page,
+  opts: { codeOk?: boolean } = {},
+): Promise<{ send: Captured[]; verify: Captured[] }> {
   const send: Captured[] = [];
   const verify: Captured[] = [];
   await page.route(`${APP}/api/auth/email-otp/send-verification-otp`, async (route: Route) => {
     const req = route.request();
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
     send.push({ body: req.postDataJSON(), headers: req.headers() });
-    return route.fulfill({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ success: true }) });
+    return route.fulfill({
+      status: 200,
+      headers: CORS,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
+    });
   });
   await page.route(`${APP}/api/auth/sign-in/email-otp`, async (route: Route) => {
     const req = route.request();
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
     verify.push({ body: req.postDataJSON(), headers: req.headers() });
     if (opts.codeOk === false)
-      return route.fulfill({ status: 400, headers: CORS, contentType: "application/json", body: JSON.stringify({ message: "Invalid OTP", code: "INVALID_OTP" }) });
-    return route.fulfill({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ token: "t", user: { id: "u1", email: "ada@example.com", name: "" } }) });
+      return route.fulfill({
+        status: 400,
+        headers: CORS,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Invalid OTP", code: "INVALID_OTP" }),
+      });
+    return route.fulfill({
+      status: 200,
+      headers: CORS,
+      contentType: "application/json",
+      body: JSON.stringify({ token: "t", user: { id: "u1", email: "ada@example.com", name: "" } }),
+    });
   });
   // the successful sign-in navigates to the app: answer it so the test can assert the URL
-  await page.route(`${APP}/welcome`, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<h1>app</h1>" }));
+  await page.route(`${APP}/welcome`, (route) =>
+    route.fulfill({ status: 200, contentType: "text/html", body: "<h1>app</h1>" }),
+  );
   return { send, verify };
 }
 
 test.describe("sign-in with an email code (first sign-in creates the account)", () => {
-  test("email -> captcha-gated code request -> 6-digit code -> into the app; no firstTouch without consent", async ({ page }) => {
+  test("email -> captcha-gated code request -> 6-digit code -> into the app; no firstTouch without consent", async ({
+    page,
+  }) => {
     await stubTurnstile(page);
     const calls = await mockCodeSignIn(page);
     await page.goto("/sign-in?utm_source=e2e&ref=smoke");
     await expect(page.getByRole("button", { name: "Continue with GitHub" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Acceptable Use Policy" })).toHaveAttribute("href", "/acceptable-use");
+    await expect(page.getByRole("link", { name: "Acceptable Use Policy" })).toHaveAttribute(
+      "href",
+      "/acceptable-use",
+    );
 
     await page.getByLabel("Email").fill("ada@example.com");
     const send = page.getByRole("button", { name: "Email me a sign-in code" });
-    await expect(page.getByTestId("turnstile")).toBeVisible();
-    await expect(send).toBeEnabled(); // token arrived
+    // the captcha is invisible: no box on the form, rendered with appearance "interaction-only"
+    await expect(page.getByTestId("turnstile")).toBeAttached();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as unknown as { __tsOpts?: { appearance?: string } }).__tsOpts?.appearance,
+        ),
+      )
+      .toBe("interaction-only");
+    await expect(send).toBeEnabled();
     await send.click();
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Check your email");
@@ -260,7 +380,9 @@ test.describe("sign-in with an email code (first sign-in creates the account)", 
     expect(calls.verify[0]!.body).not.toHaveProperty("firstTouch");
   });
 
-  test("after the visitor agrees to the privacy prompt, firstTouch is sent with the code", async ({ page }) => {
+  test("after the visitor agrees to the privacy prompt, firstTouch is sent with the code", async ({
+    page,
+  }) => {
     await stubTurnstile(page);
     const calls = await mockCodeSignIn(page);
     await page.goto("/sign-in?utm_source=e2e&ref=smoke");
@@ -272,7 +394,24 @@ test.describe("sign-in with an email code (first sign-in creates the account)", 
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page).toHaveURL(`${APP}/welcome`);
     expect(calls.send[0]!.body.firstTouch).toMatchObject({ utm: { utm_source: "e2e" } });
-    expect(calls.verify[0]!.body.firstTouch).toMatchObject({ utm: { utm_source: "e2e" }, ref: "smoke", landing: "/sign-in" });
+    expect(calls.verify[0]!.body.firstTouch).toMatchObject({
+      utm: { utm_source: "e2e" },
+      ref: "smoke",
+      landing: "/sign-in",
+    });
+  });
+
+  test("sending before the invisible captcha has answered waits for its token, then sends", async ({
+    page,
+  }) => {
+    await stubTurnstile(page, 2500);
+    const calls = await mockCodeSignIn(page);
+    await page.goto("/sign-in");
+    await page.getByLabel("Email").fill("ada@example.com");
+    await page.getByRole("button", { name: "Email me a sign-in code" }).click(); // token not there yet
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Check your email", { timeout: 10_000 });
+    expect(calls.send).toHaveLength(1);
+    expect(calls.send[0]!.headers["x-captcha-response"]).toBe("test-token");
   });
 
   test("a wrong code is shown and the user stays on the code step", async ({ page }) => {
