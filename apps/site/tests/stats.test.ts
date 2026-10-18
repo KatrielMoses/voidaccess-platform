@@ -5,12 +5,14 @@ import { DEPTHS, PLANS } from "@voidaccess/config";
 import { fill, staticTokens, statsTokens } from "@/home/render";
 import {
   DOWNLOADS_URL,
+  STARS_API_URL,
   STARS_URL,
   STATS_FALLBACK,
   STATS_TIMEOUT_MS,
   STATS_TTL_MS,
   formatCount,
   getStats,
+  githubStars,
   normaliseCount,
   resetStatsCache,
   shieldsValue,
@@ -18,8 +20,12 @@ import {
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-/** A fetcher answering each shields URL with the given badge value (or a Response / an error). */
+/**
+ * A fetcher answering each shields URL with the given badge value (or a Response / an error). GitHub's API is down
+ * (an error) unless an answer for STARS_API_URL is given, so these tests exercise the shields backup.
+ */
 function fetcher(answers: Record<string, string | Response | Error>) {
+  answers = { [STARS_API_URL]: new Error("github down"), ...answers };
   return vi.fn(async (url: string, _init?: RequestInit) => {
     const a = answers[url];
     if (a instanceof Error) throw a;
@@ -65,7 +71,7 @@ describe("getStats", () => {
   it("returns the live values, fetched in parallel with a timeout and an hour of caching", async () => {
     const f = fetcher({ [STARS_URL]: "1204", [DOWNLOADS_URL]: "21k" });
     expect(await getStats({ fetcher: f, now: 0 })).toEqual({ stars: "1.2k", downloads: "21k" });
-    expect(f).toHaveBeenCalledTimes(2);
+    expect(f).toHaveBeenCalledTimes(3); // GitHub (down), shields stars, shields downloads
     const init = f.mock.calls[0]![1] as RequestInit & { next?: { revalidate: number }; cf?: { cacheTtl: number } };
     expect(init.signal).toBeInstanceOf(AbortSignal);
     expect(init.next?.revalidate).toBe(3600);
@@ -77,15 +83,15 @@ describe("getStats", () => {
     const f = fetcher({ [STARS_URL]: "801", [DOWNLOADS_URL]: "18k" });
     await getStats({ fetcher: f, now: 0 });
     await getStats({ fetcher: f, now: STATS_TTL_MS - 1 });
-    expect(f).toHaveBeenCalledTimes(2);
+    expect(f).toHaveBeenCalledTimes(3);
     await getStats({ fetcher: f, now: STATS_TTL_MS + 1 });
-    expect(f).toHaveBeenCalledTimes(4);
+    expect(f).toHaveBeenCalledTimes(6);
   });
 
   it("shares one fetch between concurrent callers", async () => {
     const f = fetcher({ [STARS_URL]: "801", [DOWNLOADS_URL]: "18k" });
     await Promise.all([getStats({ fetcher: f, now: 0 }), getStats({ fetcher: f, now: 0 }), getStats({ fetcher: f, now: 0 })]);
-    expect(f).toHaveBeenCalledTimes(2);
+    expect(f).toHaveBeenCalledTimes(3);
   });
 
   it("falls back to the last-known values on network errors, timeouts, bad status and bad JSON", async () => {
@@ -106,6 +112,17 @@ describe("getStats", () => {
     const good = fetcher({ [STARS_URL]: "906", [DOWNLOADS_URL]: "19k" });
     expect(await getStats({ fetcher: good, now: 60_000 })).toEqual({ stars: "905", downloads: STATS_FALLBACK.downloads });
     expect(await getStats({ fetcher: good, now: 6 * 60_000 })).toEqual({ stars: "906", downloads: "19k" });
+  });
+
+  it("stars come from GitHub's API first; shields is only the backup (it can answer \"invalid\" while GitHub is fine)", async () => {
+    const f = fetcher({ [STARS_API_URL]: json({ stargazers_count: 802 }), [STARS_URL]: "invalid", [DOWNLOADS_URL]: "18k" });
+    expect(await getStats({ fetcher: f, now: 0 })).toEqual({ stars: "802", downloads: "18k" });
+    expect(f.mock.calls.map((c) => c[0])).not.toContain(STARS_URL);
+    resetStatsCache();
+    const limited = fetcher({ [STARS_API_URL]: json({ message: "API rate limit exceeded" }, 403), [STARS_URL]: "803", [DOWNLOADS_URL]: "18k" });
+    expect((await getStats({ fetcher: limited, now: 0 })).stars).toBe("803");
+    expect(githubStars({ stargazers_count: 1500 })).toBe("1.5k");
+    for (const bad of [null, {}, { stargazers_count: "802" }, { stargazers_count: -1 }]) expect(githubStars(bad)).toBeNull();
   });
 
   it("has sensible committed fallbacks", () => {
