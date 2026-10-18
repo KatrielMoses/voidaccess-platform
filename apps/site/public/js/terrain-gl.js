@@ -17,6 +17,9 @@ try {
   const small = () => innerWidth <= 960;
   // pick six peaks across the rough side
   const anchors = [];
+  // hero markers vs the demo card: the card's left edge (re-measured every 30 frames) and a label's width allowance
+  const MARK_LABEL_W = 120;
+  let stackLeft = Infinity, stackTick = 0;
   for (let i = 0; i < 6; i++) {
     const xc = -6.9 + i * 2.55; let best = [xc, -7, -9];
     for (let x = xc - .35; x <= xc + .35; x += .05) for (let z = -9.5; z <= -5.5; z += .1) { const h = heroH(x, z); if (h > best[2] + .002) best = [x, z, h]; }
@@ -40,8 +43,14 @@ try {
         if (ny > -1 && ny < 1) { ray.setFromCamera({ x: nx, y: ny }, f.cam); if (ray.ray.intersectPlane(plane, hit) && hit.z < 5 && hit.z > -16) { ptr.hz = Math.round(hit.z / .17) * .17; ptr.ha += (1 - ptr.ha) * k * 2; } else ptr.ha *= .9; } else ptr.ha *= .9;
       }
       f.u.uHiZ.value = ptr.hz; f.u.uHiA.value = Math.min(1, ptr.ha) * .8;
-      // survey markers
+      // survey markers (desktop: a marker whose label would run under the hero's demo card is faded out)
       const n = mob ? 3 : 6;
+      if (!mob && (stackTick++ % 30 === 0)) {
+        const card = document.querySelector('#stackwrap va-stack') || document.getElementById('stackwrap');
+        const box = document.getElementById('marks');
+        const cr = card && card.getBoundingClientRect();
+        stackLeft = cr && cr.width && box ? cr.left - box.getBoundingClientRect().left : Infinity;
+      }
       SIG.marks.forEach((m, i) => {
         if (i >= n) { m.el.style.display = 'none'; return; }
         m.el.style.display = '';
@@ -49,7 +58,8 @@ try {
         const [sx, sy] = f.project(x, h * SIG.hero.on, z), ox = heroEl.offsetLeft, oy = heroEl.offsetTop;
         const len = (mob ? [40, 72, 52] : [64, 112, 78, 124, 70, 104])[i];
         m.el.style.transform = `translate(${(sx + ox).toFixed(1)}px,${(sy + oy).toFixed(1)}px)`;
-        m.el.style.opacity = m.a; m.line.style.height = (len * m.a) + 'px'; m.lab.style.bottom = (len * m.a) + 'px';
+        const hidden = !mob && sx + ox + MARK_LABEL_W > stackLeft;
+        m.el.style.opacity = hidden ? 0 : m.a; m.line.style.height = (len * m.a) + 'px'; m.lab.style.bottom = (len * m.a) + 'px';
       });
       return false;
     },

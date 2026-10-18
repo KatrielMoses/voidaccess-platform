@@ -67,7 +67,7 @@ function Features({
 function FoundingPrice() {
   return (
     <>
-      <p className="mt-8 font-mono tabular-nums group-has-[#bill-annual:checked]/bill:hidden">
+      <p className="font-mono tabular-nums group-has-[#bill-annual:checked]/bill:hidden">
         <span className="sr-only">{pricing.planCopy.regularPrice} </span>
         <s className="text-[22px] leading-none tracking-[-0.03em] text-mute">{money(PLANS[FOUNDING.plan].monthlyUsd)}</s>
         <span className="sr-only">, {pricing.planCopy.foundingPriceLabel} </span>
@@ -142,20 +142,23 @@ export default function PricingPage() {
               <div key={p.id} className="flex flex-col bg-bg p-7 min-[961px]:p-8">
                 <h3 className="text-[24px] leading-none tracking-[-0.03em]">{p.name}</h3>
                 <p className="mt-2 text-[15px] text-dim">{copy.tagline}</p>
-                {p.id === FOUNDING.plan ? (
-                  <FoundingPrice />
-                ) : (
-                  <p className="mt-8 font-mono tabular-nums group-has-[#bill-annual:checked]/bill:hidden">
-                    <span className="text-[40px] leading-none tracking-[-0.04em]">{money(p.monthlyUsd)}</span>
-                    <span className="ml-1 text-[13px] text-mute">{pricing.planCopy.perMonth}</span>
+                {/* one price block height on desktop, so the founding note under Pro's price doesn't push its list lower */}
+                <div className="mt-8 min-[961px]:min-h-[96px]">
+                  {p.id === FOUNDING.plan ? (
+                    <FoundingPrice />
+                  ) : (
+                    <p className="font-mono tabular-nums group-has-[#bill-annual:checked]/bill:hidden">
+                      <span className="text-[40px] leading-none tracking-[-0.04em]">{money(p.monthlyUsd)}</span>
+                      <span className="ml-1 text-[13px] text-mute">{pricing.planCopy.perMonth}</span>
+                    </p>
+                  )}
+                  <p className="hidden font-mono tabular-nums group-has-[#bill-annual:checked]/bill:block">
+                    <span className="text-[40px] leading-none tracking-[-0.04em]">{money(p.annualUsd ?? p.monthlyUsd)}</span>
+                    <span className="ml-1 text-[13px] text-mute">
+                      {p.annualUsd ? pricing.planCopy.perYear : pricing.planCopy.perMonth}
+                    </span>
                   </p>
-                )}
-                <p className="mt-8 hidden font-mono tabular-nums group-has-[#bill-annual:checked]/bill:block">
-                  <span className="text-[40px] leading-none tracking-[-0.04em]">{money(p.annualUsd ?? p.monthlyUsd)}</span>
-                  <span className="ml-1 text-[13px] text-mute">
-                    {p.annualUsd ? pricing.planCopy.perYear : pricing.planCopy.perMonth}
-                  </span>
-                </p>
+                </div>
                 <Features features={p.features} lead={copy.lead} extras={copy.extras} roadmap={p.id === "pro_plus"} />
                 <a href={ctaHref(p.id)} className={`va-btn va-btn-block mt-8 ${p.id === "pro" ? "va-btn-light" : "va-btn-line"}`}>
                   <span>{copy.cta}</span>
