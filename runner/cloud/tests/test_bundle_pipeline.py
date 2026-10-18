@@ -1,6 +1,6 @@
 """The bundle builder, exports and page archive on a fixture run with planted credentials (guarantee 5).
 
-Needs the engine (bf2213c) on PYTHONPATH: it builds the run's SQLite database with the engine's own models,
+Needs the engine (v2.1.0) on PYTHONPATH: it builds the run's SQLite database with the engine's own models,
 and uses the engine's sanitizer and exporters.
 """
 

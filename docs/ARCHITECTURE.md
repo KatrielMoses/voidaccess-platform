@@ -7,7 +7,7 @@
 
 ## 1. Story so far
 
-The engine in `../voidaccess` (v2.0.3) can run three ways: as a CLI on SQLite, as a FastAPI service with a durable job queue backed by Postgres, and as a Next.js 14 UI. It was built for **one trusted operator per install**. The code map from 2026-10-11 found it is not multi-tenant safe:
+The engine in `../voidaccess` (v2.0.3 at the 2026-10-11 code map; the cloud runner image is built from v2.1.0, `c66b9a0`, since R2) can run three ways: as a CLI on SQLite, as a FastAPI service with a durable job queue backed by Postgres, and as a Next.js 14 UI. It was built for **one trusted operator per install**. The code map from 2026-10-11 found it is not multi-tenant safe:
 
 | # | Gap | Where | Blocks the cloud? |
 |---|---|---|---|

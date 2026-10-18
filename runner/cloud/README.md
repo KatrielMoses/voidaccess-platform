@@ -1,7 +1,7 @@
 # runner/cloud: the production runner (lane R0)
 
 One Cloud Run Job execution (`va-runner`) = one investigation. `python -m cloud.run` fetches the single-use RunSpec,
-runs the engine pipeline (public engine commit `9db5262`, VoidAccess 2.1.0: E1B cloud profile, E1C clean-ups and deny-list, RSS snippet-only) with Tor as a client only, streams
+runs the engine pipeline (VoidAccess 2.1.0, tag `v2.1.0` = public engine commit `c66b9a0`, identical to PyPI `voidaccess==2.1.0`: E1B cloud profile, E1C clean-ups and deny-list, RSS snippet-only, E3 trace events, E4 enrichment deadline, E5 quality fixes) with Tor as a client only, streams
 signed progress events to the app, builds a contract-valid `ResultBundle`, uploads the artifacts and only then sends
 `completed`. Contract: `docs/ENGINE-CONTRACT.md` v0.3.
 
@@ -26,8 +26,8 @@ signed progress events to the app, builds a contract-valid `ResultBundle`, uploa
 ## Tests
 
 ```bash
-# Python 3.11, the engine at 9db5262 importable, pytest, jsonschema, pyyaml:
-git -C ../voidaccess archive 9db5262 | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
+# Python 3.11, the engine at v2.1.0 (c66b9a0) importable, pytest, jsonschema, pyyaml:
+mkdir -p /tmp/engine && git -C ../voidaccess archive v2.1.0 | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
 pip install /tmp/engine pytest jsonschema==4.23.0 && python -m spacy download en_core_web_sm
 cd runner && PYTHONPATH=/tmp/engine python -m pytest        # 0 skipped expected
 ```
@@ -38,7 +38,8 @@ The signing and masking tests are cross-checked against `tests/vectors/engine-cl
 ## Image
 
 ```bash
-bash runner/cloud/scripts/prepare_build_context.sh /tmp/ctx          # engine from `git archive`, secret scan, prints TAG
+bash runner/cloud/scripts/prepare_build_context.sh /tmp/ctx          # engine from `git archive` of ENGINE_REF (default v2.1.0,
+                                                                     # must resolve to c66b9a0), secret scan, prints TAG
 (cd /tmp/ctx && gcloud builds submit . --config runner/cloud/cloudbuild.yaml \
    --substitutions _ENGINE_GIT_SHA=<engine>,_RUNNER_GIT_SHA=<runner>,_TAG=<engine>-<runner>)
 terraform -chdir=infra/terraform apply -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:<tag> -target=module.runner

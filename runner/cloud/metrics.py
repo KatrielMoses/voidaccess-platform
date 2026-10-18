@@ -7,8 +7,9 @@ from typing import Any
 
 def enrichment_calls(sources_used: Any, allowlist: str | None) -> dict[str, int]:
     """HTTP requests per enrichment source, as {source id: requests}. Since E1C the engine reports each source's real
-    status and its request count; only allowlisted sources with status `ok` or `error` that made requests count.
-    Older engines (no `requests` field) report 1 for a source that ran."""
+    status and its request count; every allowlisted source that made requests counts, whatever its status (2.1.0:
+    `ok`, `error`, `partial`, `timed_out`), because a cut-off call was still made. Older engines (no `requests`
+    field) report 1 for a source that ran."""
     allowed = {x.strip() for x in (allowlist or "").split(",") if x.strip()}
     out: dict[str, int] = {}
     for name, info in (sources_used or {}).items():

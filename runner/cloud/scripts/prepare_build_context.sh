@@ -8,16 +8,22 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PLATFORM_REPO="${PLATFORM_REPO:-$(cd "$HERE/../../.." && pwd)}"
 ENGINE_REPO="${ENGINE_REPO:-$(cd "$PLATFORM_REPO/../../.." 2>/dev/null && cd voidaccess 2>/dev/null && pwd || echo "")}"
-ENGINE_REF="${ENGINE_REF:-9db5262}"
+ENGINE_REF="${ENGINE_REF:-v2.1.0}"
+# The commit a tag ref must resolve to (a moved or re-created tag stops the build). A commit ref is checked against itself.
+ENGINE_EXPECT="${ENGINE_EXPECT:-c66b9a0}"
 OUT="${1:-$(mktemp -d)}"
 
 if [[ -z "$ENGINE_REPO" || ! -d "$ENGINE_REPO/.git" ]]; then
   echo "FATAL: set ENGINE_REPO to the engine checkout" >&2; exit 1
 fi
 ENGINE_SHA="$(git -C "$ENGINE_REPO" rev-parse --short=7 "$ENGINE_REF^{commit}")"
-if [[ "$ENGINE_SHA" != "${ENGINE_REF:0:7}" ]]; then
-  echo "FATAL: ENGINE_REF $ENGINE_REF resolved to $ENGINE_SHA" >&2; exit 1
+if [[ "$ENGINE_REF" =~ ^[0-9a-f]{7,40}$ ]]; then
+  ENGINE_EXPECT="$ENGINE_REF"
 fi
+if [[ "$ENGINE_SHA" != "${ENGINE_EXPECT:0:7}" ]]; then
+  echo "FATAL: ENGINE_REF $ENGINE_REF resolved to $ENGINE_SHA, expected ${ENGINE_EXPECT:0:7}" >&2; exit 1
+fi
+ENGINE_VERSION="$(git -C "$ENGINE_REPO" show "$ENGINE_SHA:pyproject.toml" | sed -n 's/^version = "\(.*\)"$/\1/p')"
 if [[ -n "$(git -C "$PLATFORM_REPO" status --porcelain -- runner/cloud packages/engine-client/schemas)" ]]; then
   echo "FATAL: runner/cloud has uncommitted changes; commit first so the image tag names real code" >&2; exit 1
 fi
@@ -45,5 +51,6 @@ fi
 echo "Context check: no .env, *.db, .git, chroma_db, __pycache__ or key-shaped strings"
 echo "Prepared context at $OUT"
 echo "ENGINE_SHA=$ENGINE_SHA"
+echo "ENGINE_VERSION=$ENGINE_VERSION"
 echo "RUNNER_SHA=$RUNNER_SHA"
 echo "TAG=$ENGINE_SHA-$RUNNER_SHA"
