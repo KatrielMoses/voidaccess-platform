@@ -1,3 +1,4 @@
+/* global URL, console */
 // Product images for the Creem checkout: 1200x1200, design.md look (ink, hairlines, one violet thing).
 import { writeFileSync } from "node:fs";
 const W = 1200;

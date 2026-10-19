@@ -213,3 +213,32 @@
     ScrollTrigger.create({ trigger: '#start', start: 'top 60%', once: true, onEnter: () => g.delayedCall(2.6, cycle) });
   }
 })();
+
+/* ---------------- already signed in: "Open console" instead of "Sign in" / "Start free" ----------------
+ * The session cookie is shared with the app's domain; the app answers get-session to this site with credentials.
+ * Only links change here: the app enforces access. */
+(() => {
+  const app = (document.querySelector('meta[name="va-app"]') || {}).content || 'https://app.voidaccess.pro';
+  const ctl = 'AbortController' in window ? new AbortController() : null;
+  const timer = ctl && setTimeout(() => ctl.abort(), 4000);
+  fetch(app + '/api/auth/get-session', { credentials: 'include', signal: ctl && ctl.signal })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((s) => {
+      if (!s || !s.user) return;
+      const home = app + '/welcome';
+      document.querySelectorAll('[data-va-auth="signin"]').forEach((a) => { a.hidden = true; });
+      document.querySelectorAll('[data-va-auth="start"]').forEach((a) => {
+        a.href = home;
+        const label = a.querySelector('span') || a;
+        label.textContent = 'Open console';
+      });
+      document.querySelectorAll('[data-va-auth="have-account"]').forEach((el) => {
+        el.textContent = "You're signed in. ";
+        const a = document.createElement('a'); a.className = 'ul-link'; a.href = home; a.textContent = 'Open console';
+        el.appendChild(a);
+      });
+      document.documentElement.dataset.signedIn = '1';
+    })
+    .catch(() => {})
+    .finally(() => timer && clearTimeout(timer));
+})();

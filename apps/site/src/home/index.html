@@ -33,7 +33,7 @@
 <nav id="nav"><div class="wrap">
   <a class="logo pre" href="/" aria-label="VoidAccess home"><img src="/assets/logo.png" alt="">voidaccess</a>
   <div class="links pre"><a href="#product">Product</a><a href="#use-cases">Use cases</a><a href="/pricing">Pricing</a><a href="#open-source">Open source</a></div>
-  <div class="navr pre"><a class="ul-link" href="/sign-in">Sign in</a><a class="btn btn-light mag" href="/sign-in"><span>Start free</span></a></div>
+  <div class="navr pre"><a class="ul-link" href="/sign-in" data-va-auth="signin">Sign in</a><a class="btn btn-light mag" href="/sign-in" data-va-auth="start"><span>Start free</span></a></div>
 </div></nav>
 
 <main>
@@ -46,7 +46,7 @@
       <h1 class="split" id="h1">Dark-web threat intel<br><span class="ln2">in your browser.</span></h1>
       <div class="hside">
         <p class="lede split" id="lede">Ask one question. VoidAccess searches 12+ Tor search engines, GitHub and security feeds in parallel, then gives you back actors, wallets, leaked credentials and IOCs, ready to export as STIX, MISP or Sigma. No Tor to run. Nothing to install.</p>
-        <div class="acts pre"><a class="btn btn-light mag" href="/sign-in"><span>Start free</span><span class="arr" aria-hidden="true"></span></a><a class="btn btn-line" href="#how"><span>How it works</span></a></div>
+        <div class="acts pre"><a class="btn btn-light mag" href="/sign-in" data-va-auth="start"><span>Start free</span><span class="arr" aria-hidden="true"></span></a><a class="btn btn-line" href="#how"><span>How it works</span></a></div>
         <p class="hnote pre">__VA_FREE_CREDITS__ free credits a month · no card · from __VA_PRO_PRICE__/mo after that</p>
         <p class="proof pre"><span>Open source (MIT)</span><a href="https://github.com/KatrielMoses/VoidAccess" target="_blank" rel="noopener">__VA_STARS__★ on GitHub</a><span>__VA_DOWNLOADS__+ downloads</span><span>Built by Katriel Moses, who found CVE-2026-50112 (Apache CloudStack RCE)</span></p>
       </div>
@@ -210,7 +210,7 @@
         <button class="mag" type="submit"><span>Hunt</span><span class="arr" aria-hidden="true"></span></button>
       </form>
     </div>
-    <div class="alt rv">Already have an account? <a class="ul-link" href="/sign-in">Sign in</a><span class="self">Prefer to self-host? <button class="cc" type="button" data-copy="pip install voidaccess" aria-label="Copy command: pip install voidaccess"><code>pip install voidaccess</code><span>Copy</span></button></span></div>
+    <div class="alt rv"><span data-va-auth="have-account">Already have an account? <a class="ul-link" href="/sign-in">Sign in</a></span><span class="self">Prefer to self-host? <button class="cc" type="button" data-copy="pip install voidaccess" aria-label="Copy command: pip install voidaccess"><code>pip install voidaccess</code><span>Copy</span></button></span></div>
   </div>
   <div class="tcv" id="tFinal" aria-hidden="true"></div>
 </section>

@@ -2,10 +2,25 @@
 
 import { usePathname } from "next/navigation";
 import { chrome as c } from "@content/chrome";
+import { APP_URL } from "@/lib/auth/config";
+import { useSignedIn } from "@/lib/auth/signed-in";
 
-/** The home page's nav actions: Pricing, Sign in and Start free. Hidden on the sign-in page itself. */
+/** Nav actions: Pricing, then Sign in and Start free, or Open console when already signed in. Hidden on /sign-in. */
 export function NavActions() {
-  if (usePathname() === "/sign-in") return null;
+  const path = usePathname();
+  const signedIn = useSignedIn();
+  if (path === "/sign-in") return null;
+  if (signedIn)
+    return (
+      <>
+        <a className="va-ul" href={c.pricing.href}>
+          {c.pricing.label}
+        </a>
+        <a className="va-btn va-btn-light" href={`${APP_URL}${c.console.path}`} data-va-mag data-testid="open-console">
+          <span>{c.console.label}</span>
+        </a>
+      </>
+    );
   return (
     <>
       <a className="va-ul" href={c.pricing.href}>

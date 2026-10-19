@@ -9,6 +9,7 @@ import { APP_URL, CAPTCHA_HEADER } from "@/lib/auth/config";
 import { GITHUB_URL } from "@/lib/site";
 import { firstTouchPayload } from "@/lib/auth/first-touch";
 import { safeNext } from "@/lib/auth/safe-next";
+import { signedIn } from "@/lib/auth/signed-in";
 import { leave } from "@/lib/motion";
 import { lockField, rippleOnKey } from "../calm-field";
 import { AuthCard, Field, FormError, FormNotice, SecondaryButton, SubmitButton, TextLink } from "./parts";
@@ -29,6 +30,13 @@ const CAPTCHA_WAIT_MS = 8000;
 export function SignInForm({ description, github }: { description: string; github: string }) {
   const params = useSearchParams();
   const target = safeNext(params.get("next"), APP_URL);
+  // already signed in (the session is shared with the app's domain): go straight on instead of asking again
+  useEffect(() => {
+    if (params.get("error")) return; // came back from a failed provider sign-in: show the form and the message
+    void signedIn().then((yes) => {
+      if (yes) window.location.replace(target);
+    });
+  }, [params, target]);
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);

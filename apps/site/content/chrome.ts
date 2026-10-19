@@ -6,6 +6,8 @@ export const chrome = {
   homeLabel: "VoidAccess home",
   signIn: { label: "Sign in", href: "/sign-in" },
   start: { label: "Start free", href: "/sign-in" },
+  /** shown instead of Sign in / Start free when the visitor is already signed in; the href is the app's */
+  console: { label: "Open console", path: "/welcome" },
   footerLine: "Dark-web OSINT in your browser.",
   support: { label: "support@voidaccess.pro", href: "mailto:support@voidaccess.pro" },
   pricing: { label: "Pricing", href: "/pricing" },

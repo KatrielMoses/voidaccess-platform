@@ -154,6 +154,15 @@ test.describe("routes", () => {
     page.on("response", (r) => {
       if (r.status() >= 400) problems.push(`${r.status()} ${r.url()}`);
     });
+    // the app isn't running in this suite: answer its session check as a signed-out visitor would get it
+    await page.route(`${APP}/api/auth/get-session`, (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { "access-control-allow-origin": "http://localhost:3701", "access-control-allow-credentials": "true" },
+        contentType: "application/json",
+        body: "null",
+      }),
+    );
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(3000);
@@ -339,6 +348,53 @@ async function mockCodeSignIn(
   );
   return { send, verify };
 }
+
+test.describe("already signed in (session shared with the app's domain)", () => {
+  const ORIGIN = "http://localhost:3701";
+  const session = (signedIn: boolean) => async (page: import("@playwright/test").Page) =>
+    page.route(`${APP}/api/auth/get-session`, (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { "access-control-allow-origin": ORIGIN, "access-control-allow-credentials": "true" },
+        contentType: "application/json",
+        body: signedIn ? JSON.stringify({ user: { id: "u1", email: "ada@example.com" }, session: { id: "s1" } }) : "null",
+      }),
+    );
+
+  test("home: Sign in and Start free become Open console, pointing at the app", async ({ page }) => {
+    await session(true)(page);
+    await page.goto("/");
+    await expect(page.locator('[data-va-auth="signin"]').first()).toBeHidden();
+    const start = page.locator('[data-va-auth="start"]').first();
+    await expect(start).toHaveText(/Open console/);
+    await expect(start).toHaveAttribute("href", `${APP}/welcome`);
+    await expect(page.locator('[data-va-auth="have-account"]')).toContainText("You're signed in.");
+  });
+
+  test("other pages: the nav offers Open console", async ({ page }) => {
+    await session(true)(page);
+    await page.goto("/pricing");
+    await expect(page.getByTestId("open-console")).toHaveAttribute("href", `${APP}/welcome`);
+    await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
+  });
+
+  test("sign-in page: a signed-in visitor goes straight on to the app", async ({ page }) => {
+    await session(true)(page);
+    await page.route(`${APP}/**`, (route, req) =>
+      req.url().includes("/api/auth/") ? route.fallback() : route.fulfill({ status: 200, contentType: "text/html", body: "<h1>app</h1>" }),
+    );
+    await page.goto("/sign-in?next=" + encodeURIComponent(`${APP}/billing`));
+    await expect(page).toHaveURL(`${APP}/billing`);
+  });
+
+  test("signed out: everything stays as it was", async ({ page }) => {
+    await session(false)(page);
+    await page.goto("/");
+    await expect(page.locator('[data-va-auth="start"]').first()).toHaveText(/Start free/);
+    await page.goto("/sign-in");
+    await expect(page.getByRole("button", { name: "Email me a sign-in code" })).toBeVisible();
+  });
+});
 
 test.describe("sign-in with an email code (first sign-in creates the account)", () => {
   test("email -> captcha-gated code request -> 6-digit code -> into the app; no firstTouch without consent", async ({
