@@ -220,20 +220,31 @@ test("crypto: pay-as-you-go credits and a Pro pass with crypto, signed finished 
   await expect(page.getByTestId("crypto-note")).toContainText("NOWPayments");
   await expect(page.getByTestId("crypto-note")).toHaveCount(1);
   // crypto passes are annual only (the monthly ones sit below NOWPayments' coin minimums)
-  await page.getByTestId("interval-month").click();
+  // card is the default; the Card / Crypto switch shows one clear option at a time
   await expect(page.getByTestId("crypto-pass-pro")).toHaveCount(0);
-  await page.getByTestId("interval-year").click();
+  await expect(page.getByTestId("crypto-topup-buy")).toHaveCount(0);
+  await page.getByTestId("pay-with-crypto").click();
+  // crypto plans are annual passes only
+  await expect(page.getByTestId("interval-year")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("interval-month")).toBeDisabled();
+  await expect(page.getByTestId("crypto-plans-note")).toContainText("don't renew");
   await expect(page.getByTestId("crypto-pass-pro")).toHaveText("Pay with crypto");
+  await expect(page.getByTestId("subscribe-pro")).toHaveCount(0);
   await expect(page.getByTestId("plan-pro")).toContainText("It doesn't renew.");
   // the crypto minimum is shown, and an amount below it can only be paid by card
   const amount = page.getByTestId("topup-amount");
   await expect(page.getByTestId("crypto-topup-min")).toContainText(
-    new RegExp(`Crypto top-ups (from|start at) \\$${CRYPTO_TOPUP_MIN_USD}`),
+    `Crypto top-ups from $${CRYPTO_TOPUP_MIN_USD}`,
   );
+  // switching to crypto lifted the amount to the crypto minimum; below it can't be paid with crypto
+  await expect(amount).toHaveValue(String(CRYPTO_TOPUP_MIN_USD));
   await amount.fill(String(CRYPTO_TOPUP_MIN_USD - 1));
-  await expect(page.getByTestId("topup-buy")).toBeEnabled();
   await expect(page.getByTestId("crypto-topup-buy")).toBeDisabled();
-  await expect(page.getByTestId("crypto-topup-min")).toContainText(`start at $${CRYPTO_TOPUP_MIN_USD}`);
+  await expect(page.getByTestId("topup-result")).toContainText(`$${CRYPTO_TOPUP_MIN_USD}`);
+  // ...but by card it can
+  await page.getByTestId("pay-with-card").click();
+  await expect(page.getByTestId("topup-buy")).toBeEnabled();
+  await page.getByTestId("pay-with-crypto").click();
   // the server refuses it too
   const below = await page.request.post("/api/billing/crypto/checkout", {
     data: { kind: "topup", usd: CRYPTO_TOPUP_MIN_USD - 1 },
@@ -324,7 +335,7 @@ test("crypto: pay-as-you-go credits and a Pro pass with crypto, signed finished 
 
   // a Pro pass for one year, at the config price
   await page.goto("/billing");
-  await page.getByTestId("interval-year").click();
+  await page.getByTestId("pay-with-crypto").click();
   await page.getByTestId("crypto-pass-pro").click();
   await page.waitForURL(/\/billing\?crypto=pending/);
   const [passOrder] = await q<{ id: string; price_cents: number }>(

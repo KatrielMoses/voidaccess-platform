@@ -64,6 +64,13 @@ export function BillingClient({
   const pass = live && view.sub!.cryptoPass ? view.sub! : null;
   const cardLive = live && !pass;
   const cryptoOn = view.crypto.enabled;
+  // How a new purchase is paid. Crypto plans are annual passes (the monthly ones sit below the coin minimums).
+  const [payWith, setPayWith] = useState<"card" | "crypto">("card");
+  const byCrypto = cryptoOn && payWith === "crypto";
+  const choosePay = (m: "card" | "crypto") => {
+    setPayWith(m);
+    if (m === "crypto") setInterval("year");
+  };
   const passPrice = (plan: PlanId, iv: Interval) =>
     view.crypto.passes.find((x) => x.plan === plan && x.interval === iv)?.usd ?? null;
   const buyPass = (plan: PlanId, iv: Interval) =>
@@ -378,35 +385,66 @@ export function BillingClient({
       <section aria-labelledby="plans-h" className="flex flex-col gap-7">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <SectionTitle id="plans-h">Plans</SectionTitle>
-          <div
-            role="group"
-            aria-label="Billing period"
-            className="inline-flex h-10 items-center rounded-sm border border-line p-[3px]"
-          >
-            {(["month", "year"] as const).map((iv) => (
-              <button
-                key={iv}
-                type="button"
-                aria-pressed={interval === iv}
-                onClick={() => setInterval(iv)}
-                data-testid={`interval-${iv}`}
-                className={cn(
-                  "inline-flex h-full items-center gap-2 rounded-xs px-3.5 text-[15px] transition-colors duration-300",
-                  interval === iv ? "bg-paper text-ink" : "text-dim hover:text-paper",
-                )}
+          <div className="flex flex-wrap items-center gap-3">
+            {cryptoOn && !live && !pass ? (
+              <div
+                role="group"
+                aria-label="Pay with"
+                className="inline-flex h-10 items-center rounded-sm border border-line p-[3px]"
               >
-                {iv === "month" ? copy.monthly : copy.annual}
-                {iv === "year" ? (
-                  <span
-                    className={cn("font-mono text-[11.5px]", interval === iv ? "text-stone" : "text-mute")}
+                {(["card", "crypto"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={payWith === m}
+                    onClick={() => choosePay(m)}
+                    data-testid={`pay-with-${m}`}
+                    className={cn(
+                      "inline-flex h-full items-center rounded-xs px-3.5 text-[15px] transition-colors duration-300",
+                      payWith === m ? "bg-paper text-ink" : "text-dim hover:text-paper",
+                    )}
                   >
-                    {fill(copy.annualNote, { monthsFree: monthsFree("pro") })}
-                  </span>
-                ) : null}
-              </button>
-            ))}
+                    {m === "card" ? copy.crypto.payWithCard : copy.crypto.payWithCrypto}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div
+              role="group"
+              aria-label="Billing period"
+              className="inline-flex h-10 items-center rounded-sm border border-line p-[3px]"
+            >
+              {(["month", "year"] as const).map((iv) => (
+                <button
+                  key={iv}
+                  type="button"
+                  aria-pressed={interval === iv}
+                  disabled={byCrypto && iv === "month"}
+                  onClick={() => setInterval(iv)}
+                  data-testid={`interval-${iv}`}
+                  className={cn(
+                    "inline-flex h-full items-center gap-2 rounded-xs px-3.5 text-[15px] transition-colors duration-300 disabled:cursor-not-allowed disabled:opacity-40",
+                    interval === iv ? "bg-paper text-ink" : "text-dim hover:text-paper",
+                  )}
+                >
+                  {iv === "month" ? copy.monthly : copy.annual}
+                  {iv === "year" ? (
+                    <span
+                      className={cn("font-mono text-[11.5px]", interval === iv ? "text-stone" : "text-mute")}
+                    >
+                      {fill(copy.annualNote, { monthsFree: monthsFree("pro") })}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+        {byCrypto ? (
+          <p className="text-[15px] text-dim" data-testid="crypto-plans-note">
+            {copy.crypto.plansNote}
+          </p>
+        ) : null}
         <ul className="grid gap-px overflow-hidden rounded-lg border border-line bg-line md:grid-cols-3">
           {view.plans.map((p) => {
             const isCurrent =
@@ -488,6 +526,26 @@ export function BillingClient({
                   >
                     {fill(copy.checkout.subscribe, { plan: p.name })}
                   </Button>
+                ) : byCrypto ? (
+                  passPrice(p.id, interval) !== null ? (
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        variant={p.id === "pro" ? "primary" : "secondary"}
+                        loading={busy === `crypto-${p.id}-${interval}`}
+                        onClick={() => buyPass(p.id, interval)}
+                        data-testid={`crypto-pass-${p.id}`}
+                      >
+                        {copy.crypto.pay}
+                      </Button>
+                      <p className="text-[15px] leading-[1.5] text-mute">
+                        {fill(copy.crypto.passLine, {
+                          plan: p.name,
+                          term: copy.crypto.term[interval],
+                          price: usd(passPrice(p.id, interval)!),
+                        })}
+                      </p>
+                    </div>
+                  ) : null
                 ) : (
                   <div className="flex flex-col gap-3">
                     <Button
@@ -517,25 +575,6 @@ export function BillingClient({
                             per: interval === "year" ? "per year" : "per month",
                           })}
                     </p>
-                    {cryptoOn && passPrice(p.id, interval) !== null ? (
-                      <>
-                        <Button
-                          variant="ghost"
-                          loading={busy === `crypto-${p.id}-${interval}`}
-                          onClick={() => buyPass(p.id, interval)}
-                          data-testid={`crypto-pass-${p.id}`}
-                        >
-                          {copy.crypto.pay}
-                        </Button>
-                        <p className="text-[15px] leading-[1.5] text-mute">
-                          {fill(copy.crypto.passLine, {
-                            plan: p.name,
-                            term: copy.crypto.term[interval],
-                            price: usd(passPrice(p.id, interval)!),
-                          })}
-                        </p>
-                      </>
-                    ) : null}
                   </div>
                 )}
               </li>
@@ -558,6 +597,7 @@ export function BillingClient({
           plan={view.plan}
           busy={busy === "topup"}
           onBuy={(amount) => go("/api/billing/checkout", { kind: "topup", usd: amount }, "topup")}
+          method={byCrypto ? "crypto" : "card"}
           crypto={
             cryptoOn
               ? {

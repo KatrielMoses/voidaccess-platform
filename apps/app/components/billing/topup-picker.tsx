@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Button, Input, cn } from "@voidaccess/ui";
 import {
   TOPUP_EXPIRY_MONTHS,
@@ -18,23 +18,40 @@ import { num, usd } from "@/lib/billing/format";
 /**
  * Pay-as-you-go top-up: any whole-dollar amount in the config range, with one-tap picks. The credit count shown is
  * config's topupBreakdown() for the user's plan, the same function the webhook uses to grant.
- * With `crypto`, the same amount can be paid with crypto (NOWPayments) from its own minimum; the credits are the same.
+ * With `crypto` and method "crypto", the same rule is paid with crypto (NOWPayments) from its own, higher minimum; the
+ * credits for the same dollars are the same. Each method shows one clear button.
  */
+const CRYPTO_PICKS = [25, 50, 100, 250];
 export function TopupPicker({
   plan,
   busy,
   onBuy,
   crypto,
+  method = "card",
 }: {
   plan: PlanId;
   busy: boolean;
   onBuy: (usd: number) => void;
   crypto?: { minUsd: number; busy: boolean; onBuy: (usd: number) => void };
+  method?: "card" | "crypto";
 }) {
+  const byCrypto = method === "crypto" && crypto !== undefined;
+  const minUsd = byCrypto ? crypto.minUsd : TOPUP_MIN_USD;
+  const picks = byCrypto
+    ? CRYPTO_PICKS.filter((v) => v >= crypto.minUsd && v <= TOPUP_MAX_USD)
+    : TOPUP_QUICK_PICKS_USD;
   const [raw, setRaw] = useState(String(TOPUP_QUICK_PICKS_USD[1] ?? TOPUP_MIN_USD));
+  // switching to crypto lifts an amount below the crypto minimum to that minimum
+  useEffect(() => {
+    if (byCrypto && !(Number(raw) >= minUsd)) setRaw(String(minUsd));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on a method change
+  }, [byCrypto]);
   const id = useId();
   const amount = raw.trim() === "" ? NaN : Number(raw);
-  const error = raw.trim() === "" ? "empty" : topupAmountError(amount);
+  const error =
+    raw.trim() === ""
+      ? "empty"
+      : (topupAmountError(amount) ?? (byCrypto && amount < minUsd ? "below_minimum" : null));
   const b = error ? null : topupBreakdown(amount, plan);
   const message =
     error === null
@@ -43,8 +60,7 @@ export function TopupPicker({
         ? copy.topups.errors.whole
         : error === "above_maximum"
           ? fill(copy.topups.errors.max, { max: usd(TOPUP_MAX_USD) })
-          : fill(copy.topups.errors.min, { min: usd(TOPUP_MIN_USD) });
-  const cryptoOk = crypto !== undefined && b !== null && b.usd >= crypto.minUsd;
+          : fill(copy.topups.errors.min, { min: usd(minUsd) });
 
   return (
     <div className="flex flex-col gap-6 rounded-lg border border-line p-5 md:p-6" data-testid="topup-picker">
@@ -53,7 +69,7 @@ export function TopupPicker({
           {copy.topups.quickPicks}
         </span>
         <div role="group" aria-labelledby={`${id}-picks`} className="flex flex-wrap gap-2">
-          {TOPUP_QUICK_PICKS_USD.map((v) => (
+          {picks.map((v) => (
             <button
               key={v}
               type="button"
@@ -75,7 +91,7 @@ export function TopupPicker({
 
       <div className="flex flex-col gap-2">
         <label htmlFor={`${id}-amount`} className="text-[15px] text-dim">
-          {fill(copy.topups.amountLabel, { min: usd(TOPUP_MIN_USD), max: usd(TOPUP_MAX_USD) })}
+          {fill(copy.topups.amountLabel, { min: usd(minUsd), max: usd(TOPUP_MAX_USD) })}
         </label>
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative w-40">
@@ -97,27 +113,27 @@ export function TopupPicker({
               data-testid="topup-amount"
             />
           </div>
-          <Button
-            variant="secondary"
-            disabled={error !== null}
-            loading={busy}
-            onClick={() => b && onBuy(b.usd)}
-            data-testid="topup-buy"
-          >
-            {b ? fill(copy.topups.buy, { usd: usd(b.usd) }) : copy.topups.buyDisabled}
-          </Button>
-          {crypto ? (
+          {byCrypto ? (
             <Button
-              variant="ghost"
-              disabled={!cryptoOk}
+              variant="primary"
+              disabled={error !== null}
               loading={crypto.busy}
-              onClick={() => b && cryptoOk && crypto.onBuy(b.usd)}
-              aria-describedby={`${id}-crypto`}
+              onClick={() => b && crypto.onBuy(b.usd)}
               data-testid="crypto-topup-buy"
             >
-              {copy.crypto.pay}
+              {b ? fill(copy.crypto.buyTopup, { usd: usd(b.usd) }) : copy.topups.buyDisabled}
             </Button>
-          ) : null}
+          ) : (
+            <Button
+              variant="secondary"
+              disabled={error !== null}
+              loading={busy}
+              onClick={() => b && onBuy(b.usd)}
+              data-testid="topup-buy"
+            >
+              {b ? fill(copy.topups.buy, { usd: usd(b.usd) }) : copy.topups.buyDisabled}
+            </Button>
+          )}
         </div>
         <p
           id={`${id}-result`}
@@ -151,11 +167,9 @@ export function TopupPicker({
             </span>
           )}
         </p>
-        {crypto ? (
-          <p id={`${id}-crypto`} className="font-mono text-[12px] text-mute" data-testid="crypto-topup-min">
-            {b && !cryptoOk
-              ? fill(copy.crypto.topupBelowMin, { min: usd(crypto.minUsd) })
-              : fill(copy.crypto.topupFrom, { min: usd(crypto.minUsd) })}
+        {byCrypto ? (
+          <p className="font-mono text-[12px] text-mute" data-testid="crypto-topup-min">
+            {fill(copy.crypto.topupFrom, { min: usd(crypto.minUsd) })}
           </p>
         ) : null}
       </div>
