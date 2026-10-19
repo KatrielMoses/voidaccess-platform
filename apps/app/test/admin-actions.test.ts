@@ -41,11 +41,9 @@ import {
   userRow,
 } from "./admin-helpers";
 import { ownerUrl } from "./urls";
+import { clearCookies, makeOwner, stepUp } from "./admin-owner";
 
-vi.mock("next/headers", () => ({
-  headers: async () => new Headers(),
-  cookies: async () => ({ get: () => undefined }),
-}));
+vi.mock("next/headers", async () => (await import("./admin-owner")).nextHeadersMock);
 
 const REASON = "abuse review: test reason";
 const rejects = async (p: Promise<unknown>, status: number) => {
@@ -390,10 +388,11 @@ describe("the role script (owner connection only, audited)", () => {
 });
 
 describe("admin API wiring: the same actions through the route handlers", () => {
-  it("POST status and grant work for an admin (same-origin) and write audit rows", async () => {
-    const admin = await makeAdmin();
+  it("POST status and grant work for the owner with a step-up (same-origin) and write audit rows", async () => {
+    const admin = await makeOwner();
     const u = await makeUser({ credits: 0 });
     asUser(admin);
+    stepUp(admin);
     const { POST: status } = await import("@/app/api/admin/users/[id]/status/route");
     const { POST: grant } = await import("@/app/api/admin/users/[id]/grant/route");
     const ctx = { params: Promise.resolve({ id: u.id }) };
@@ -424,5 +423,6 @@ describe("admin API wiring: the same actions through the route handlers", () => 
     expect(await balanceOf(u.id)).toBe(40);
     expect(await audits("admin.credits.grant", u.id)).toHaveLength(1);
     asUser(null);
+    clearCookies();
   });
 });

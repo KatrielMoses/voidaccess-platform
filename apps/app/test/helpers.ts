@@ -49,7 +49,7 @@ export async function makeUser(
   return u;
 }
 
-export const asUser = (u: TestSessionUser | null) => setSessionUser(u);
+export const asUser = (u: TestSessionUser | null, sessionId?: string) => setSessionUser(u, sessionId);
 
 export async function ledgerOf(investigationId: string) {
   return db().withSystem(

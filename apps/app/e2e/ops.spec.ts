@@ -1,20 +1,44 @@
 // Ops end-to-end: the admin console against a real server and database (mock engine).
-//   An ordinary user gets 404 on every admin route; an admin suspends a user (whose session then fails), grants credits
-//   (the balance updates), opens the cost view and removes archive data; the welcome email's unsubscribe link works.
+//   The console is only at the (test) secret path; /admin is the ordinary 404. An ordinary user and an admin with another
+//   email get 404 everywhere; the owner enrols an authenticator (TOTP computed here), unlocks, suspends a user (whose
+//   session then fails), grants credits (the balance updates), opens the cost view and removes archive data; "Lock now"
+//   asks for a code again. The welcome email's unsubscribe link works.
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import pg from "pg";
 import { expect, test, type Page } from "@playwright/test";
-import { OPS_ARCHIVE_STORE, OPS_CRON_SECRET, OPS_EMAIL_LOG } from "../playwright.ops.config";
+import {
+  OPS_ADMIN_BASE as BASE,
+  OPS_ADMIN_EMAIL,
+  OPS_ARCHIVE_STORE,
+  OPS_CRON_SECRET,
+  OPS_EMAIL_LOG,
+} from "../playwright.ops.config";
 import { findEmail, signInWithCode, signUpAndVerify, uniqueEmail } from "./helpers";
 import { ownerUrl } from "./ops-global-setup";
 import { setUserRole } from "../lib/admin/role";
+import { resetAdminMfa } from "../lib/admin/mfa-reset";
 import { ADMIN_API, ADMIN_PAGES } from "../lib/admin/routes";
+import { totpAt } from "../lib/admin/totp";
 
 const SHOTS = process.env.SCREENSHOTS === "1";
 const OUT = join(process.cwd(), "docs", "screenshots", "ops");
 const ID = "00000000-0000-4000-8000-000000000000";
+/** The public URL of an internal admin path: /admin/users -> <base>/users. */
+const pub = (internal: string) => `${BASE}${internal.slice("/admin".length)}`;
+const STATE = join(process.cwd(), "test-results", "ops", "admin-state.json");
+const SECRET_FILE = join(process.cwd(), "test-results", "ops", "admin-totp.txt"); // a throwaway secret of this test run
+
+/**
+ * A 404 body with what differs on every request taken out (the request path, and Next's per-request render id), to
+ * compare two 404s byte for byte.
+ */
+const body404 = async (r: { text(): Promise<string> }, path: string) =>
+  (await r.text())
+    .split(path)
+    .join("<path>")
+    .replace(/self\.__next_r="[^"]*"/g, 'self.__next_r="<id>"');
 
 async function shot(page: Page, name: string, width = 1440) {
   if (!SHOTS) return;
@@ -58,7 +82,7 @@ async function act(page: Page, testId: string, fields: Record<string, string>, r
 }
 
 test.describe.serial("ops console", () => {
-  const adminEmail = uniqueEmail("ops-admin");
+  const adminEmail = OPS_ADMIN_EMAIL;
   const userEmail = uniqueEmail("ops-user");
   let userId = "";
   let adminId = "";
@@ -68,14 +92,20 @@ test.describe.serial("ops console", () => {
   const pageHash = createHash("sha256").update(pageText).digest("hex");
   const sourceUrl = `https://${archiveValue}/leak`;
 
-  test("an ordinary user gets 404 on every admin page and API; signed out is sent to sign-in", async ({
+  test("an ordinary user gets 404 on every admin page and API; signed out, admin paths look like any unknown URL", async ({
     browser,
     page,
   }) => {
-    // signed out: the normal guard (the site's sign-in), not a 404
-    const anon = await page.request.get("/admin", { maxRedirects: 0 });
-    expect(anon.status()).toBe(307);
-    expect(anon.headers().location).toContain("/sign-in");
+    // signed out: /admin and the secret path get exactly what an unknown URL gets (the site's sign-in), not a 404
+    const unknown = await page.request.get("/no-such-page", { maxRedirects: 0 });
+    for (const p of ["/admin", "/admin/users", BASE, `${BASE}/users`]) {
+      const anon = await page.request.get(p, { maxRedirects: 0 });
+      expect(anon.status(), p).toBe(unknown.status());
+      expect(new URL(anon.headers().location!).pathname, p).toBe(
+        new URL(unknown.headers().location!).pathname,
+      );
+    }
+    expect(unknown.status()).toBe(307);
     expect((await page.request.get("/api/admin/costs/export", { maxRedirects: 0 })).status()).toBe(401);
 
     const ctx = await browser.newContext({ viewport: { width: 375, height: 812 } });
@@ -83,11 +113,28 @@ test.describe.serial("ops console", () => {
     await signUpAndVerify(p, userEmail, "Ordinary User", OPS_EMAIL_LOG);
     userId = (await q<{ id: string }>("select id from users where email = $1", [userEmail]))[0]!.id;
 
-    for (const route of ADMIN_PAGES) {
-      const res = await p.request.get(route.replace("[id]", ID), { maxRedirects: 0 });
-      expect(res.status(), route).toBe(404);
-      // dev-mode 404 pages carry a stack trace with component names, so check for what only a rendered admin page has
-      expect(await res.text(), route).not.toContain("Back to app");
+    // signed in: /admin, /admin/x and the secret path all answer the same 404 page as an unknown URL
+    for (const route of ADMIN_PAGES)
+      for (const url of [route.replace("[id]", ID), pub(route).replace("[id]", ID)]) {
+        const res = await p.request.get(url, { maxRedirects: 0 });
+        expect(res.status(), url).toBe(404);
+        // dev-mode 404 pages carry a stack trace with component names, so check for what only a rendered admin page has
+        const text = await res.text();
+        expect(text, url).not.toContain("Back to app");
+        expect(text, url).not.toContain("authenticator");
+      }
+    // byte for byte (after the per-request id) the same page as an unknown URL of the same shape
+    for (const [first, url] of [
+      ["admin", "/admin"],
+      ["admin", "/admin/users"],
+      ["admin", `/admin/users/${ID}`],
+      [BASE.slice(1), BASE],
+      [BASE.slice(1), `${BASE}/users`],
+    ] as const) {
+      const twin = url.replace(`/${first}`, `/${"q".repeat(first.length)}`);
+      const [a, b] = await Promise.all([url, twin].map((u) => p.request.get(u, { maxRedirects: 0 })));
+      expect([a!.status(), b!.status()], url).toEqual([404, 404]);
+      expect(await body404(a!, first), url).toBe(await body404(b!, "q".repeat(first.length)));
     }
     for (const api of ADMIN_API)
       for (const method of api.methods) {
@@ -175,13 +222,47 @@ test.describe.serial("ops console", () => {
     ]);
   });
 
-  test("an admin signs in and sees the overview", async ({ browser }) => {
+  test("an admin with another email gets 404; the owner enrols an authenticator, unlocks and sees the overview", async ({
+    browser,
+  }) => {
+    // an admin-role account that isn't ADMIN_EMAIL: the console doesn't exist for it
+    const otherCtx = await browser.newContext();
+    const other = await otherCtx.newPage();
+    const otherEmail = uniqueEmail("ops-other-admin");
+    await signUpAndVerify(other, otherEmail, "Other Admin", OPS_EMAIL_LOG);
+    await setUserRole(ownerUrl(), {
+      email: otherEmail,
+      role: "admin",
+      reason: "e2e other admin",
+      actor: "e2e",
+    });
+    expect((await other.request.get(BASE, { maxRedirects: 0 })).status()).toBe(404);
+    expect((await other.request.get(`${BASE}/unlock`, { maxRedirects: 0 })).status()).toBe(404);
+    const otherApi = await other.request.get("/api/admin/costs/export");
+    expect(otherApi.status()).toBe(404);
+    expect(await otherApi.json()).toEqual({ error: "not_found" });
+    await otherCtx.close();
+
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await ctx.newPage();
-    await signUpAndVerify(page, adminEmail, "Ops Admin", OPS_EMAIL_LOG);
+    // the database is fresh per run, but a retried group meets an owner that already exists
+    await signInWithCode(page, adminEmail, "Ops Owner", OPS_EMAIL_LOG);
+    await page.goto("/welcome");
+    if (/accept-terms/.test(page.url())) {
+      await page.getByRole("checkbox").click();
+      await page.getByRole("button", { name: "Continue" }).click();
+      await expect(page).toHaveURL(/\/welcome/);
+    }
     adminId = (await q<{ id: string }>("select id from users where email = $1", [adminEmail]))[0]!.id;
+    await setUserRole(ownerUrl(), {
+      email: adminEmail,
+      role: "user",
+      reason: "e2e start clean",
+      actor: "e2e",
+    });
+    await resetAdminMfa(ownerUrl(), { email: adminEmail, reason: "e2e start clean", actor: "e2e" });
     // not an admin until the ops script says so
-    expect((await page.request.get("/admin", { maxRedirects: 0 })).status()).toBe(404);
+    expect((await page.request.get(BASE, { maxRedirects: 0 })).status()).toBe(404);
     const r = await setUserRole(ownerUrl(), {
       email: adminEmail,
       role: "admin",
@@ -190,15 +271,76 @@ test.describe.serial("ops console", () => {
     });
     expect(r.changed).toBe(true);
 
-    await page.goto("/admin");
+    // no step-up yet: APIs answer 403 mfa_required, pages go to the code screen (here: the first-visit enrolment)
+    const locked = await page.request.get("/api/admin/costs/export");
+    expect(locked.status()).toBe(403);
+    expect(await locked.json()).toEqual({ error: "mfa_required" });
+    await page.goto(`${BASE}/costs?days=7`);
+    await expect(page).toHaveURL(new RegExp(`${BASE}/unlock\\?next=`));
+    await expect(page.getByTestId("mfa-enrol-screen")).toBeVisible();
+    await expect(page.getByRole("img", { name: /QR code/ })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Admin" })).toHaveCount(0); // nothing of the console yet
+    const secret = (await page.getByTestId("mfa-secret").innerText()).replace(/\s+/g, "");
+    expect(secret).toMatch(/^[A-Z2-7]{32}$/);
+    mkdirSync(dirname(SECRET_FILE), { recursive: true });
+    writeFileSync(SECRET_FILE, secret);
+    // the same pending secret on reload; nothing stored as enrolled yet
+    await page.reload();
+    expect((await page.getByTestId("mfa-secret").innerText()).replace(/\s+/g, "")).toBe(secret);
+    expect(
+      (await q<{ kind: string }>("select kind from credential_vault where user_id = $1", [adminId])).map(
+        (x) => x.kind,
+      ),
+    ).toEqual(["admin_totp_pending"]);
+    await shot(page, "admin-enrol");
+
+    // a wrong code, then the right one
+    const form = page.getByTestId("mfa-enrol");
+    await form.getByLabel("6-digit code").fill(totpAt(secret, Date.now() + 3600_000));
+    await form.getByRole("button", { name: "Confirm and unlock" }).click();
+    await expect(page.getByTestId("mfa-enrol-error")).toContainText("didn't work");
+    await form.getByLabel("6-digit code").fill(totpAt(secret, Date.now()));
+    await form.getByRole("button", { name: "Confirm and unlock" }).click();
+    // back where the owner was going
+    await expect(page).toHaveURL(new RegExp(`${BASE}/costs\\?days=7$`));
+    await expect(page.getByTestId("by-depth")).toBeVisible();
+    const vault = await q<{ kind: string; masked_value: string }>(
+      "select kind, masked_value from credential_vault where user_id = $1",
+      [adminId],
+    );
+    expect(vault).toEqual([{ kind: "admin_totp", masked_value: "[secret]" }]);
+    const cookie = (await ctx.cookies()).find((c) => c.name === "va_admin_stepup")!;
+    expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: "Strict", path: "/" });
+    expect(cookie.expires * 1000 - Date.now()).toBeGreaterThan(3500_000);
+    expect(cookie.expires * 1000 - Date.now()).toBeLessThanOrEqual(3600_000);
+    const audit = await q<{ action: string; meta: Record<string, unknown> }>(
+      "select action, meta from audit_log where actor = $1 and action like 'admin.mfa.%' order by at",
+      [adminId],
+    );
+    expect(audit.map((x) => x.action)).toEqual(
+      expect.arrayContaining([
+        "admin.mfa.enrol_started",
+        "admin.mfa.failed",
+        "admin.mfa.enrolled",
+        "admin.mfa.verified",
+      ]),
+    );
+    expect(JSON.stringify(audit)).not.toContain(secret);
+
+    // unlocked, /admin itself is still the ordinary 404
+    expect((await page.request.get("/admin", { maxRedirects: 0 })).status()).toBe(404);
+
+    await page.goto(BASE);
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+    await expect(page.getByTestId("paid")).toBeVisible();
+    await expect(page.getByTestId("stat-plan-mix")).toBeVisible();
+    await expect(page.getByTestId("activity")).toBeVisible();
+    await expect(page.getByTestId("activity-depth")).toContainText("standard");
     await expect(page.getByTestId("stat-signups-7")).toContainText(/[2-9]/);
     await expect(page.getByTestId("cohorts")).toBeVisible();
     await expect(page.getByTestId("stat-founding")).toContainText("/ 100");
     await shot(page, "admin-overview");
-    await page
-      .context()
-      .storageState({ path: join(process.cwd(), "test-results", "ops", "admin-state.json") });
+    await page.context().storageState({ path: STATE });
     await ctx.close();
   });
 
@@ -207,7 +349,7 @@ test.describe.serial("ops console", () => {
   }) => {
     const adminCtx = await browser.newContext({
       viewport: { width: 1440, height: 900 },
-      storageState: join(process.cwd(), "test-results", "ops", "admin-state.json"),
+      storageState: STATE,
     });
     const admin = await adminCtx.newPage();
     // a second, signed-in session for the user
@@ -219,11 +361,11 @@ test.describe.serial("ops console", () => {
     const before = await bal();
     expect(before).toBeGreaterThan(0);
 
-    await admin.goto("/admin/users");
+    await admin.goto(`${BASE}/users`);
     await admin.getByTestId("user-search").fill(userEmail.slice(0, 14));
     await admin.getByTestId("user-search").press("Enter");
     await admin.getByRole("link", { name: userEmail }).click();
-    await expect(admin).toHaveURL(new RegExp(`/admin/users/${userId}`));
+    await expect(admin).toHaveURL(new RegExp(`${BASE}/users/${userId}`));
     await expect(admin.getByTestId("ref-code")).toBeVisible();
     await expect(admin.getByTestId("investigations")).toContainText("ops e2e query");
     await expect(
@@ -268,11 +410,11 @@ test.describe.serial("ops console", () => {
   test("the admin opens the abuse queue, the cost view and the audited abuse review", async ({ browser }) => {
     const ctx = await browser.newContext({
       viewport: { width: 1440, height: 900 },
-      storageState: join(process.cwd(), "test-results", "ops", "admin-state.json"),
+      storageState: STATE,
     });
     const page = await ctx.newPage();
 
-    await page.goto("/admin/abuse");
+    await page.goto(`${BASE}/abuse`);
     await expect(page.getByTestId("repeat-users")).toContainText(userEmail);
     await expect(page.getByTestId("blocked-runs")).toContainText("blocked e2e query 0");
     await expect(page.getByTestId("flags")).toContainText("dispute");
@@ -293,7 +435,7 @@ test.describe.serial("ops console", () => {
         .length,
     ).toBe(1);
 
-    await page.goto("/admin/costs?days=1");
+    await page.goto(`${BASE}/costs?days=1`);
     await expect(page.getByTestId("by-depth")).toContainText("standard");
     await expect(page.getByTestId("by-depth")).toContainText("%");
     await expect(page.getByTestId("runs")).toContainText(invId.slice(0, 8));
@@ -309,7 +451,7 @@ test.describe.serial("ops console", () => {
     );
 
     // results are reachable only through the audited, reasoned action
-    await page.goto(`/admin/review/${invId}`);
+    await page.goto(`${BASE}/review/${invId}`);
     await expect(page.getByTestId("review-form")).toBeVisible();
     await expect(page.getByTestId("review-query")).toHaveCount(0);
     await page.getByLabel(/Reason/).fill("e2e: abuse review of a completed run");
@@ -343,10 +485,10 @@ test.describe.serial("ops console", () => {
 
     const ctx = await browser.newContext({
       viewport: { width: 1440, height: 900 },
-      storageState: join(process.cwd(), "test-results", "ops", "admin-state.json"),
+      storageState: STATE,
     });
     const page = await ctx.newPage();
-    await page.goto("/admin/archive");
+    await page.goto(`${BASE}/archive`);
     await page.getByTestId("archive-search").fill(archiveValue);
     await page.getByTestId("archive-search").press("Enter");
     const hits = page.getByTestId("archive-hit");
@@ -383,6 +525,27 @@ test.describe.serial("ops console", () => {
     );
     expect(audits).toHaveLength(2);
     for (const a of audits) expect(a).toMatchObject({ actor: adminId });
+    await ctx.close();
+  });
+
+  test("Lock now ends the step-up: the code screen again, and a fresh code unlocks back to the same page", async ({
+    browser,
+  }) => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, storageState: STATE });
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/founding`);
+    await expect(page.getByRole("navigation", { name: "Admin" })).toBeVisible();
+    await page.getByTestId("admin-lock").click();
+    await expect(page.getByTestId("mfa-code-screen")).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`${BASE}/unlock\\?next=`));
+    expect((await page.request.get("/api/admin/costs/export")).status()).toBe(403);
+    await shot(page, "admin-code-screen", 390);
+    const secret = readFileSync(SECRET_FILE, "utf8").trim();
+    // the next step's code (the current one may already be used: a step is accepted once)
+    await page.getByLabel("6-digit code").fill(totpAt(secret, Date.now() + 30_000));
+    await page.getByRole("button", { name: "Unlock" }).click();
+    await expect(page).toHaveURL(new RegExp(`${BASE}/founding$`));
+    await expect(page.getByRole("navigation", { name: "Admin" })).toBeVisible();
     await ctx.close();
   });
 

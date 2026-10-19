@@ -1,3 +1,4 @@
+import { adminHref } from "@/lib/admin/path";
 import Link from "next/link";
 import { Badge, cn, type BadgeVariant } from "@voidaccess/ui";
 import { PageHeader, SectionTitle } from "@/components/page-header";
@@ -150,7 +151,7 @@ export const Empty = ({ children }: { children: React.ReactNode }) => (
 );
 
 export const UserLink = ({ id, children }: { id: string; children: React.ReactNode }) => (
-  <Link href={`/admin/users/${id}`} className="va-link">
+  <Link href={adminHref(`/users/${id}`)} className="va-link">
     {children}
   </Link>
 );

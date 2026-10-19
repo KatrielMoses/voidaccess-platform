@@ -7,6 +7,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { e2eEnv } from "../playwright.config";
 import { signInWithCode, uniqueEmail } from "./helpers";
 import { setUserRole } from "../lib/admin/role";
+import { totpAt } from "../lib/admin/totp";
 
 test.skip(process.env.SCREENSHOTS !== "1", "set SCREENSHOTS=1 to capture the design screenshots");
 test.describe.configure({ mode: "serial" });
@@ -172,7 +173,9 @@ test("user flow", async ({ browser }) => {
 
 test("admin flow", async ({ browser }) => {
   test.setTimeout(600_000);
-  const email = uniqueEmail("design-admin");
+  // the console's owner (ADMIN_EMAIL) at the test secret path, enrolled with a code computed here
+  const email = e2eEnv.ADMIN_EMAIL;
+  const base = `/${e2eEnv.ADMIN_PATH}`;
   const ctx = await browser.newContext({ viewport: SIZES[0] });
   const page = await ctx.newPage();
   await signInWithCode(page, email, "Grace Hopper");
@@ -183,25 +186,31 @@ test("admin flow", async ({ browser }) => {
   // the role is read per request; sign in again so the session reflects it
   await ctx.clearCookies();
   await signInWithCode(page, email, "Grace Hopper");
+  await page.goto(base);
+  const secret = (await page.getByTestId("mfa-secret").innerText()).replace(/\s+/g, "");
+  await shot(page, "admin-enrol");
+  await page.getByLabel("6-digit code").fill(totpAt(secret, Date.now()));
+  await page.getByRole("button", { name: "Confirm and unlock" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   adminState = join(OUT, ".admin-state.json");
   await ctx.storageState({ path: adminState });
   await ctx.close();
 
-  await both(browser, adminState, "/admin", "admin-overview");
-  await both(browser, adminState, "/admin/users", "admin-users");
-  await both(browser, adminState, `/admin/users/${userId}`, "admin-user", async (p) => {
+  await both(browser, adminState, base, "admin-overview");
+  await both(browser, adminState, `${base}/users`, "admin-users");
+  await both(browser, adminState, `${base}/users/${userId}`, "admin-user", async (p) => {
     await p.getByTestId("grant-details").locator("summary").click();
   });
-  await both(browser, adminState, "/admin/abuse", "admin-abuse");
-  await both(browser, adminState, "/admin/costs", "admin-costs");
-  await both(browser, adminState, "/admin/archive?q=lockbit", "admin-archive");
-  await both(browser, adminState, "/admin/founding", "admin-founding");
-  await both(browser, adminState, "/admin/blocked-domains", "admin-blocked-domains");
-  await both(browser, adminState, `/admin/review/${completedId}`, "admin-review-form");
+  await both(browser, adminState, `${base}/abuse`, "admin-abuse");
+  await both(browser, adminState, `${base}/costs`, "admin-costs");
+  await both(browser, adminState, `${base}/archive?q=lockbit`, "admin-archive");
+  await both(browser, adminState, `${base}/founding`, "admin-founding");
+  await both(browser, adminState, `${base}/blocked-domains`, "admin-blocked-domains");
+  await both(browser, adminState, `${base}/review/${completedId}`, "admin-review-form");
   await both(
     browser,
     adminState,
-    `/admin/review/${completedId}?reason=${encodeURIComponent("design review of a completed run")}`,
+    `${base}/review/${completedId}?reason=${encodeURIComponent("design review of a completed run")}`,
     "admin-review",
   );
 });

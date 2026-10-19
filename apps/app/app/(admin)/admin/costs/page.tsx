@@ -1,3 +1,4 @@
+import { adminHref } from "@/lib/admin/path";
 import Link from "next/link";
 import { DEPTHS } from "@voidaccess/config";
 import { adminPage } from "@/lib/admin/guard";
@@ -110,7 +111,7 @@ export default async function AdminCosts({
         {[7, 30, 90].map((d) => (
           <Link
             key={d}
-            href={`/admin/costs?days=${d}&depth=${depth}`}
+            href={adminHref(`/costs?days=${d}&depth=${depth}`)}
             aria-current={d === days ? "true" : undefined}
             className="ul-link"
           >
@@ -121,7 +122,7 @@ export default async function AdminCosts({
         {(["all", ...Object.keys(DEPTHS)] as const).map((dp) => (
           <Link
             key={dp}
-            href={`/admin/costs?days=${days}&depth=${dp}`}
+            href={adminHref(`/costs?days=${days}&depth=${dp}`)}
             aria-current={dp === depth ? "true" : undefined}
             className="ul-link"
           >

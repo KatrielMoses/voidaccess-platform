@@ -1,4 +1,5 @@
-// Ops end-to-end run (dev server on :3800): an admin and an ordinary user, the mock engine, the admin console.
+// Ops end-to-end run (dev server on :3800): the console owner (secret path + authenticator), an ordinary user, the mock
+// engine, the admin console.
 //   pnpm --filter @voidaccess/app test:e2e:ops
 //   SCREENSHOTS=1 pnpm --filter @voidaccess/app test:e2e:ops    (also writes docs/screenshots/ops/*.png)
 import { tmpdir } from "node:os";
@@ -11,6 +12,11 @@ import { localSystemUrl } from "@voidaccess/db/local";
 export const OPS_EMAIL_LOG = join(tmpdir(), "va-p6-e2e-emails.jsonl");
 export const OPS_ARCHIVE_STORE = join(tmpdir(), "va-p6-e2e-archive-objects");
 export const OPS_CRON_SECRET = "e2e-cron-shared-secret-0123456789";
+/** A fixed TEST slug for the console (not a real one; the production slug is only in Secret Manager). */
+export const OPS_ADMIN_PATH = "ops-e2e-console-path-not-a-secret";
+export const OPS_ADMIN_BASE = `/${OPS_ADMIN_PATH}`;
+/** The console owner in this run (the database is fresh each run). */
+export const OPS_ADMIN_EMAIL = "ops-owner@example.test";
 const PORT = 3800;
 
 export default defineConfig({
@@ -45,6 +51,8 @@ export default defineConfig({
       MOCK_ARTIFACT_DIR: join(tmpdir(), "va-p6-e2e-artifacts"),
       ARCHIVE_STORE_DIR: OPS_ARCHIVE_STORE,
       EMAIL_LOG_FILE: OPS_EMAIL_LOG,
+      ADMIN_PATH: OPS_ADMIN_PATH,
+      ADMIN_EMAIL: OPS_ADMIN_EMAIL,
     },
     stdout: "ignore",
     stderr: "pipe",
