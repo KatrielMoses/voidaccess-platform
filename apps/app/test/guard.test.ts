@@ -1,7 +1,7 @@
 import { readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, type NextResponse } from "next/server";
 import { classifyPath, hasSessionCookie, movedRedirect, signInRedirect } from "@/lib/guard";
 import { proxy } from "@/proxy";
 
@@ -43,8 +43,9 @@ const MACHINE = [
 ];
 // public pages: the signed link in an email is the credential
 const PUBLIC_PAGES = new Set(["/unsubscribe"]);
+// Synchronous for every path here (only the admin console's secret path is answered asynchronously).
 const get = (path: string, cookie?: string) =>
-  proxy(new NextRequest(`${APP}${path}`, { headers: cookie ? { cookie } : {} }));
+  proxy(new NextRequest(`${APP}${path}`, { headers: cookie ? { cookie } : {} })) as NextResponse;
 
 describe("signed-out guard (guarantee 1)", () => {
   const routes = enumerateRoutes();

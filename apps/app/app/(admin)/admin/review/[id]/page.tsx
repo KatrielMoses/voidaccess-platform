@@ -1,3 +1,4 @@
+import { adminHref } from "@/lib/admin/path";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button, Textarea } from "@voidaccess/ui";
@@ -106,7 +107,7 @@ export default async function AbuseReview({
           ))}
         </T>
       </Section>
-      <Link href={`/admin/users/${inv.userId}`} className="ul-link self-start text-[15px]">
+      <Link href={adminHref(`/users/${inv.userId}`)} className="ul-link self-start text-[15px]">
         ← User
       </Link>
     </Page>

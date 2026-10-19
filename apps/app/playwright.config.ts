@@ -34,6 +34,9 @@ export const e2eEnv = {
   // ingest (P3) masks and fingerprints sensitive values; local key instead of Cloud KMS
   VA_FINGERPRINT_KEY: "e2e-fingerprint-key",
   VA_LOCAL_KEK: Buffer.alloc(32, 5).toString("base64"),
+  // the admin console: a fixed TEST slug and owner (the real slug is only in Secret Manager)
+  ADMIN_PATH: "e2e-console-path-not-a-secret",
+  ADMIN_EMAIL: "design-owner@example.test",
 };
 
 export default defineConfig({

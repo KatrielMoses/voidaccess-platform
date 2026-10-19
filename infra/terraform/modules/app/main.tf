@@ -28,6 +28,11 @@ variable "creem_api_key_secret" {
   description = "Secret id for CREEM_API_KEY (creem-api-key-test or creem-api-key-live)."
   type        = string
 }
+variable "admin_email" {
+  description = "ADMIN_EMAIL: the owner account of the admin console."
+  type        = string
+  default     = "katriel@voidaccess.pro"
+}
 variable "creem_webhook_secret" {
   description = "Secret id for CREEM_WEBHOOK_SECRET (creem-webhook-secret-test or creem-webhook-secret-live)."
   type        = string
@@ -66,6 +71,7 @@ locals {
     CRYPTO_PAYMENTS      = var.crypto_payments
     CRYPTO_PROVIDER      = "nowpayments" # never "fake" here: the app refuses the fake provider in production anyway
     NOWPAYMENTS_API_BASE = var.nowpayments_api_base
+    ADMIN_EMAIL          = var.admin_email
   }
 
   # env var name => secret id
@@ -89,6 +95,7 @@ locals {
       NOWPAYMENTS_API_KEY    = var.nowpayments_api_key
       NOWPAYMENTS_IPN_SECRET = var.nowpayments_ipn
       OPENROUTER_API_KEY     = "openrouter-api-key"
+      ADMIN_PATH             = "admin-path" # the admin console's secret URL slug; never put the value in terraform
     },
   )
 }

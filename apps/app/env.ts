@@ -72,6 +72,17 @@ export const envSchema = z.object({
   NOWPAYMENTS_API_BASE: z.url().default("https://api.nowpayments.io/v1"),
   /** Marketing-site origin allowed to read GET /api/founding/seats. */
   SITE_ORIGIN: z.url().default("https://voidaccess.pro"),
+  // ---- admin console (owner-only; see lib/admin/guard.ts) ----
+  /**
+   * Secret path slug of the admin console ("admin-" + 32 hex, from Secret Manager "admin-path"). Unset = the console
+   * is unreachable everywhere. Never commit or log a real value.
+   */
+  ADMIN_PATH: z
+    .string()
+    .regex(/^[a-z0-9-]{24,}$/, "ADMIN_PATH must be at least 24 characters of [a-z0-9-]")
+    .optional(),
+  /** The only account that may open the console (verified email, trimmed, case-insensitive). */
+  ADMIN_EMAIL: z.email().default("katriel@voidaccess.pro"),
 });
 
 export type Env = z.infer<typeof envSchema>;

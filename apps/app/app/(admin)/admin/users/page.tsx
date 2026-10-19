@@ -1,3 +1,4 @@
+import { adminHref } from "@/lib/admin/path";
 import Link from "next/link";
 import { Button, Input } from "@voidaccess/ui";
 import { adminPage } from "@/lib/admin/guard";
@@ -14,7 +15,8 @@ export default async function AdminUsers({
   const { q = "", page = "0" } = await searchParams;
   const p = Math.max(0, Number.parseInt(page, 10) || 0);
   const { rows, hasMore } = await searchUsers(q, p);
-  const href = (n: number) => `/admin/users?${new URLSearchParams({ ...(q ? { q } : {}), page: String(n) })}`;
+  const href = (n: number) =>
+    adminHref(`/users?${new URLSearchParams({ ...(q ? { q } : {}), page: String(n) })}`);
   return (
     <Page title="Users" subtitle="Search by email (partial) or exact user id.">
       <form method="get" className="flex max-w-xl gap-2.5" role="search">

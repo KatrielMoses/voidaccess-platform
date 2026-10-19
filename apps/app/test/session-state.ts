@@ -18,11 +18,20 @@ export interface TestSessionUser {
   aupAcceptedAt: Date | null;
 }
 let current: TestSessionUser | null = null;
-export const setSessionUser = (u: TestSessionUser | null) => {
+let currentSessionId = "";
+/** Sign `u` in (or out with null). The session id defaults to one per user; pass another to simulate sign-out/in. */
+export const setSessionUser = (u: TestSessionUser | null, sessionId?: string) => {
   current = u;
+  currentSessionId = u ? (sessionId ?? `test-session-${u.id}`) : "";
 };
 export async function getSessionUser() {
   return current;
+}
+export async function getSessionWithId() {
+  return current ? { user: current, sessionId: currentSessionId } : null;
+}
+export async function sessionFromHeaders(_h: Headers) {
+  return getSessionWithId();
 }
 export async function requireUser() {
   if (!current) throw new AuthError(401, "Sign in required");

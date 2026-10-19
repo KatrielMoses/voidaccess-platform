@@ -27,6 +27,7 @@ locals {
     var.nowpayments_api_key_secret, # crypto payments (NOWPayments, shared account with MailAccess; see docs/BILLING.md)
     var.nowpayments_ipn_secret,
     "openrouter-api-key",
+    "admin-path", # ADMIN_PATH: the admin console's secret URL slug (only the name is here; the value is the owner's)
   ]
   runner_secrets = ["openrouter-api-key"] # not engine-callback-secret: see modules/runner
   kms_key        = "projects/${var.project_id}/locations/${var.region}/keyRings/voidaccess/cryptoKeys/credentials"
@@ -83,6 +84,7 @@ module "app" {
   nowpayments_api_base  = var.nowpayments_api_base
   nowpayments_api_key   = var.nowpayments_api_key_secret
   nowpayments_ipn       = var.nowpayments_ipn_secret
+  admin_email           = var.admin_email
   allow_unauthenticated = var.allow_unauthenticated && var.manage_iam
   runner_member         = var.manage_iam ? "serviceAccount:${data.google_service_account.runner.email}" : ""
 }

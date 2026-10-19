@@ -189,6 +189,140 @@ export async function getOverview(o?: Opts): Promise<Overview> {
   );
 }
 
+// ---- overview: paid conversions and what users do -------------------------------------------------------------------
+
+export const CONVERSIONS_LATEST = 25;
+export const ACTIVITY_TOP_EVENTS = 15;
+
+export interface PaidStart {
+  kind: "subscription" | "payment";
+  at: Date;
+  email: string;
+  userId: string;
+  /** plan for a subscription (e.g. "pro"), the catalogue key / payment kind otherwise ("topup_credits", "pass" ...) */
+  item: string;
+  interval: string | null;
+  amountCents: number | null;
+  currency: string | null;
+  provider: string;
+  /** a prepaid pass (crypto: payments.meta.pass) rather than a renewing subscription */
+  pass: boolean;
+  /** a later pass bought on top of an existing one (the subscription itself is listed at its first payment) */
+  extension: boolean;
+}
+export interface PaidConversions {
+  latest: PaidStart[];
+  d7: number;
+  d30: number;
+  /** users by current plan */
+  planMix: Array<{ plan: string; users: number }>;
+}
+
+/**
+ * Paid starts from any provider (creem, nowpayments, ...):
+ *  - every subscription row (one per subscription that became active), dated by its first payment when there is one;
+ *  - every one-off payment (top-ups, any later non-subscription kind);
+ *  - every further pass payment on an existing pass (crypto passes are prepaid: each one is a purchase).
+ * Renewals of a recurring subscription are not starts and are left out.
+ */
+const PAID_STARTS = sql`(
+  SELECT 'subscription' AS kind, coalesce(fp.paid_at, s.created_at) AS at, s.user_id, s.plan::text AS item,
+    s.interval::text AS interval, fp.amount_cents, fp.currency, s.provider,
+    coalesce(fp.meta->>'pass' = 'true', false) AS pass, false AS extension
+  FROM subscriptions s
+  LEFT JOIN LATERAL (SELECT p.paid_at, p.amount_cents, p.currency, p.meta FROM payments p
+    WHERE p.subscription_id = s.id ORDER BY p.paid_at ASC, p.id ASC LIMIT 1) fp ON true
+  UNION ALL
+  SELECT 'payment', p.paid_at, p.user_id, coalesce(p.meta->>'key', p.kind::text), NULL, p.amount_cents, p.currency,
+    p.provider, false, false
+  FROM payments p WHERE p.kind::text <> 'subscription'
+  UNION ALL
+  SELECT 'subscription', p.paid_at, p.user_id, s.plan::text, s.interval::text, p.amount_cents, p.currency,
+    p.provider, true, true
+  FROM payments p JOIN subscriptions s ON s.id = p.subscription_id
+  WHERE p.kind::text = 'subscription' AND p.meta->>'pass' = 'true'
+    AND p.id <> (SELECT f.id FROM payments f WHERE f.subscription_id = s.id ORDER BY f.paid_at ASC, f.id ASC LIMIT 1)
+)`;
+
+export async function getPaidConversions(o?: Opts): Promise<PaidConversions> {
+  const now = nowOf(o);
+  return dbOf(o).withSystem(
+    "admin.overview.conversions",
+    async (tx) => {
+      const since = (days: number) => ts(new Date(now.getTime() - days * DAY));
+      const latest = (
+        await tx.execute(sql`SELECT x.kind, x.at, u.email, x.user_id, x.item, x.interval, x.amount_cents,
+          x.currency, x.provider, x.pass, x.extension FROM ${PAID_STARTS} x JOIN users u ON u.id = x.user_id
+          WHERE x.at <= ${ts(now)} ORDER BY x.at DESC LIMIT ${CONVERSIONS_LATEST}`)
+      ).rows as Array<Record<string, unknown>>;
+      const [c] = (
+        await tx.execute(sql`SELECT count(*) FILTER (WHERE at >= ${since(7)})::int AS d7,
+          count(*) FILTER (WHERE at >= ${since(30)})::int AS d30
+          FROM ${PAID_STARTS} x WHERE x.at <= ${ts(now)}`)
+      ).rows as Array<{ d7: number; d30: number }>;
+      const mix = (
+        await tx.execute(sql`SELECT plan::text AS plan, count(*)::int AS users FROM users GROUP BY 1`)
+      ).rows as Array<{ plan: string; users: number }>;
+      const order = Object.keys(PLANS);
+      return {
+        latest: latest.map((r) => ({
+          kind: r.kind as PaidStart["kind"],
+          at: new Date(r.at as string),
+          email: r.email as string,
+          userId: r.user_id as string,
+          item: r.item as string,
+          interval: (r.interval as string | null) ?? null,
+          amountCents: r.amount_cents == null ? null : num(r.amount_cents),
+          currency: (r.currency as string | null) ?? null,
+          provider: r.provider as string,
+          pass: Boolean(r.pass),
+          extension: Boolean(r.extension),
+        })),
+        d7: num(c?.d7),
+        d30: num(c?.d30),
+        planMix: order.map((plan) => ({
+          plan,
+          users: num(mix.find((m) => m.plan === plan)?.users),
+        })),
+      };
+    },
+    { audit: false },
+  );
+}
+
+export interface Activity {
+  /** events by name in the last 7 days, most frequent first (names only: no props, no query text, no entities) */
+  events: Array<{ name: string; n: number; users: number }>;
+  runsByDepth: Array<{ depth: string; n: number; completed: number }>;
+}
+
+export async function getActivity(o?: Opts): Promise<Activity> {
+  const now = nowOf(o);
+  return dbOf(o).withSystem(
+    "admin.overview.activity",
+    async (tx) => {
+      const since = ts(new Date(now.getTime() - 7 * DAY));
+      const events = (
+        await tx.execute(sql`SELECT name, count(*)::int AS n, count(DISTINCT user_id)::int AS users FROM events
+          WHERE at >= ${since} AND at <= ${ts(now)} GROUP BY name ORDER BY 2 DESC, 1 LIMIT ${ACTIVITY_TOP_EVENTS}`)
+      ).rows as Activity["events"];
+      const depths = (
+        await tx.execute(sql`SELECT depth::text AS depth, count(*)::int AS n,
+          count(*) FILTER (WHERE status = 'completed')::int AS completed FROM investigations
+          WHERE created_at >= ${since} AND created_at <= ${ts(now)} GROUP BY 1`)
+      ).rows as Activity["runsByDepth"];
+      return {
+        events: events.map((e) => ({ name: e.name, n: num(e.n), users: num(e.users) })),
+        runsByDepth: Object.keys(DEPTHS).map((depth) => {
+          const r = depths.find((d) => d.depth === depth);
+          return { depth, n: num(r?.n), completed: num(r?.completed) };
+        }),
+      };
+    },
+    { audit: false },
+  );
+}
+
 // ---- users ----------------------------------------------------------------------------------------------------------
 
 export interface UserListRow {

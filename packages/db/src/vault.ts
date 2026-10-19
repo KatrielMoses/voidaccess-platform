@@ -83,6 +83,18 @@ const fpKey = (o: VaultOptions) => {
   return k;
 };
 
+/**
+ * Kinds whose value is a secret of ours rather than an entity found in a run (the admin console's authenticator
+ * secret, confirmed and pending). Their masked value is a constant that reveals nothing, not even the length.
+ */
+export const OPAQUE_KINDS: ReadonlySet<string> = new Set(["admin_totp", "admin_totp_pending"]);
+export const OPAQUE_MASK = "[secret]";
+
+/** The display form stored next to the ciphertext: the entity mask, or OPAQUE_MASK for our own secrets. */
+export function maskForKind(kind: EntityType | string, value: string): string {
+  return OPAQUE_KINDS.has(String(kind)) ? OPAQUE_MASK : maskEntityValue(kind as EntityType, value);
+}
+
 export interface StoredCredential {
   id: string;
   maskedValue: string;
@@ -103,7 +115,7 @@ export async function storeCredential(
   const authTag = c.getAuthTag();
   const wrappedDek = await wrapper.wrap(dek);
   dek.fill(0);
-  const maskedValue = maskEntityValue(input.type as EntityType, input.value);
+  const maskedValue = maskForKind(input.type, input.value);
   const fp = fingerprint(fpKey(opts), input.type, input.value);
   return inSystem(ctx, "vault.store", async (tx) => {
     const [row] = await tx

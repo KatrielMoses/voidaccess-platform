@@ -4,6 +4,7 @@ import { DEPTHS, FOUNDING, PLANS } from "@voidaccess/config";
 import {
   abuseFlags,
   claimFoundingSeat,
+  events,
   investigations,
   payments,
   rateLimitEvents,
@@ -18,9 +19,11 @@ import {
   PRO_USD_PER_CREDIT,
   getAbuseQueue,
   getCostReport,
+  getActivity,
   getCostRunsForExport,
   getFounding,
   getOverview,
+  getPaidConversions,
   monthlyUsdOf,
   percentile,
   searchUsers,
@@ -336,5 +339,211 @@ describe("users search and founding view", () => {
     expect(row.paidMonths12).toBeGreaterThanOrEqual(2);
     expect(row.lastInvestigationAt).toBeInstanceOf(Date);
     expect(row.anniversaryAt!.getTime()).toBeGreaterThan(now.getTime());
+  });
+});
+
+describe("overview: paid conversions and what users do (a fixed past window, so other suites' data can't interfere)", () => {
+  const now = new Date("2020-01-01T00:00:00Z");
+  const at = (days: number) => new Date(now.getTime() - days * 86_400_000);
+
+  it("lists the latest paid starts from every provider (subscriptions by their first payment, one-off payments), not renewals; counts 7 and 30 days; plan mix", async () => {
+    const mixBefore = (await getPaidConversions({ now })).planMix;
+    const a = await makeUser({ plan: "pro", credits: 0 });
+    const b = await makeUser({ plan: "pro_plus", credits: 0 });
+    const c = await makeUser({ plan: "free", credits: 0 });
+    const [subA] = await sys<Array<{ id: string }>>((tx) =>
+      tx
+        .insert(subscriptions)
+        .values({
+          userId: a.id,
+          provider: "creem",
+          providerSubscriptionId: `conv_${a.id}`,
+          plan: "pro",
+          status: "cancelled", // a start even if it ended later; not active, so MRR elsewhere is unaffected
+          interval: "year",
+          createdAt: at(3),
+        })
+        .returning({ id: subscriptions.id }),
+    );
+    await sys((tx) =>
+      tx.insert(subscriptions).values({
+        userId: b.id,
+        provider: "nowpayments",
+        providerSubscriptionId: `conv_${b.id}`,
+        plan: "pro_plus",
+        status: "expired",
+        createdAt: at(4), // no payment row: dated by the subscription itself
+      }),
+    );
+    await sys((tx) =>
+      tx.insert(payments).values([
+        {
+          userId: a.id,
+          providerPaymentId: `conv_first_${a.id}`,
+          amountCents: 7000,
+          kind: "subscription",
+          subscriptionId: subA!.id,
+          paidAt: at(1),
+        },
+        {
+          userId: a.id,
+          providerPaymentId: `conv_renew_${a.id}`,
+          amountCents: 7000,
+          kind: "subscription",
+          subscriptionId: subA!.id,
+          paidAt: at(0.5),
+        },
+        {
+          userId: c.id,
+          provider: "nowpayments",
+          providerPaymentId: `conv_top_${c.id}`,
+          amountCents: 1500,
+          currency: "USD",
+          kind: "topup",
+          paidAt: at(2),
+          meta: { key: "topup_credits", usd: 15 },
+        },
+        {
+          userId: c.id,
+          providerPaymentId: `conv_old_${c.id}`,
+          amountCents: 700,
+          kind: "topup",
+          paidAt: at(20),
+        },
+        {
+          userId: c.id,
+          providerPaymentId: `conv_older_${c.id}`,
+          amountCents: 700,
+          kind: "topup",
+          paidAt: at(40),
+        },
+      ]),
+    );
+
+    // a crypto pass (prepaid, never renews) and a second pass bought on top of it: two purchases
+    const d = await makeUser({ plan: "pro", credits: 0 });
+    const [subD] = await sys<Array<{ id: string }>>((tx) =>
+      tx
+        .insert(subscriptions)
+        .values({
+          userId: d.id,
+          provider: "nowpayments",
+          providerSubscriptionId: `conv_${d.id}`,
+          plan: "pro",
+          status: "expired",
+          interval: "year",
+          createdAt: at(10),
+        })
+        .returning({ id: subscriptions.id }),
+    );
+    await sys((tx) =>
+      tx.insert(payments).values(
+        [10, 6].map((days, i) => ({
+          userId: d.id,
+          provider: "nowpayments",
+          providerPaymentId: `conv_pass${i}_${d.id}`,
+          amountCents: 7000,
+          kind: "subscription" as const,
+          subscriptionId: subD!.id,
+          paidAt: at(days),
+          meta: { pass: true },
+        })),
+      ),
+    );
+
+    const r = await getPaidConversions({ now });
+    expect(r.d7).toBe(4);
+    expect(r.d30).toBe(6);
+    expect(
+      r.latest
+        .slice(0, 7)
+        .map((x) => [x.email, x.kind, x.item, x.interval, x.amountCents, x.provider, x.pass, x.extension]),
+    ).toEqual([
+      [a.email, "subscription", "pro", "year", 7000, "creem", false, false], // the first payment, not the renewal
+      [c.email, "payment", "topup_credits", null, 1500, "nowpayments", false, false],
+      [b.email, "subscription", "pro_plus", "month", null, "nowpayments", false, false],
+      [d.email, "subscription", "pro", "year", 7000, "nowpayments", true, true], // the second pass
+      [d.email, "subscription", "pro", "year", 7000, "nowpayments", true, false], // the first pass
+      [c.email, "payment", "topup", null, 700, "creem", false, false],
+      [c.email, "payment", "topup", null, 700, "creem", false, false],
+    ]);
+    expect(r.latest[0]!.at.toISOString()).toBe(at(1).toISOString());
+    expect(r.latest.length).toBeLessThanOrEqual(25);
+    expect(r.latest.filter((x) => x.userId === a.id)).toHaveLength(1);
+
+    const delta = (plan: string) =>
+      r.planMix.find((m) => m.plan === plan)!.users - mixBefore.find((m) => m.plan === plan)!.users;
+    expect(r.planMix.map((m) => m.plan)).toEqual(Object.keys(PLANS));
+    expect([delta("free"), delta("pro"), delta("pro_plus")]).toEqual([1, 2, 1]);
+  });
+
+  it("counts events by name (top 15, no props) and runs by depth for the last 7 days", async () => {
+    const u = await makeUser({ credits: 0 });
+    const ev = (name: string, n: number, days: number) =>
+      Array.from({ length: n }, () => ({
+        name,
+        userId: u.id,
+        at: at(days),
+        props: { query: "secret query text", value: "entity@example.com" },
+      }));
+    await sys((tx) =>
+      tx.insert(events).values([
+        ...ev("investigation_started", 5, 1),
+        ...ev("results_viewed", 3, 2),
+        ...ev("old_event", 9, 8), // outside the window
+        ...Array.from({ length: 16 }, (_, i) => ev(`rare_${String(i).padStart(2, "0")}`, 1, 1)).flat(),
+      ]),
+    );
+    await sys((tx) =>
+      tx.insert(investigations).values([
+        {
+          userId: u.id,
+          query: "secret query text",
+          depth: "quick",
+          status: "completed",
+          creditsCharged: 0,
+          createdAt: at(1),
+        },
+        {
+          userId: u.id,
+          query: "secret query text",
+          depth: "quick",
+          status: "failed",
+          creditsCharged: 0,
+          createdAt: at(1),
+        },
+        {
+          userId: u.id,
+          query: "secret query text",
+          depth: "deep",
+          status: "completed",
+          creditsCharged: 0,
+          createdAt: at(2),
+        },
+        {
+          userId: u.id,
+          query: "secret query text",
+          depth: "standard",
+          status: "completed",
+          creditsCharged: 0,
+          createdAt: at(9),
+        },
+      ]),
+    );
+    const r = await getActivity({ now });
+    expect(r.events).toHaveLength(15);
+    expect(r.events[0]).toEqual({ name: "investigation_started", n: 5, users: 1 });
+    expect(r.events[1]).toEqual({ name: "results_viewed", n: 3, users: 1 });
+    expect(r.events.map((e) => e.name)).not.toContain("old_event");
+    expect(r.runsByDepth).toEqual(
+      Object.keys(DEPTHS).map((depth) => ({
+        depth,
+        n: depth === "quick" ? 2 : depth === "deep" ? 1 : 0,
+        completed: depth === "quick" ? 1 : depth === "deep" ? 1 : 0,
+      })),
+    );
+    const dump = JSON.stringify(r);
+    expect(dump).not.toContain("secret query text");
+    expect(dump).not.toContain("entity@example.com");
   });
 });

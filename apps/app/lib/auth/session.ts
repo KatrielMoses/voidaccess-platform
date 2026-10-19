@@ -28,7 +28,19 @@ export class AuthError extends Error {
 
 /** The signed-in user (authoritative row read under RLS as that user), or null. */
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  return (await getSessionWithId())?.user ?? null;
+}
+
+/** The signed-in user plus the id of the session itself (the admin step-up is bound to it), or null. */
+export async function getSessionWithId(): Promise<{ user: SessionUser; sessionId: string } | null> {
+  return sessionFromHeaders(await headers());
+}
+
+/** The same, from explicit request headers (proxy.ts, where next/headers isn't available). */
+export async function sessionFromHeaders(
+  h: Headers,
+): Promise<{ user: SessionUser; sessionId: string } | null> {
+  const session = await getAuth().api.getSession({ headers: h });
   if (!session) return null;
   const id = session.user.id;
   const [row] = await getDatabase().withUser(id, (tx) =>
@@ -46,7 +58,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       .from(users)
       .where(eq(users.id, id)),
   );
-  return row ?? null;
+  return row ? { user: row, sessionId: session.session.id } : null;
 }
 
 export async function requireUser(): Promise<SessionUser> {

@@ -1,3 +1,4 @@
+import { adminHref } from "@/lib/admin/path";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PLANS } from "@voidaccess/config";
@@ -191,7 +192,7 @@ export default async function AdminUser({ params }: { params: Promise<{ id: stri
                 </Td>
                 <Td>
                   {i.status === "completed" ? (
-                    <Link href={`/admin/review/${i.id}`} className="va-link whitespace-nowrap">
+                    <Link href={adminHref(`/review/${i.id}`)} className="va-link whitespace-nowrap">
                       Open for abuse review
                     </Link>
                   ) : null}

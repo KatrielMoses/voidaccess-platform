@@ -108,3 +108,9 @@ variable "manage_schedulers" {
   type        = bool
   default     = true
 }
+
+variable "admin_email" {
+  description = "ADMIN_EMAIL: the only account that may open the admin console (verified email). The console's path is the admin-path secret."
+  type        = string
+  default     = "katriel@voidaccess.pro"
+}
