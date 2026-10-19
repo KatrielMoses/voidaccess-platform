@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Badge,
   Button,
@@ -42,6 +42,8 @@ async function post<T>(url: string, body: unknown): Promise<{ ok: boolean; statu
 const monthsFree = (p: PlanId) =>
   PLANS[p].annualUsd ? 12 - Math.round(PLANS[p].annualUsd! / PLANS[p].monthlyUsd) : 0;
 
+const CRYPTO_HINT_KEY = "va:crypto-hint-seen";
+
 export function BillingClient({
   view,
   checkout,
@@ -67,9 +69,28 @@ export function BillingClient({
   // How a new purchase is paid. Crypto plans are annual passes (the monthly ones sit below the coin minimums).
   const [payWith, setPayWith] = useState<"card" | "crypto">("card");
   const byCrypto = cryptoOn && payWith === "crypto";
+  // First visit only: point at the Card / Crypto switch so crypto is noticed; gone once either is chosen.
+  const [cryptoHint, setCryptoHint] = useState(false);
+  useEffect(() => {
+    if (!cryptoOn || live || pass) return;
+    try {
+      if (!localStorage.getItem(CRYPTO_HINT_KEY)) setCryptoHint(true);
+    } catch {
+      /* storage blocked: no hint */
+    }
+  }, [cryptoOn, live, pass]);
+  const dismissHint = () => {
+    setCryptoHint(false);
+    try {
+      localStorage.setItem(CRYPTO_HINT_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  };
   const choosePay = (m: "card" | "crypto") => {
     setPayWith(m);
     if (m === "crypto") setInterval("year");
+    dismissHint();
   };
   const passPrice = (plan: PlanId, iv: Interval) =>
     view.crypto.passes.find((x) => x.plan === plan && x.interval === iv)?.usd ?? null;
@@ -387,26 +408,52 @@ export function BillingClient({
           <SectionTitle id="plans-h">Plans</SectionTitle>
           <div className="flex flex-wrap items-center gap-3">
             {cryptoOn && !live && !pass ? (
-              <div
-                role="group"
-                aria-label="Pay with"
-                className="inline-flex h-10 items-center rounded-sm border border-line p-[3px]"
-              >
-                {(["card", "crypto"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    aria-pressed={payWith === m}
-                    onClick={() => choosePay(m)}
-                    data-testid={`pay-with-${m}`}
-                    className={cn(
-                      "inline-flex h-full items-center rounded-xs px-3.5 text-[15px] transition-colors duration-300",
-                      payWith === m ? "bg-paper text-ink" : "text-dim hover:text-paper",
-                    )}
+              <div className="relative">
+                <div
+                  role="group"
+                  aria-label="Pay with"
+                  className="inline-flex h-10 items-center rounded-sm border border-line p-[3px]"
+                >
+                  {(["card", "crypto"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      aria-pressed={payWith === m}
+                      onClick={() => choosePay(m)}
+                      data-testid={`pay-with-${m}`}
+                      className={cn(
+                        "inline-flex h-full items-center rounded-xs px-3.5 text-[15px] transition-colors duration-300",
+                        payWith === m ? "bg-paper text-ink" : "text-dim hover:text-paper",
+                        m === "crypto" && cryptoHint ? "va-attn" : null,
+                      )}
+                    >
+                      {m === "card" ? copy.crypto.payWithCard : copy.crypto.payWithCrypto}
+                    </button>
+                  ))}
+                </div>
+                {cryptoHint ? (
+                  <div
+                    role="note"
+                    data-testid="crypto-hint"
+                    className="absolute top-full left-0 z-10 mt-3 sm:right-0 sm:left-auto flex w-max max-w-[min(300px,calc(100vw-48px))] animate-[va-callout-in_.6s_cubic-bezier(.16,1,.3,1)_.4s_both] items-start gap-3 rounded-md border border-line-2 bg-bg-2 px-3.5 py-2.5"
                   >
-                    {m === "card" ? copy.crypto.payWithCard : copy.crypto.payWithCrypto}
-                  </button>
-                ))}
+                    {/* the pointer, under the Crypto option */}
+                    <span
+                      aria-hidden
+                      className="absolute -top-[5px] left-[102px] size-2.5 sm:right-7 sm:left-auto rotate-45 border-t border-l border-line-2 bg-bg-2"
+                    />
+                    <span className="text-[14px] leading-[1.45] text-paper">{copy.crypto.hint}</span>
+                    <button
+                      type="button"
+                      onClick={dismissHint}
+                      aria-label={copy.crypto.hintDismiss}
+                      className="-mr-1 font-mono text-[14px] leading-none text-mute transition-colors hover:text-paper"
+                      data-testid="crypto-hint-dismiss"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <div

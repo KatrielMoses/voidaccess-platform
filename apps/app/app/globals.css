@@ -76,6 +76,28 @@
     transform: translateY(-6px);
   }
 }
+/* A one-time attention cue (the Card / Crypto switch on Billing): a neutral ring ripples out three times, then stops.
+   Neutral paper, not violet, and no glow: it reads as "look here", not as decoration. Reduced motion: no ripple. */
+@keyframes va-attn {
+  0% {
+    box-shadow: 0 0 0 0 rgba(243, 241, 236, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(243, 241, 236, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(243, 241, 236, 0);
+  }
+}
+.va-attn {
+  animation: va-attn 1.8s cubic-bezier(0.16, 1, 0.3, 1) 0.9s 3;
+}
+@keyframes va-callout-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
 
 @layer components {
   /* Page container: 1280px, 40px sides (22px at ≤960px). */

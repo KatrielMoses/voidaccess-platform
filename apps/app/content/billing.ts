@@ -143,6 +143,8 @@ export const billingCopy = {
     buyTopup: "Pay {usd} with crypto",
     payWithCard: "Card",
     payWithCrypto: "Crypto",
+    hint: "Pay with crypto: USDT, USDC, BTC, ETH and more. Tap Crypto.",
+    hintDismiss: "Dismiss",
     plansNote:
       "With crypto, plans are one-time annual passes: paid once, they don't renew. Credits work the same way.",
     topupBelowMin: "Crypto top-ups start at {min}; card top-ups start lower.",
