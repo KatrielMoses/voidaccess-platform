@@ -1,31 +1,14 @@
-import { createHmac, randomUUID } from "node:crypto";
 import pg from "pg";
 import { expect, test, type Page } from "@playwright/test";
-import { DEPTHS, PLANS, TOPUPS, topupCredits } from "@voidaccess/config";
+import { PLANS, TOPUP_MAX_USD, TOPUP_MIN_USD, topupCredits } from "@voidaccess/config";
 import { BILLING_EMAIL_LOG } from "../playwright.billing.config";
-import { WEBHOOK_SECRET, ownerUrl } from "./billing-global-setup";
+import { ownerUrl } from "./billing-global-setup";
+import { deliver, signed, subscriptionObject, topupCheckoutCompleted } from "./creem-webhook";
 import { pillBalance, signUpAndVerify as signUpAndVerifyWith, uniqueEmail } from "./helpers";
 
 const signUpAndVerify = (page: Page, email: string) =>
   signUpAndVerifyWith(page, email, "Billing E2E", BILLING_EMAIL_LOG);
-const key = (s: string) => Buffer.from(s.replace(/^whsec_/, ""), "base64");
-
-/** A Dodo webhook delivery signed with Standard Webhooks: HMAC-SHA256 over `${id}.${timestamp}.${body}`. */
-function signed(type: string, data: Record<string, unknown>) {
-  const id = `evt_e2e_${randomUUID()}`;
-  const ts = Math.floor(Date.now() / 1000);
-  const body = JSON.stringify({ business_id: "bus_e2e", type, timestamp: new Date().toISOString(), data });
-  const sig = createHmac("sha256", key(WEBHOOK_SECRET)).update(`${id}.${ts}.${body}`).digest("base64");
-  return {
-    body,
-    headers: {
-      "content-type": "application/json",
-      "webhook-id": id,
-      "webhook-timestamp": String(ts),
-      "webhook-signature": `v1,${sig}`,
-    },
-  };
-}
+const SHOTS = process.env.P7_SHOTS; // a directory: write the top-up control screenshots there
 
 async function q<T = Record<string, unknown>>(sql: string, args: unknown[] = []): Promise<T[]> {
   const c = new pg.Client({ connectionString: ownerUrl() });
@@ -36,8 +19,15 @@ async function q<T = Record<string, unknown>>(sql: string, args: unknown[] = [])
     await c.end();
   }
 }
+const productId = async (key: string) =>
+  (
+    await q<{ provider_product_id: string }>(
+      "select provider_product_id from billing_catalog where key = $1 and active and mode = 'test'",
+      [key],
+    )
+  )[0]!.provider_product_id;
 
-test("free user: checkout redirect, signed activation webhook, plan Pro, credits granted, usage page, header pill, locked export unlocks", async ({
+test("subscribe, pay-as-you-go top-up, change plan, cancel and resume, against the fake Creem provider", async ({
   page,
   request,
 }) => {
@@ -54,53 +44,43 @@ test("free user: checkout redirect, signed activation webhook, plan Pro, credits
   await page.goto(`/investigations/${invId}/results/exports`);
   await expect(page.getByTestId("export-markdown").getByRole("button", { name: /locked/i })).toBeVisible();
 
-  // billing page: plans straight from config, the price stated before checkout
+  // billing page: plans straight from config, the price stated before checkout, Creem named
   await page.goto("/billing");
   await expect(page.getByTestId("plan-pro")).toContainText(`$${PLANS.pro.monthlyUsd}`);
   await expect(page.getByTestId("plan-pro_plus")).toContainText(`$${PLANS.pro_plus.monthlyUsd}`);
-  await expect(page.getByTestId("subscribe-pro")).toBeVisible();
-  await expect(page.getByTestId("plan-pro")).toContainText(`$${PLANS.pro.monthlyUsd} per month`);
+  await expect(page.getByTestId("plan-pro")).toContainText(`$${PLANS.pro.monthlyUsd} per month on Creem`);
+  await expect(page.locator("body")).not.toContainText("Dodo");
 
-  // start a Pro checkout: we land on Dodo's test checkout (intercepted: no network needed)
-  await page.route("https://test.checkout.dodopayments.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Dodo test checkout</h1>" }),
+  // start a Pro checkout: we land on Creem's test checkout (intercepted: no network needed)
+  await page.route("https://creem.io/test/checkout/**", (route) =>
+    route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Creem test checkout</h1>" }),
   );
+  const proProduct = await productId("pro_month");
   await page.getByTestId("subscribe-pro").click();
-  await page.waitForURL(/test\.checkout\.dodopayments\.com\/session\//);
-  expect(page.url()).toContain("product=pdt_fake_pro_month");
+  await page.waitForURL(/creem\.io\/test\/checkout\//);
+  expect(page.url()).toContain(`/checkout/${proProduct}/ch_fake_`);
 
-  // checkout created the customer mapping; Dodo would now call our webhook, so we do, signed
+  // checkout created the customer mapping; Creem would now call our webhook, so we do, signed
   const [user] = await q<{ id: string }>("select id from users where email = $1", [email]);
-  const [cust] = await q<{ dodo_customer_id: string }>(
-    "select dodo_customer_id from billing_customers where user_id = $1",
+  const [cust] = await q<{ provider_customer_id: string }>(
+    "select provider_customer_id from billing_customers where user_id = $1",
     [user!.id],
   );
-  const [prod] = await q<{ dodo_product_id: string }>(
-    "select dodo_product_id from billing_catalog where key = 'pro_month' and active",
-  );
-  const start = new Date();
-  const active = signed("subscription.active", {
-    payload_type: "Subscription",
-    subscription_id: `sub_e2e_${user!.id}`,
-    product_id: prod!.dodo_product_id,
-    status: "active",
-    previous_billing_date: start.toISOString(),
-    next_billing_date: new Date(start.getTime() + 30 * 86_400_000).toISOString(),
-    cancel_at_next_billing_date: false,
-    customer: { customer_id: cust!.dodo_customer_id, email },
-    metadata: { user_id: user!.id },
-  });
-  const bad = await request.post("/api/webhooks/dodo", {
+  const customer = cust!.provider_customer_id;
+  const subId = `sub_e2e_${user!.id}`;
+  const sub = (productIdFor: string, status = "active") =>
+    subscriptionObject({ subId, productId: productIdFor, customer, email, userId: user!.id, status });
+  const active = signed("subscription.active", sub(proProduct));
+  const bad = await request.post("/api/webhooks/creem", {
     data: active.body,
-    headers: { ...active.headers, "webhook-signature": "v1,AAAA" },
+    headers: { ...active.headers, "creem-signature": "00".repeat(32) },
   });
   expect(bad.status()).toBe(400);
-  const good = await request.post("/api/webhooks/dodo", { data: active.body, headers: active.headers });
+  const good = await request.post("/api/webhooks/creem", { data: active.body, headers: active.headers });
   expect(good.status()).toBe(200);
   expect((await good.json()).outcome).toBe("applied");
-  expect(
-    (await request.post("/api/webhooks/dodo", { data: active.body, headers: active.headers })).status(),
-  ).toBe(200); // retry: no double grant
+  const retry = await request.post("/api/webhooks/creem", { data: active.body, headers: active.headers });
+  expect((await retry.json()).outcome).toBe("duplicate"); // a retry never double-grants
 
   // plan Pro, credits granted once, pill updated
   expect((await q<{ plan: string }>("select plan from users where id = $1", [user!.id]))[0]!.plan).toBe(
@@ -109,43 +89,109 @@ test("free user: checkout redirect, signed activation webhook, plan Pro, credits
   await page.goto("/billing");
   await expect(page.getByTestId("plan-pro")).toContainText("Current plan");
   await expect(page.getByTestId("renewal-line")).toContainText("Renews on");
-  await expect.poll(() => pillBalance(page)).toBe(PLANS.pro.monthlyCredits); // the Free remainder expires when the Pro grant starts
-
-  // usage page shows the grant
+  await expect.poll(() => pillBalance(page)).toBe(PLANS.pro.monthlyCredits);
   await page.goto("/usage");
   await expect(page.getByTestId("ledger-row").filter({ hasText: "Monthly grant" }).first()).toContainText(
     `+${PLANS.pro.monthlyCredits.toLocaleString("en-US")}`,
   );
-  await expect(page.getByTestId("usage-total")).toContainText(
-    PLANS.pro.monthlyCredits.toLocaleString("en-US"),
-  );
-
-  // the locked export is now open
   await page.goto(`/investigations/${invId}/results/exports`);
   await expect(page.getByTestId("export-markdown").getByRole("link", { name: /Download/ })).toBeVisible();
 
-  // top-up: signed payment webhook grants exactly topupCredits() for a Pro subscriber
-  const tier = TOPUPS[0];
-  const [tp] = await q<{ dodo_product_id: string }>(
-    "select dodo_product_id from billing_catalog where key = $1 and active",
-    [`topup_${tier.usd}`],
+  // ---- pay-as-you-go top-up: any whole-dollar amount, the credit count from config, validation inline ----
+  await page.goto("/billing");
+  const picker = page.getByTestId("topup-picker");
+  const amount = page.getByTestId("topup-amount");
+  await amount.fill(String(TOPUP_MIN_USD - 1));
+  await expect(page.getByTestId("topup-result")).toContainText(`minimum top-up is $${TOPUP_MIN_USD}`);
+  await expect(page.getByTestId("topup-buy")).toBeDisabled();
+  await amount.fill(String(TOPUP_MAX_USD + 1));
+  await expect(page.getByTestId("topup-result")).toContainText(`maximum top-up is $${TOPUP_MAX_USD}`);
+  await amount.fill("12.5");
+  await expect(page.getByTestId("topup-result")).toContainText("whole number of dollars");
+  await page.getByTestId("topup-pick-25").click();
+  await expect(amount).toHaveValue("25");
+  await expect(page.getByTestId("topup-result")).toContainText(
+    `You get ${topupCredits(25, "pro").toLocaleString("en-US")} credits`,
   );
-  const pay = signed("payment.succeeded", {
-    payload_type: "Payment",
-    payment_id: `pay_e2e_${user!.id}`,
-    total_amount: tier.usd * 100,
-    created_at: new Date().toISOString(),
-    subscription_id: null,
-    product_cart: [{ product_id: tp!.dodo_product_id, quantity: 1 }],
-    customer: { customer_id: cust!.dodo_customer_id, email },
-    metadata: { user_id: user!.id },
+  const usd = 37;
+  await amount.fill(String(usd));
+  await expect(page.getByTestId("topup-result")).toContainText(
+    `You get ${topupCredits(usd, "pro").toLocaleString("en-US")} credits`,
+  );
+  if (SHOTS)
+    for (const w of [1440, 390]) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await picker.scrollIntoViewIfNeeded();
+      await page.locator("#topups").screenshot({ path: `${SHOTS}/app-topup-${w}.png` });
+    }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByTestId("topup-buy").click();
+  await page.waitForURL(/creem\.io\/test\/checkout\//);
+  const topupProduct = await productId("topup_credits");
+  expect(page.url()).toContain(`/checkout/${topupProduct}/ch_fake_`);
+  const [ck] = await q<{ id: string; provider_checkout_id: string; amount_cents: number; topup_usd: number }>(
+    "select id, provider_checkout_id, amount_cents, topup_usd from billing_checkouts where user_id = $1 and kind = 'topup' order by created_at desc limit 1",
+    [user!.id],
+  );
+  expect(ck).toMatchObject({ amount_cents: usd * 100, topup_usd: usd });
+  const completed = topupCheckoutCompleted({
+    checkoutRef: ck!.id,
+    checkoutId: ck!.provider_checkout_id,
+    amountCents: ck!.amount_cents,
+    productId: topupProduct,
+    customer,
+    userId: user!.id,
   });
-  expect((await request.post("/api/webhooks/dodo", { data: pay.body, headers: pay.headers })).status()).toBe(
-    200,
-  );
+  // a tampered amount is refused (and flagged), the real one is credited exactly once
+  const tampered = await deliver(request, "checkout.completed", {
+    ...completed,
+    order: {
+      ...completed.order,
+      id: "ord_tampered",
+      sub_total: TOPUP_MIN_USD * 100,
+      amount: TOPUP_MIN_USD * 100,
+    },
+  });
+  expect((await tampered.json()).outcome).toBe("rejected");
+  expect((await (await deliver(request, "checkout.completed", completed)).json()).outcome).toBe("applied");
+  await deliver(request, "checkout.completed", completed); // replay under a new event id
   await page.goto("/usage");
   await expect(page.getByTestId("bucket-topup")).toContainText(
-    topupCredits(tier.usd, "pro").toLocaleString("en-US"),
+    topupCredits(usd, "pro").toLocaleString("en-US"),
   );
-  void DEPTHS;
+
+  // ---- change plan: upgrade to Pro+ (estimate shown, Creem applies it, the webhook moves the plan) ----
+  await page.goto("/billing");
+  await page.getByTestId("change-pro_plus").click();
+  await expect(page.getByTestId("change-body")).toContainText("Creem will charge about");
+  await page.getByTestId("change-confirm").click();
+  await page.waitForURL(/checkout=changed/);
+  expect(
+    (await (await deliver(request, "subscription.update", sub(await productId("pro_plus_month")))).json())
+      .outcome,
+  ).toBe("applied");
+  await page.goto("/billing");
+  await expect(page.getByTestId("plan-pro_plus")).toContainText("Current plan");
+
+  // ---- cancel at period end, then resume ----
+  await page.getByTestId("cancel-open").click();
+  await page.getByTestId("cancel-confirm").click();
+  await expect(page.getByTestId("renewal-line")).toContainText("Ends on");
+  // Creem confirms the schedule; the plan stays until the period end
+  await deliver(
+    request,
+    "subscription.scheduled_cancel",
+    sub(await productId("pro_plus_month"), "scheduled_cancel"),
+  );
+  await page.reload();
+  await expect(page.getByTestId("renewal-line")).toContainText("Ends on");
+  await expect(page.getByTestId("plan-pro_plus")).toContainText("Current plan");
+  await page.getByTestId("resume").click();
+  await expect(page.getByTestId("renewal-line")).toContainText("Renews on");
+  await deliver(request, "subscription.active", sub(await productId("pro_plus_month")));
+  await page.reload();
+  await expect(page.getByTestId("renewal-line")).toContainText("Renews on");
+  expect((await q<{ plan: string }>("select plan from users where id = $1", [user!.id]))[0]!.plan).toBe(
+    "pro_plus",
+  );
 });

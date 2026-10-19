@@ -15,9 +15,9 @@ const withDb = (db: string, auth?: [string, string]) => {
 export const ownerUrl = () => withDb(BILLING_DB);
 export const appUrl = () =>
   withDb(BILLING_DB, ["va_app", process.env.VA_APP_LOCAL_PASSWORD ?? "va_app_local"]);
-export const WEBHOOK_SECRET = "whsec_" + Buffer.from("e2e-webhook-secret-0123456789abc").toString("base64");
+export const WEBHOOK_SECRET = "whsec_e2e-webhook-secret-0123456789abc";
 
-/** Fresh database, migrations, and the (fake-provider) Dodo catalogue so checkout has products to point at. */
+/** Fresh database, migrations, and the (fake-provider) Creem catalogue so checkout has products to point at. */
 export default async function setup() {
   const a = new pg.Client({ connectionString: withDb("postgres") });
   await a.connect();

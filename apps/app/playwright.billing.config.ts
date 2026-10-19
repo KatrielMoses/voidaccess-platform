@@ -1,4 +1,4 @@
-// Billing end-to-end run (dev server on :3400): fake Dodo provider, signed webhooks built exactly as Dodo signs them.
+// Billing end-to-end run (dev server on :3400): fake Creem provider, signed webhooks built exactly as Creem signs them.
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "@playwright/test";
@@ -39,8 +39,8 @@ export default defineConfig({
       MOCK_ARTIFACT_DIR: join(tmpdir(), "va-p5-e2e-artifacts"),
       EMAIL_LOG_FILE: BILLING_EMAIL_LOG,
       BILLING_PROVIDER: "fake",
-      DODO_ENV: "test_mode",
-      DODO_WEBHOOK_SECRET: WEBHOOK_SECRET,
+      CREEM_ENV: "test_mode",
+      CREEM_WEBHOOK_SECRET: WEBHOOK_SECRET,
     },
     stdout: "ignore",
     stderr: "pipe",

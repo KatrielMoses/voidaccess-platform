@@ -1,10 +1,11 @@
 // Screenshots for the handoff: SCREENSHOTS=1 pnpm test:e2e:billing   (written to docs/screenshots/billing/)
-import { createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { PLANS } from "@voidaccess/config";
 import { BILLING_EMAIL_LOG } from "../playwright.billing.config";
-import { WEBHOOK_SECRET, ownerUrl } from "./billing-global-setup";
+import { ownerUrl } from "./billing-global-setup";
+import { deliver, subscriptionObject } from "./creem-webhook";
 import { signInWithCode } from "./helpers";
 
 const OUT = new URL("../docs/screenshots/billing/", import.meta.url).pathname;
@@ -30,8 +31,8 @@ async function makeUser(name: string, plan = "free") {
     `insert into credit_ledger (user_id, bucket, amount, reason, expires_at, idempotency_key) values ($1,'grant',$2,'grant', now() + interval '30 days', $3)`,
     [id, PLANS.free.monthlyCredits, `grant:${id}:seed`],
   );
-  const customer = `cus_shots_${id.slice(0, 8)}`;
-  await sql(`insert into billing_customers (user_id, mode, dodo_customer_id) values ($1,'test',$2)`, [
+  const customer = `cust_shots_${id.slice(0, 8)}`;
+  await sql(`insert into billing_customers (user_id, mode, provider_customer_id) values ($1,'test',$2)`, [
     id,
     customer,
   ]);
@@ -43,45 +44,27 @@ async function signIn(page: Page, u: { email: string }) {
   await signInWithCode(page, u.email, "Shots", BILLING_EMAIL_LOG);
 }
 
-async function webhook(request: APIRequestContext, type: string, data: Record<string, unknown>) {
-  const id = `evt_${randomUUID()}`;
-  const ts = Math.floor(Date.now() / 1000);
-  const body = JSON.stringify({ type, timestamp: new Date().toISOString(), data });
-  const sig = createHmac("sha256", Buffer.from(WEBHOOK_SECRET.slice(6), "base64"))
-    .update(`${id}.${ts}.${body}`)
-    .digest("base64");
-  const r = await request.post("/api/webhooks/dodo", {
-    data: body,
-    headers: {
-      "content-type": "application/json",
-      "webhook-id": id,
-      "webhook-timestamp": String(ts),
-      "webhook-signature": `v1,${sig}`,
-    },
-  });
-  expect(r.status()).toBe(200);
-}
-
 async function subscribe(
   request: APIRequestContext,
   u: { id: string; customer: string; email: string },
   key: string,
 ) {
-  const [p] = await sql<{ dodo_product_id: string }>(
-    "select dodo_product_id from billing_catalog where key=$1 and active",
+  const [p] = await sql<{ provider_product_id: string }>(
+    "select provider_product_id from billing_catalog where key=$1 and active and mode='test'",
     [key],
   );
-  const now = new Date();
-  await webhook(request, "subscription.active", {
-    subscription_id: `sub_${u.id}`,
-    product_id: p!.dodo_product_id,
-    status: "active",
-    previous_billing_date: now.toISOString(),
-    next_billing_date: new Date(now.getTime() + 30 * 86_400_000).toISOString(),
-    cancel_at_next_billing_date: false,
-    customer: { customer_id: u.customer, email: u.email },
-    metadata: { user_id: u.id },
-  });
+  const r = await deliver(
+    request,
+    "subscription.active",
+    subscriptionObject({
+      subId: `sub_${u.id}`,
+      productId: p!.provider_product_id,
+      customer: u.customer,
+      email: u.email,
+      userId: u.id,
+    }),
+  );
+  expect(r.status()).toBe(200);
 }
 
 const SIZES = [
