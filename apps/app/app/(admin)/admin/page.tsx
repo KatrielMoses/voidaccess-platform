@@ -1,13 +1,39 @@
 import { PLANS } from "@voidaccess/config";
 import { adminPage } from "@/lib/admin/guard";
-import { getOverview } from "@/lib/admin/queries";
+import { getActivity, getOverview, getPaidConversions, type PaidStart } from "@/lib/admin/queries";
 import { CREEM_DASHBOARD_URL, FIRST_INVESTIGATION_WINDOW_HOURS } from "@/lib/admin/constants";
-import { Bar, Empty, Num, Page, Section, Stack, Stat, StatGrid, T, Td } from "@/components/admin/ui";
-import { int, pct, usd } from "@/components/admin/format";
+import {
+  Bar,
+  Empty,
+  Num,
+  Page,
+  Section,
+  Stack,
+  Stat,
+  StatGrid,
+  T,
+  Td,
+  UserLink,
+} from "@/components/admin/ui";
+import { fmtDate, int, pct, usd } from "@/components/admin/format";
+
+const ITEM_NAMES: Record<string, string> = { topup_credits: "Top-up", topup: "Top-up", pass: "Pass" };
+const money = (cents: number | null, currency: string | null) =>
+  cents === null
+    ? "—"
+    : !currency || currency.toUpperCase() === "USD"
+      ? usd(cents / 100, 2)
+      : `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
 
 export default async function AdminOverview() {
   await adminPage();
-  const o = await getOverview();
+  const [o, paid, activity] = await Promise.all([getOverview(), getPaidConversions(), getActivity()]);
+  const itemOf = (p: PaidStart) =>
+    p.kind === "subscription"
+      ? `${planName(p.item)}${p.interval ? `, ${p.interval === "year" ? "yearly" : "monthly"}` : ""}`
+      : (ITEM_NAMES[p.item] ?? p.item);
+  const topEvent = Math.max(1, ...activity.events.map((e) => e.n));
+  const depthTotal = activity.runsByDepth.reduce((a, r) => a + r.n, 0);
   const days = [...new Set(o.runsByDay.map((r) => r.day))];
   const maxDay = Math.max(
     1,
@@ -222,6 +248,99 @@ export default async function AdminOverview() {
           </T>
         </Section>
       </div>
+
+      <Section
+        title="Paid conversions"
+        hint="New subscriptions and one-off payments (top-ups, passes) from every provider. Renewals are not counted."
+        testId="paid"
+      >
+        <StatGrid cols={3}>
+          <Stat label="Paid starts, 7 days" value={int(paid.d7)} testId="stat-paid-7" />
+          <Stat label="Paid starts, 30 days" value={int(paid.d30)} testId="stat-paid-30" />
+          <Stat
+            label="Plan mix (users)"
+            value={paid.planMix.map((m) => int(m.users)).join(" / ")}
+            sub={paid.planMix.map((m) => planName(m.plan)).join(" / ")}
+            testId="stat-plan-mix"
+          />
+        </StatGrid>
+        {paid.latest.length === 0 ? (
+          <Empty>No paid conversions yet.</Empty>
+        ) : (
+          <T head={["Date", "User", "Plan or item", "Amount", "Provider"]} testId="paid-latest">
+            {paid.latest.map((p, i) => (
+              <tr key={`${p.kind}-${p.userId}-${p.at.toISOString()}-${i}`}>
+                <Td>
+                  <Num className="text-dim">{fmtDate(p.at)}</Num>
+                </Td>
+                <Td>
+                  <UserLink id={p.userId}>{p.email}</UserLink>
+                </Td>
+                <Td>{itemOf(p)}</Td>
+                <Td>
+                  <Num>{money(p.amountCents, p.currency)}</Num>
+                </Td>
+                <Td>
+                  <Num className="text-dim">{p.provider}</Num>
+                </Td>
+              </tr>
+            ))}
+          </T>
+        )}
+      </Section>
+
+      <Section
+        title="What users do most (7 days)"
+        hint="Product events by name and runs by depth. Names and counts only: no query text, no entity values."
+        testId="activity"
+      >
+        <div className="grid gap-12 lg:grid-cols-[2fr_1fr]">
+          {activity.events.length === 0 ? (
+            <Empty>No events in the last 7 days.</Empty>
+          ) : (
+            <T head={["Event", "Count", "Users", ""]} testId="activity-events">
+              {activity.events.map((e) => (
+                <tr key={e.name}>
+                  <Td>
+                    <Num>{e.name}</Num>
+                  </Td>
+                  <Td>
+                    <Num className="text-paper">{int(e.n)}</Num>
+                  </Td>
+                  <Td>
+                    <Num>{int(e.users)}</Num>
+                  </Td>
+                  <Td className="w-40 align-middle">
+                    <Bar value={e.n} max={topEvent} className="bg-paper/60" />
+                  </Td>
+                </tr>
+              ))}
+            </T>
+          )}
+          <T head={["Depth", "Runs", "Completed"]} testId="activity-depth">
+            {activity.runsByDepth.map((r) => (
+              <tr key={r.depth}>
+                <Td>{r.depth}</Td>
+                <Td>
+                  <Num className="text-paper">{int(r.n)}</Num>
+                </Td>
+                <Td>
+                  <Num>{int(r.completed)}</Num>
+                </Td>
+              </tr>
+            ))}
+            <tr>
+              <Td className="text-dim">Total</Td>
+              <Td>
+                <Num>{int(depthTotal)}</Num>
+              </Td>
+              <Td>
+                <Num>{int(activity.runsByDepth.reduce((a, r) => a + r.completed, 0))}</Num>
+              </Td>
+            </tr>
+          </T>
+        </div>
+      </Section>
 
       <Section
         title="Active subscriptions"
