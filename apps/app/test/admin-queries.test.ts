@@ -420,17 +420,52 @@ describe("overview: paid conversions and what users do (a fixed past window, so 
       ]),
     );
 
+    // a crypto pass (prepaid, never renews) and a second pass bought on top of it: two purchases
+    const d = await makeUser({ plan: "pro", credits: 0 });
+    const [subD] = await sys<Array<{ id: string }>>((tx) =>
+      tx
+        .insert(subscriptions)
+        .values({
+          userId: d.id,
+          provider: "nowpayments",
+          providerSubscriptionId: `conv_${d.id}`,
+          plan: "pro",
+          status: "expired",
+          interval: "year",
+          createdAt: at(10),
+        })
+        .returning({ id: subscriptions.id }),
+    );
+    await sys((tx) =>
+      tx.insert(payments).values(
+        [10, 6].map((days, i) => ({
+          userId: d.id,
+          provider: "nowpayments",
+          providerPaymentId: `conv_pass${i}_${d.id}`,
+          amountCents: 7000,
+          kind: "subscription" as const,
+          subscriptionId: subD!.id,
+          paidAt: at(days),
+          meta: { pass: true },
+        })),
+      ),
+    );
+
     const r = await getPaidConversions({ now });
-    expect(r.d7).toBe(3);
-    expect(r.d30).toBe(4);
+    expect(r.d7).toBe(4);
+    expect(r.d30).toBe(6);
     expect(
-      r.latest.slice(0, 5).map((x) => [x.email, x.kind, x.item, x.interval, x.amountCents, x.provider]),
+      r.latest
+        .slice(0, 7)
+        .map((x) => [x.email, x.kind, x.item, x.interval, x.amountCents, x.provider, x.pass, x.extension]),
     ).toEqual([
-      [a.email, "subscription", "pro", "year", 7000, "creem"], // the first payment, not the renewal
-      [c.email, "payment", "topup_credits", null, 1500, "nowpayments"],
-      [b.email, "subscription", "pro_plus", "month", null, "nowpayments"],
-      [c.email, "payment", "topup", null, 700, "creem"],
-      [c.email, "payment", "topup", null, 700, "creem"],
+      [a.email, "subscription", "pro", "year", 7000, "creem", false, false], // the first payment, not the renewal
+      [c.email, "payment", "topup_credits", null, 1500, "nowpayments", false, false],
+      [b.email, "subscription", "pro_plus", "month", null, "nowpayments", false, false],
+      [d.email, "subscription", "pro", "year", 7000, "nowpayments", true, true], // the second pass
+      [d.email, "subscription", "pro", "year", 7000, "nowpayments", true, false], // the first pass
+      [c.email, "payment", "topup", null, 700, "creem", false, false],
+      [c.email, "payment", "topup", null, 700, "creem", false, false],
     ]);
     expect(r.latest[0]!.at.toISOString()).toBe(at(1).toISOString());
     expect(r.latest.length).toBeLessThanOrEqual(25);
@@ -439,7 +474,7 @@ describe("overview: paid conversions and what users do (a fixed past window, so 
     const delta = (plan: string) =>
       r.planMix.find((m) => m.plan === plan)!.users - mixBefore.find((m) => m.plan === plan)!.users;
     expect(r.planMix.map((m) => m.plan)).toEqual(Object.keys(PLANS));
-    expect([delta("free"), delta("pro"), delta("pro_plus")]).toEqual([1, 1, 1]);
+    expect([delta("free"), delta("pro"), delta("pro_plus")]).toEqual([1, 2, 1]);
   });
 
   it("counts events by name (top 15, no props) and runs by depth for the last 7 days", async () => {

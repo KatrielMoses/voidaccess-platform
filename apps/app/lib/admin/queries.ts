@@ -205,6 +205,10 @@ export interface PaidStart {
   amountCents: number | null;
   currency: string | null;
   provider: string;
+  /** a prepaid pass (crypto: payments.meta.pass) rather than a renewing subscription */
+  pass: boolean;
+  /** a later pass bought on top of an existing one (the subscription itself is listed at its first payment) */
+  extension: boolean;
 }
 export interface PaidConversions {
   latest: PaidStart[];
@@ -215,20 +219,29 @@ export interface PaidConversions {
 }
 
 /**
- * Paid starts from any provider (creem, nowpayments, ...): every subscription row (one per subscription that became
- * active; dated by its first payment when there is one) plus every one-off payment that isn't a subscription
- * renewal (top-ups, passes, any later kind). Renewals are not starts and are left out.
+ * Paid starts from any provider (creem, nowpayments, ...):
+ *  - every subscription row (one per subscription that became active), dated by its first payment when there is one;
+ *  - every one-off payment (top-ups, any later non-subscription kind);
+ *  - every further pass payment on an existing pass (crypto passes are prepaid: each one is a purchase).
+ * Renewals of a recurring subscription are not starts and are left out.
  */
 const PAID_STARTS = sql`(
   SELECT 'subscription' AS kind, coalesce(fp.paid_at, s.created_at) AS at, s.user_id, s.plan::text AS item,
-    s.interval::text AS interval, fp.amount_cents, fp.currency, s.provider
+    s.interval::text AS interval, fp.amount_cents, fp.currency, s.provider,
+    coalesce(fp.meta->>'pass' = 'true', false) AS pass, false AS extension
   FROM subscriptions s
-  LEFT JOIN LATERAL (SELECT p.paid_at, p.amount_cents, p.currency FROM payments p
-    WHERE p.subscription_id = s.id ORDER BY p.paid_at ASC LIMIT 1) fp ON true
+  LEFT JOIN LATERAL (SELECT p.paid_at, p.amount_cents, p.currency, p.meta FROM payments p
+    WHERE p.subscription_id = s.id ORDER BY p.paid_at ASC, p.id ASC LIMIT 1) fp ON true
   UNION ALL
   SELECT 'payment', p.paid_at, p.user_id, coalesce(p.meta->>'key', p.kind::text), NULL, p.amount_cents, p.currency,
-    p.provider
+    p.provider, false, false
   FROM payments p WHERE p.kind::text <> 'subscription'
+  UNION ALL
+  SELECT 'subscription', p.paid_at, p.user_id, s.plan::text, s.interval::text, p.amount_cents, p.currency,
+    p.provider, true, true
+  FROM payments p JOIN subscriptions s ON s.id = p.subscription_id
+  WHERE p.kind::text = 'subscription' AND p.meta->>'pass' = 'true'
+    AND p.id <> (SELECT f.id FROM payments f WHERE f.subscription_id = s.id ORDER BY f.paid_at ASC, f.id ASC LIMIT 1)
 )`;
 
 export async function getPaidConversions(o?: Opts): Promise<PaidConversions> {
@@ -239,7 +252,7 @@ export async function getPaidConversions(o?: Opts): Promise<PaidConversions> {
       const since = (days: number) => ts(new Date(now.getTime() - days * DAY));
       const latest = (
         await tx.execute(sql`SELECT x.kind, x.at, u.email, x.user_id, x.item, x.interval, x.amount_cents,
-          x.currency, x.provider FROM ${PAID_STARTS} x JOIN users u ON u.id = x.user_id
+          x.currency, x.provider, x.pass, x.extension FROM ${PAID_STARTS} x JOIN users u ON u.id = x.user_id
           WHERE x.at <= ${ts(now)} ORDER BY x.at DESC LIMIT ${CONVERSIONS_LATEST}`)
       ).rows as Array<Record<string, unknown>>;
       const [c] = (
@@ -262,6 +275,8 @@ export async function getPaidConversions(o?: Opts): Promise<PaidConversions> {
           amountCents: r.amount_cents == null ? null : num(r.amount_cents),
           currency: (r.currency as string | null) ?? null,
           provider: r.provider as string,
+          pass: Boolean(r.pass),
+          extension: Boolean(r.extension),
         })),
         d7: num(c?.d7),
         d30: num(c?.d30),

@@ -30,7 +30,7 @@ export default async function AdminOverview() {
   const [o, paid, activity] = await Promise.all([getOverview(), getPaidConversions(), getActivity()]);
   const itemOf = (p: PaidStart) =>
     p.kind === "subscription"
-      ? `${planName(p.item)}${p.interval ? `, ${p.interval === "year" ? "yearly" : "monthly"}` : ""}`
+      ? `${planName(p.item)}${p.interval ? `, ${p.interval === "year" ? "yearly" : "monthly"}` : ""}${p.pass ? " pass" : ""}${p.extension ? " (extension)" : ""}`
       : (ITEM_NAMES[p.item] ?? p.item);
   const topEvent = Math.max(1, ...activity.events.map((e) => e.n));
   const depthTotal = activity.runsByDepth.reduce((a, r) => a + r.n, 0);
