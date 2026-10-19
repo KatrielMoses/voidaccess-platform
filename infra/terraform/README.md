@@ -64,5 +64,8 @@ terraform -chdir=infra/terraform apply -target=module.iam -target=module.app
   `creem-webhook-secret-live`, then apply with `-var creem_env=live_mode -var creem_api_key_secret=creem-api-key-live
 -var creem_webhook_secret=creem-webhook-secret-live` (see docs/BILLING.md). The old `dodo-webhook-secret` is no longer
   managed (a `removed` block keeps it); delete it by hand after closing the Dodo account.
+- Admin console: `ADMIN_PATH` comes from the `admin-path` secret (the owner's secret URL slug; only the name is here) and
+  `ADMIN_EMAIL` is `var.admin_email`. Create the secret first (`bash infra/bootstrap/add-secret.sh admin-path`), or the
+  plan fails on the missing data source. Steps: apps/app/docs/ADMIN.md, "Ops: setting up the console".
 - Scheduler jobs are enabled (watchdog */5, credit-alerts hourly, founding and grants daily), OIDC as `va-app`.
 - The production proof lives in `apps/app/e2e-prod` (`playwright.prod.config.ts`); screenshots in `e2e-prod/evidence`.
