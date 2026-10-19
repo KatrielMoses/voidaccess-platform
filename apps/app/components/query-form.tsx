@@ -26,6 +26,7 @@ export function QueryForm({
   email,
   defaultQuery = "",
   fixedDepth,
+  defaultDepth,
   showExamples = false,
   autoFocus = false,
 }: {
@@ -33,15 +34,22 @@ export function QueryForm({
   emailVerified: boolean;
   email: string;
   defaultQuery?: string;
-  /** When set, no selector is shown and this depth is used (first-run screen). */
+  /** When set, no selector is shown and this depth is used. */
   fixedDepth?: Depth;
+  /** The depth selected at first (default: the configured default depth). */
+  defaultDepth?: Depth;
   showExamples?: boolean;
   autoFocus?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState(defaultQuery);
   const [depth, setDepth] = useState<Depth>(
-    fixedDepth ?? (DEPTHS[DEFAULT_DEPTH].launched ? DEFAULT_DEPTH : LAUNCHED[0]!),
+    fixedDepth ??
+      (defaultDepth && DEPTHS[defaultDepth].launched
+        ? defaultDepth
+        : DEPTHS[DEFAULT_DEPTH].launched
+          ? DEFAULT_DEPTH
+          : LAUNCHED[0]!),
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
@@ -104,7 +112,7 @@ export function QueryForm({
             required
             autoFocus={autoFocus}
             autoComplete="off"
-            className="h-[62px] min-w-0 flex-1 border-0 bg-transparent font-sans text-[17px] text-ink outline-none placeholder:text-stone max-[640px]:h-[58px] max-[640px]:rounded-lg max-[640px]:border max-[640px]:border-paper max-[640px]:bg-paper max-[640px]:px-4 max-[640px]:focus:border-v-600"
+            className="h-[62px] min-w-0 flex-1 max-[640px]:flex-none border-0 bg-transparent font-sans text-[17px] text-ink outline-none placeholder:text-stone max-[640px]:h-[58px] max-[640px]:rounded-lg max-[640px]:border max-[640px]:border-paper max-[640px]:bg-paper max-[640px]:px-4 max-[640px]:focus:border-v-600"
           />
           <button
             type="submit"
@@ -127,6 +135,48 @@ export function QueryForm({
             </span>
           </button>
         </div>
+        {fixedDepth ? null : (
+          <fieldset className="flex flex-col gap-3">
+            <legend className="sr-only">Depth</legend>
+            {/* Two options side by side, one line each: depth, what it means, its price. A real radio group. */}
+            <div className="grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2">
+              {LAUNCHED.map((d) => {
+                const copy = DEPTH_COPY[d as keyof typeof DEPTH_COPY];
+                return (
+                  <label
+                    key={d}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3.5 px-5 py-4 transition-[background-color] duration-[400ms] ease-out has-[:focus-visible]:outline-[1.5px] has-[:focus-visible]:-outline-offset-4 has-[:focus-visible]:outline-v-200 has-[:focus-visible]:outline-solid",
+                      depth === d ? "bg-bg-2" : "bg-bg hover:bg-bg-2/60",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="depth"
+                      value={d}
+                      checked={depth === d}
+                      onChange={() => setDepth(d)}
+                      className="size-4 flex-none cursor-pointer appearance-none rounded-full border border-line-3 transition-[border-width,border-color] duration-300 checked:border-[5px] checked:border-paper focus-visible:outline-none"
+                    />
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="flex items-baseline justify-between gap-3">
+                        <span className="text-[16px] font-medium tracking-[-0.01em] text-paper">
+                          {copy.label}
+                        </span>
+                        <span className="font-mono text-[13px] text-dim tabular-nums">
+                          {DEPTHS[d].credits} credits
+                        </span>
+                      </span>
+                      <span className="text-[14px] leading-[1.45] text-dim">
+                        {copy.blurb} <span className="text-mute">{copy.time}</span>
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
         {showExamples ? (
           <div className="flex flex-wrap items-center gap-2.5" aria-label="Example queries">
             <span className="mr-1 text-[15px] text-mute">Try</span>
@@ -144,45 +194,6 @@ export function QueryForm({
           </div>
         ) : null}
       </div>
-
-      {fixedDepth ? null : (
-        <fieldset className="flex flex-col gap-4">
-          <legend className="mb-4 text-[15px] text-dim">Depth</legend>
-          <div className="grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2">
-            {LAUNCHED.map((d) => (
-              <label
-                key={d}
-                className={cn(
-                  "flex cursor-pointer items-start gap-3.5 p-5 transition-[background-color] duration-[600ms] ease-out has-[:focus-visible]:outline-[1.5px] has-[:focus-visible]:-outline-offset-4 has-[:focus-visible]:outline-v-200 has-[:focus-visible]:outline-solid",
-                  depth === d ? "bg-bg-2" : "bg-bg hover:bg-bg-2/60",
-                )}
-              >
-                <input
-                  type="radio"
-                  name="depth"
-                  value={d}
-                  checked={depth === d}
-                  onChange={() => setDepth(d)}
-                  className="mt-[3px] size-4 flex-none cursor-pointer appearance-none rounded-full border border-line-3 transition-[border-width,border-color] duration-300 checked:border-[5px] checked:border-paper focus-visible:outline-none"
-                />
-                <span className="flex flex-1 flex-col gap-1.5">
-                  <span className="flex items-baseline justify-between gap-3">
-                    <span className="text-[17px] font-medium tracking-[-0.01em] text-paper">
-                      {DEPTH_COPY[d as keyof typeof DEPTH_COPY].label}
-                    </span>
-                    <span className="font-mono text-[13px] text-dim tabular-nums">
-                      {DEPTHS[d].credits} credits
-                    </span>
-                  </span>
-                  <span className="text-[15px] leading-[1.5] text-dim">
-                    {DEPTH_COPY[d as keyof typeof DEPTH_COPY].blurb}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      )}
 
       {!emailVerified ? (
         <Notice role="alert" mark="!">
@@ -217,10 +228,12 @@ export function QueryForm({
 
       <ErrorBlock error={error} />
 
-      <p className="max-w-[64ch] text-[15px] leading-[1.55] text-dim">
-        Costs <span className="font-mono text-[13.5px] text-paper tabular-nums">{price}</span> credits. Cancel
-        any time and get back the part of the cost for stages that haven&apos;t run. If it fails, you get all
-        of it back.
+      <p className="text-[14px] leading-[1.5] text-mute">
+        <span className="font-mono text-[13px] text-paper tabular-nums">{price}</span> credits of your{" "}
+        <span className="font-mono text-[13px] text-paper tabular-nums">
+          {balance.toLocaleString("en-US")}
+        </span>
+        . Fully refunded if it fails; cancel any time and get back the stages that didn&apos;t run.
       </p>
     </form>
   );

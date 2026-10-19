@@ -8,7 +8,7 @@ import { SIGN_IN_URL } from "@/lib/site";
 import { Logo } from "@/components/logo";
 
 const NAV = [
-  { href: "/investigations/new", label: "New" },
+  { href: "/investigations/new", label: "Investigate" },
   { href: "/investigations", label: "History" },
 ];
 
@@ -100,7 +100,14 @@ export function AppHeader({
           })}
         </nav>
         <div className="ml-auto flex items-center gap-3 max-[960px]:h-[60px]">
-          <CreditPill balance={balance} data-testid="credit-pill" />
+          {/* the balance links to Billing: that's where you top up or change plan */}
+          <Link
+            href="/billing"
+            aria-label={`${balance.toLocaleString("en-US")} credits. Top up or change plan`}
+            className="rounded-md focus-visible:outline-[1.5px] focus-visible:outline-v-200"
+          >
+            <CreditPill balance={balance} data-testid="credit-pill" />
+          </Link>
           <div className="relative" ref={menuRef}>
             <button
               type="button"

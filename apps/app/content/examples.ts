@@ -22,6 +22,6 @@ export const PROFILE_USE_CASES = [
 
 /** Plain-words depth descriptions. Prices are NOT here: they come from DEPTHS in @voidaccess/config. */
 export const DEPTH_COPY = {
-  quick: { label: "Quick", blurb: "A fast, lighter pass. Good for a first look." },
-  standard: { label: "Standard", blurb: "A broader pass over more sources. The default." },
+  quick: { label: "Quick", blurb: "A fast first look.", time: "About 3–5 min." },
+  standard: { label: "Standard", blurb: "More sources and pages. The default.", time: "About 5–8 min." },
 } as const;

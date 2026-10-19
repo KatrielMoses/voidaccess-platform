@@ -3,7 +3,7 @@ import { readBalance } from "@/lib/account/balance";
 import { QueryForm } from "@/components/query-form";
 import { PageHeader } from "@/components/page-header";
 
-export const metadata = { title: "New investigation | VoidAccess" };
+export const metadata = { title: "Investigate | VoidAccess" };
 
 export default async function NewInvestigationPage({
   searchParams,
@@ -15,16 +15,8 @@ export default async function NewInvestigationPage({
   return (
     <div className="va-rise flex max-w-[860px] flex-col gap-12">
       <PageHeader
-        title="New investigation"
-        lede={
-          <>
-            You have{" "}
-            <span className="font-mono text-[15px] text-paper tabular-nums">
-              {balance.toLocaleString("en-US")}
-            </span>{" "}
-            credits.
-          </>
-        }
+        title="Start an investigation"
+        lede="Search the dark web for a threat actor, malware family, CVE or brand. Pick a depth, then start."
       />
       <QueryForm
         balance={balance}
