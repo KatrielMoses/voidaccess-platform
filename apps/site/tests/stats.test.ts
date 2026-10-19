@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEPTHS, PLANS } from "@voidaccess/config";
+import { DEPTHS, FOUNDING, PLANS } from "@voidaccess/config";
 import { fill, staticTokens, statsTokens } from "@/home/render";
 import {
   DOWNLOADS_URL,
@@ -137,7 +137,7 @@ describe("home page tokens", () => {
   it("fills every token in the home page, from config and the stats", () => {
     const out = fill(fill(html, staticTokens("https://app.example"), { strict: false }), statsTokens({ stars: "801", downloads: "18k" }));
     expect(out).not.toMatch(/__VA_/);
-    expect(out).toContain(`${PLANS.free.monthlyCredits} free credits a month · no card · from $${PLANS.pro.monthlyUsd}/mo after that`);
+    expect(out).toContain(`${PLANS.free.monthlyCredits} free credits a month · no card · from $${FOUNDING.monthlyUsd}/mo after that`); // the founding price is the headline
     expect(out).toContain("801★ on GitHub");
     expect(out).toContain("18k+ downloads");
     expect(out).toContain(

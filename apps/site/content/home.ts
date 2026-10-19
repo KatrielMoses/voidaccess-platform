@@ -76,7 +76,7 @@ export const faq: Faq[] = [
   },
   {
     q: "What does it cost?",
-    a: "A free plan with {{free.credits}} credits a month and no card. Pro is {{pro.monthly}}/mo and Pro+ is {{plus.monthly}}/mo, with annual billing that gives {{pro.monthsFree}} months free. A Standard investigation costs {{depth.standard}} credits. Full details are on the pricing page.",
+    a: "A free plan with {{free.credits}} credits a month and no card. Pro is {{founding.price}}/mo at the founding price for the first {{founding.seats}} subscribers ({{pro.monthly}}/mo after that) and Pro+ is {{plus.monthly}}/mo, with annual billing that gives {{pro.monthsFree}} months free. A Standard investigation costs {{depth.standard}} credits. Full details are on the pricing page.",
   },
   {
     q: "Will it find everything about my organisation?",

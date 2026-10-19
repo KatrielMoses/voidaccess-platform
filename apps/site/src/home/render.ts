@@ -1,4 +1,4 @@
-import { DEPTHS, PLANS } from "@voidaccess/config";
+import { DEPTHS, FOUNDING, PLANS } from "@voidaccess/config";
 import { money } from "@/lib/facts";
 import type { Stats } from "@/lib/stats";
 
@@ -14,7 +14,8 @@ export function staticTokens(appUrl: string): Record<string, string> {
     __VA_FREE_CREDITS__: String(free),
     __VA_FREE_QUICK__: String(Math.floor(free / DEPTHS.quick.credits)),
     __VA_FREE_STANDARD__: String(Math.floor(free / DEPTHS.standard.credits)),
-    __VA_PRO_PRICE__: money(PLANS.pro.monthlyUsd),
+    // the headline "from" price is the founding Pro price (owner decision 2026-10-19); the pricing page shows both
+    __VA_PRO_PRICE__: money(FOUNDING.monthlyUsd),
   };
 }
 

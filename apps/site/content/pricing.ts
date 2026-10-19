@@ -3,7 +3,7 @@ import type { Faq, PageMeta } from "./types";
 export const meta: PageMeta = {
   title: "Pricing: VoidAccess",
   description:
-    "Free to start, no card. Pay for credits, not seats: a Standard investigation costs {{depth.standard}} credits. Pro from {{pro.monthly}}/mo; founding members pay {{founding.price}}/mo.",
+    "Free to start, no card. Pay for credits, not seats: a Standard investigation costs {{depth.standard}} credits. Pro from {{founding.price}}/mo at the founding price for the first {{founding.seats}} subscribers.",
 };
 
 export const hero = {

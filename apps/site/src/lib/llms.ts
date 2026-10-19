@@ -1,4 +1,4 @@
-import { PLANS } from "@voidaccess/config";
+import { FOUNDING, PLANS } from "@voidaccess/config";
 import { money, resolve, topupRows } from "./facts";
 import { abs, GITHUB_URL, SITE_NAME } from "./site";
 import * as home from "@content/home";
@@ -14,7 +14,13 @@ const r = resolve;
 
 function planLines(): string[] {
   return Object.values(PLANS).map((p) => {
-    const bits = [p.monthlyUsd === 0 ? money(0) : `${money(p.monthlyUsd)}/mo`, `${p.monthlyCredits.toLocaleString("en-US")} credits per month`];
+    const price =
+      p.monthlyUsd === 0
+        ? money(0)
+        : p.id === FOUNDING.plan
+          ? `${money(FOUNDING.monthlyUsd)}/mo founding price for the first ${FOUNDING.seats} subscribers, then ${money(p.monthlyUsd)}/mo`
+          : `${money(p.monthlyUsd)}/mo`;
+    const bits = [price, `${p.monthlyCredits.toLocaleString("en-US")} credits per month`];
     if (p.annualUsd !== null) bits.push(`${money(p.annualUsd)}/yr billed annually`);
     bits.push(p.historyDays === null ? "unlimited history" : `${p.historyDays}-day history`);
     bits.push(p.requiresCard ? "card required" : "no card");
