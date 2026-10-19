@@ -1,6 +1,13 @@
 import pg from "pg";
 import { expect, test, type Page } from "@playwright/test";
-import { CRYPTO_TOPUP_MIN_USD, PLANS, TOPUP_MAX_USD, TOPUP_MIN_USD, topupCredits } from "@voidaccess/config";
+import {
+  CRYPTO_TOPUP_MIN_USD,
+  FOUNDING,
+  PLANS,
+  TOPUP_MAX_USD,
+  TOPUP_MIN_USD,
+  topupCredits,
+} from "@voidaccess/config";
 import { BILLING_EMAIL_LOG } from "../playwright.billing.config";
 import { IPN_SECRET, ownerUrl } from "./billing-global-setup";
 import { signIpn } from "../lib/billing/crypto/signature";
@@ -48,9 +55,11 @@ test("subscribe, pay-as-you-go top-up, change plan, cancel and resume, against t
 
   // billing page: plans straight from config, the price stated before checkout, Creem named
   await page.goto("/billing");
-  await expect(page.getByTestId("plan-pro")).toContainText(`$${PLANS.pro.monthlyUsd}`);
+  // while founding seats remain, the Pro card is the founding offer: $9 struck through, $7, one checkout
+  await expect(page.getByTestId("plan-pro").locator("s")).toHaveText(`$${PLANS.pro.monthlyUsd}`);
+  await expect(page.getByTestId("plan-pro")).toContainText(`$${FOUNDING.monthlyUsd}`);
   await expect(page.getByTestId("plan-pro_plus")).toContainText(`$${PLANS.pro_plus.monthlyUsd}`);
-  await expect(page.getByTestId("plan-pro")).toContainText(`$${PLANS.pro.monthlyUsd} per month on Creem`);
+  await expect(page.getByTestId("plan-pro")).toContainText(`$${FOUNDING.monthlyUsd} per month on Creem`);
   await expect(page.locator("body")).not.toContainText("Dodo");
 
   // start a Pro checkout: we land on Creem's test checkout (intercepted: no network needed)
@@ -60,7 +69,7 @@ test("subscribe, pay-as-you-go top-up, change plan, cancel and resume, against t
   const proProduct = await productId("pro_month");
   await page.getByTestId("subscribe-pro").click();
   await page.waitForURL(/creem\.io\/test\/checkout\//);
-  expect(page.url()).toContain(`/checkout/${proProduct}/ch_fake_`);
+  expect(page.url()).toContain(`/checkout/${await productId("founding_pro_month")}/ch_fake_`);
 
   // checkout created the customer mapping; Creem would now call our webhook, so we do, signed
   const [user] = await q<{ id: string }>("select id from users where email = $1", [email]);

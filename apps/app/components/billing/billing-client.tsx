@@ -417,6 +417,9 @@ export function BillingClient({
                   (view.sub!.interval === interval || p.annualUsd === null)) ||
               (p.id === "free" && !live && view.plan === "free");
             const key = `${p.id}_${interval}`;
+            // while founding seats remain, Pro monthly IS the founding offer: the founding price, the regular one struck through
+            const foundingCard =
+              p.id === FOUNDING.plan && interval === "month" && view.canClaimFounding && !live && !pass;
             return (
               <li
                 key={p.id}
@@ -429,8 +432,13 @@ export function BillingClient({
                 </div>
                 <div className="flex flex-col gap-3">
                   <p className="flex items-baseline gap-1.5">
+                    {foundingCard ? (
+                      <s className="mr-1.5 font-mono text-[20px] leading-none text-mute tabular-nums">
+                        {usd(price(p))}
+                      </s>
+                    ) : null}
                     <span className="font-mono text-[32px] leading-none tracking-[-0.04em] tabular-nums">
-                      {usd(price(p))}
+                      {usd(foundingCard ? FOUNDING.monthlyUsd : price(p))}
                     </span>
                     <span className="font-mono text-[13px] text-dim">
                       {p.id === "free" ? copy.perMonth : interval === "year" ? copy.perYear : copy.perMonth}
@@ -484,19 +492,30 @@ export function BillingClient({
                   <div className="flex flex-col gap-3">
                     <Button
                       variant={primaryPlan === p.id ? "primary" : "secondary"}
-                      loading={busy === key}
+                      loading={busy === (foundingCard ? "founding" : key)}
                       onClick={() =>
-                        go("/api/billing/checkout", { kind: "subscription", plan: p.id, interval }, key)
+                        foundingCard
+                          ? go(
+                              "/api/billing/checkout",
+                              { kind: "subscription", plan: p.id, interval, founding: true },
+                              "founding",
+                            )
+                          : go("/api/billing/checkout", { kind: "subscription", plan: p.id, interval }, key)
                       }
                       data-testid={`subscribe-${p.id}`}
                     >
                       {fill(copy.checkout.subscribe, { plan: p.name })}
                     </Button>
                     <p className="text-[15px] leading-[1.5] text-mute">
-                      {fill(copy.checkout.notice, {
-                        price: usd(price(p)),
-                        per: interval === "year" ? "per year" : "per month",
-                      })}
+                      {foundingCard
+                        ? fill(copy.checkout.foundingNotice, {
+                            price: usd(FOUNDING.monthlyUsd),
+                            line: FOUNDING.copy,
+                          })
+                        : fill(copy.checkout.notice, {
+                            price: usd(price(p)),
+                            per: interval === "year" ? "per year" : "per month",
+                          })}
                     </p>
                     {cryptoOn && passPrice(p.id, interval) !== null ? (
                       <>

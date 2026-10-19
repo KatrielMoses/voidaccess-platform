@@ -9,6 +9,7 @@ export default tseslint.config(
       "**/.next-*/**",
       "**/dist/**",
       "**/.worktrees/**",
+      "**/.claude/**",
       "runner/**",
       "apps/site/**",
       "**/drizzle/**",
