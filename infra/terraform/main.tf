@@ -6,7 +6,8 @@ locals {
   archive_bucket = "${var.project_id}-archive"
   app_url        = "https://${var.app_domain}"
   site_url       = "https://${var.site_domain}"
-  # Secrets the app reads. All exist already (Creem test or live names come from var.creem_*_secret).
+  # Secrets the app reads. All exist already (Creem test or live names come from var.creem_*_secret; NOWPayments
+  # from var.nowpayments_*).
   app_secrets = [
     "database-url",
     "database-url-system", # va_worker (H1): withSystem + Better Auth. Created by packages/db/scripts/neon-provision.ts
@@ -23,6 +24,8 @@ locals {
     "turnstile-secret-key",
     var.creem_api_key_secret,
     var.creem_webhook_secret,
+    var.nowpayments_api_key_secret, # crypto payments (NOWPayments, shared account with MailAccess; see docs/BILLING.md)
+    var.nowpayments_ipn_secret,
     "openrouter-api-key",
   ]
   runner_secrets = ["openrouter-api-key"] # not engine-callback-secret: see modules/runner
@@ -76,6 +79,10 @@ module "app" {
   creem_env             = var.creem_env
   creem_api_key_secret  = var.creem_api_key_secret
   creem_webhook_secret  = var.creem_webhook_secret
+  crypto_payments       = var.crypto_payments
+  nowpayments_api_base  = var.nowpayments_api_base
+  nowpayments_api_key   = var.nowpayments_api_key_secret
+  nowpayments_ipn       = var.nowpayments_ipn_secret
   allow_unauthenticated = var.allow_unauthenticated && var.manage_iam
   runner_member         = var.manage_iam ? "serviceAccount:${data.google_service_account.runner.email}" : ""
 }

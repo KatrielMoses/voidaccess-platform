@@ -41,6 +41,34 @@ variable "creem_webhook_secret" {
   default     = "creem-webhook-secret-test"
 }
 
+variable "crypto_payments" {
+  description = "CRYPTO_PAYMENTS for va-app: \"on\" shows Pay with crypto (NOWPayments) and accepts IPNs; \"off\" hides it and acknowledges IPNs without applying them."
+  type        = string
+  default     = "on"
+  validation {
+    condition     = contains(["off", "on"], var.crypto_payments)
+    error_message = "crypto_payments must be \"off\" or \"on\"."
+  }
+}
+
+variable "nowpayments_api_base" {
+  description = "NOWPayments API base: https://api.nowpayments.io/v1 (live) or https://api-sandbox.nowpayments.io/v1 (sandbox, test mode). The mode follows the base."
+  type        = string
+  default     = "https://api.nowpayments.io/v1"
+}
+
+variable "nowpayments_api_key_secret" {
+  description = "Secret Manager id of the NOWPayments API key (live account, shared with MailAccess)."
+  type        = string
+  default     = "nowpayments-api-key"
+}
+
+variable "nowpayments_ipn_secret" {
+  description = "Secret Manager id of the NOWPayments IPN secret (shared with MailAccess; VoidAccess accepts only va_ orders)."
+  type        = string
+  default     = "nowpayments-ipn-secret"
+}
+
 variable "app_domain" {
   description = "Custom domain of the app (Cloud Run domain mapping)."
   type        = string

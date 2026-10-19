@@ -112,3 +112,102 @@ Register it in the Creem dashboard (Developers > Webhooks) with all events; the 
    with the test values.
 5. Buy a $5 top-up and a Pro month with a real card, check the credits and the plan, then refund both from the Creem
    dashboard (the refunds raise review flags; no credits move automatically).
+
+## NOWPayments (crypto, one-time)
+
+Crypto payments are one-time purchases through NOWPayments' hosted invoice: pay-as-you-go credits and plan passes
+(Pro or Pro+, one month or one year) that **don't renew**. They never touch Creem: a pass has no cancel, change or
+portal (those operations answer `not_supported`, the portal route 409), and the cron never sends a crypto pass to
+the card provider. Code: `apps/app/lib/billing/crypto/*`; table `crypto_orders` (migration 0014, system-only RLS).
+
+### Shared account: the `va_` rule
+
+The NOWPayments account and its IPN secret are **shared with MailAccess**. Every VoidAccess invoice is created with
+`order_id = "va_<crypto_orders id>"` (MailAccess uses `ma_`). The IPN handler accepts only an order id that is
+exactly `va_` + a UUID; anything else (`ma_...`, no prefix, `VA_`, not a UUID, a number) is refused with **403
+`not_a_voidaccess_order` before any database work**, even when the signature is valid (`lib/billing/crypto/order-ref.ts`).
+MailAccess must do the same for `va_` orders it receives. Each product sets its own `ipn_callback_url` per invoice, so
+NOWPayments calls the right app; the prefix check is the guard if a callback ever reaches the wrong one.
+
+### What the app uses
+
+| Purpose | NOWPayments |
+|---|---|
+| Hosted invoice (`price_amount` in USD, `order_id` `va_...`, `ipn_callback_url`, `success_url` `/billing?crypto=pending`, `cancel_url` `/billing?crypto=cancelled`, `is_fixed_rate: true`, `is_fee_paid_by_user: false`) | `POST /v1/invoice` |
+| Payment status callbacks | IPN to `https://app.voidaccess.pro/api/webhooks/nowpayments` |
+
+Base URLs: live `https://api.nowpayments.io/v1`, sandbox `https://api-sandbox.nowpayments.io/v1` (the mode follows the
+base: sandbox = `test`, otherwise `live`). Header `x-api-key`; the key is never logged.
+
+### Top-ups and passes
+
+- **Credits:** the same pay-as-you-go rule and calculator as card top-ups (`topupCredits()`: rate, volume bonus,
+  subscriber bonus at payment time; same `TOPUP_MAX_USD`), with its own floor **`CRYPTO_TOPUP_MIN_USD` = $10**
+  (`packages/config`), validated server-side (`POST /api/billing/crypto/checkout { kind: "topup", usd }` answers 400
+  `topup_invalid` with `reason` `below_minimum` | `not_whole_dollars` | `above_maximum`) and shown on the Billing page
+  ("Crypto top-ups from $10"). Card top-ups keep their lower minimum.
+- **Passes:** `{ kind: "pass", plan: "pro" | "pro_plus", interval: "month" | "year" }` at exactly the plan's config
+  price. Refused (409) while a card subscription is live (`already_subscribed`) or while a pass for the other plan is
+  active (`pass_active`). Buying the same plan again extends the pass from its current end. A pass writes a
+  `subscriptions` row with provider `nowpayments`, `cancel_at = current_period_end`; the plan's credits are granted at
+  purchase and then monthly by the grants cron while the pass lasts; the cron ends an expired pass and moves the user
+  to Free.
+
+### Minimums (why $10)
+
+NOWPayments enforces a minimum per pay currency and network, and it moves with network fees and rates; it is not a
+published fixed table. The live value is `GET /v1/min-amount?currency_from=<coin>&currency_to=<outcome>&fiat_equivalent=usd`
+(API docs: <https://documenter.getpostman.com/view/7907941/2s93JusNJt>, "Get the minimum payment amount"; the docs'
+own example, ETH to TRX, is 0.0079 ETH = $35.41). Low-fee rails (USDT on TRC20/BSC/Polygon, LTC, USDC on L2s) are
+usually a few dollars; BTC and ETH on L1 are often well above $10 (merchant reports put BTC near €39 when other coins
+worked from about €4). At $10 most stablecoins and LTC can pay; for a small amount the hosted invoice simply doesn't
+offer coins whose minimum is higher. Before launch, check the live values with the production key:
+
+```
+curl -s -H "x-api-key: $NOWPAYMENTS_API_KEY" "https://api.nowpayments.io/v1/min-amount?currency_from=usdttrc20&fiat_equivalent=usd"
+```
+
+for `usdttrc20`, `usdterc20`, `btc`, `eth`, `ltc`, and raise `CRYPTO_TOPUP_MIN_USD` if the stablecoins come out above $10.
+
+### IPN
+
+URL: `https://app.voidaccess.pro/api/webhooks/nowpayments` (public in `lib/guard.ts`; it authenticates by signature).
+Signature: header `x-nowpayments-sig` = hex HMAC-SHA512 of the key-sorted JSON body with the IPN secret. Sources
+disagree on "sorted" for nested objects (top-level `JSON.stringify(body, Object.keys(body).sort())` vs a recursive
+sort), so both canonical forms are accepted; both are HMACs under our secret, so this doesn't weaken the check.
+Constant-time compare. Missing secret 503, missing or bad signature 400, malformed body 400, not a `va_` order 403,
+switched off 200 `ignored` (audit row), processing error 500 (NOWPayments retries), everything else 200.
+
+Each callback is stored once in `billing_events` as provider **`nowpayments`**, the crypto mode, event id
+`<payment_id>:<payment_status>`, in the same transaction as its effects; the (provider, mode, event id) key means a
+crypto event can never collide with a Creem event. The callback must name our order, in our mode, priced in USD at
+exactly the order's amount (to the cent) with a matching invoice id; otherwise it is rejected and flagged
+(`billing_crypto_mismatch`). Credits move only on `finished`, and only once per order (`applied_at`, set in the same
+transaction); other statuses only update the order. A second `finished` payment for an already credited order, a pass
+that conflicts with a card subscription or another pass, and a refund after credit raise review flags
+(`billing_crypto_review`, `billing_refund`); nothing is clawed back automatically.
+
+### Environment
+
+| Variable | Value |
+|---|---|
+| `CRYPTO_PAYMENTS` | `on` / `off` (app default `off`; production `on` from terraform) |
+| `CRYPTO_PROVIDER` | `nowpayments` (default) or `fake` (tests and e2e only; **refused in production**) |
+| `NOWPAYMENTS_API_KEY` | Secret `nowpayments-api-key` (live, shared with MailAccess) |
+| `NOWPAYMENTS_IPN_SECRET` | Secret `nowpayments-ipn-secret` (shared with MailAccess) |
+| `NOWPAYMENTS_API_BASE` | `https://api.nowpayments.io/v1` (live, default) or the sandbox |
+
+Terraform wires these from `var.crypto_payments` (default `on`), `var.nowpayments_api_base` (default live),
+`var.nowpayments_api_key_secret` and `var.nowpayments_ipn_secret` (`infra/terraform/variables.tf`).
+
+### Go-live switch
+
+1. The secrets `nowpayments-api-key` and `nowpayments-ipn-secret` exist (with a version) in Secret Manager.
+2. In the NOWPayments dashboard, keep the IPN secret as it is (MailAccess uses it too); nothing needs registering:
+   every invoice carries its own `ipn_callback_url`.
+3. Check the live minimums (above) and the outcome wallet settings.
+4. `terraform apply` (crypto is `on` by default), then deploy. To switch off without a deploy of code:
+   `terraform apply -var crypto_payments=off` (the page hides Pay with crypto, the checkout route answers 404, and
+   IPNs for orders already created are acknowledged with 200 and logged as `billing.crypto.ipn_ignored_off`, never
+   applied: NOWPayments won't resend them, so credit any paid ones by hand from that audit trail).
+5. Buy a $10 top-up with a stablecoin and a Pro month pass, check the credits, the plan and the pass end date.

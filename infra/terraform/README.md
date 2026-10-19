@@ -64,5 +64,9 @@ terraform -chdir=infra/terraform apply -target=module.iam -target=module.app
   `creem-webhook-secret-live`, then apply with `-var creem_env=live_mode -var creem_api_key_secret=creem-api-key-live
 -var creem_webhook_secret=creem-webhook-secret-live` (see docs/BILLING.md). The old `dodo-webhook-secret` is no longer
   managed (a `removed` block keeps it); delete it by hand after closing the Dodo account.
+- Crypto payments (NOWPayments): `crypto_payments` (default `on`) sets `CRYPTO_PAYMENTS`; `NOWPAYMENTS_API_KEY` /
+  `NOWPAYMENTS_IPN_SECRET` come from `nowpayments-api-key` / `nowpayments-ipn-secret` (existing, shared with MailAccess)
+  and `nowpayments_api_base` (default live `https://api.nowpayments.io/v1`). Switch off with `-var crypto_payments=off`
+  (see docs/BILLING.md).
 - Scheduler jobs are enabled (watchdog */5, credit-alerts hourly, founding and grants daily), OIDC as `va-app`.
 - The production proof lives in `apps/app/e2e-prod` (`playwright.prod.config.ts`); screenshots in `e2e-prod/evidence`.

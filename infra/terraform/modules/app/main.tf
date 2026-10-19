@@ -32,6 +32,22 @@ variable "creem_webhook_secret" {
   description = "Secret id for CREEM_WEBHOOK_SECRET (creem-webhook-secret-test or creem-webhook-secret-live)."
   type        = string
 }
+variable "crypto_payments" {
+  description = "CRYPTO_PAYMENTS: on | off."
+  type        = string
+}
+variable "nowpayments_api_base" {
+  description = "NOWPAYMENTS_API_BASE (live or sandbox)."
+  type        = string
+}
+variable "nowpayments_api_key" {
+  description = "Secret id for NOWPAYMENTS_API_KEY (nowpayments-api-key)."
+  type        = string
+}
+variable "nowpayments_ipn" {
+  description = "Secret id for NOWPAYMENTS_IPN_SECRET (nowpayments-ipn-secret)."
+  type        = string
+}
 
 locals {
   # Plain configuration only. Anything sensitive is a Secret Manager reference below.
@@ -47,6 +63,9 @@ locals {
     CRON_OIDC_EMAIL      = var.cron_oidc_email
     CREEM_ENV            = var.creem_env
     NEXT_PUBLIC_SITE_URL = var.site_url
+    CRYPTO_PAYMENTS      = var.crypto_payments
+    CRYPTO_PROVIDER      = "nowpayments" # never "fake" here: the app refuses the fake provider in production anyway
+    NOWPAYMENTS_API_BASE = var.nowpayments_api_base
   }
 
   # env var name => secret id
@@ -67,6 +86,8 @@ locals {
       TURNSTILE_SECRET_KEY   = "turnstile-secret-key"
       CREEM_API_KEY          = var.creem_api_key_secret
       CREEM_WEBHOOK_SECRET   = var.creem_webhook_secret
+      NOWPAYMENTS_API_KEY    = var.nowpayments_api_key
+      NOWPAYMENTS_IPN_SECRET = var.nowpayments_ipn
       OPENROUTER_API_KEY     = "openrouter-api-key"
     },
   )
