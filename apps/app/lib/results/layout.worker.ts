@@ -7,6 +7,7 @@
 import Graph from "graphology";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import { layoutSettings, type LayoutRequest, type LayoutResponse } from "./layout-params";
+import { SMALL_GRAPH_LABEL_ALL } from "./small-results";
 
 self.onmessage = (e: MessageEvent<LayoutRequest>) => {
   const t0 = performance.now();
@@ -37,7 +38,15 @@ self.onmessage = (e: MessageEvent<LayoutRequest>) => {
 function placeIsolated(g: Graph): void {
   const lone = g.filterNodes((n) => g.degree(n) === 0);
   if (lone.length === 0 || lone.length === g.order) {
-    if (lone.length === g.order) grid(lone, 0, 0, 10, Math.ceil(Math.sqrt(lone.length * 1.6)));
+    // a small result with no links at all reads best as a list: one column (two past six values), labels to the right
+    if (lone.length === g.order)
+      grid(
+        lone,
+        0,
+        0,
+        10,
+        g.order <= 6 ? 1 : g.order <= SMALL_GRAPH_LABEL_ALL ? 2 : Math.ceil(Math.sqrt(lone.length * 1.6)),
+      );
     return;
   }
   let minX = Infinity,
@@ -54,10 +63,18 @@ function placeIsolated(g: Graph): void {
     maxY = Math.max(maxY, a.y);
   });
   // spacing: a little under the mean distance between linked nodes; the block is as tall as the graph
-  const step = Math.max(1, Math.sqrt(((maxX - minX) * (maxY - minY)) / Math.max(1, linked)) * 0.55);
+  // (small results get wider spacing: every value is labelled there, and labels need the room)
+  const spread = g.order <= SMALL_GRAPH_LABEL_ALL ? 1.6 : 0.55;
+  const step = Math.max(1, Math.sqrt(((maxX - minX) * (maxY - minY)) / Math.max(1, linked)) * spread);
   const rows = Math.max(1, Math.min(lone.length, Math.floor((maxY - minY) / step) + 1));
   const top = (minY + maxY) / 2 - ((Math.ceil(lone.length / Math.ceil(lone.length / rows)) - 1) * step) / 2;
-  grid(lone, maxX + step * 4, top, step, Math.ceil(lone.length / rows));
+  // small results: the unlinked values beside the graph form a column (two past eight), so their labels never collide
+  const cols = g.order <= SMALL_GRAPH_LABEL_ALL ? (lone.length <= 8 ? 1 : 2) : Math.ceil(lone.length / rows);
+  const colTop =
+    g.order <= SMALL_GRAPH_LABEL_ALL
+      ? (minY + maxY) / 2 - ((Math.ceil(lone.length / cols) - 1) * step) / 2
+      : top;
+  grid(lone, maxX + step * 4, colTop, step, cols);
 
   function grid(ids: string[], x0: number, y0: number, s: number, cols: number) {
     ids.forEach((id, i) =>

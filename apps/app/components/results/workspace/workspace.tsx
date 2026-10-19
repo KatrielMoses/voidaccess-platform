@@ -33,6 +33,7 @@ import { FiltersControl } from "./filters";
 import { IconFit, IconImage, IconMinus, IconPlus, IconReset, IconTable, IconVector } from "./icons";
 import { Sidebar } from "./sidebar";
 import { useGraph } from "./use-graph";
+import { THIN_RESULT, thinResultNote } from "@/lib/results/small-results";
 
 const INSET = 16;
 const SIDEBAR_W = 320;
@@ -433,6 +434,15 @@ export function Workspace({ investigationId }: { investigationId: string }) {
       {data && data.nodes.length === 0 ? (
         <p className="absolute inset-0 flex items-center justify-center text-[15px] text-dim">
           This run has no values to graph.
+        </p>
+      ) : null}
+
+      {data && data.nodes.length > 0 && data.nodes.length <= THIN_RESULT ? (
+        <p
+          className="pointer-events-none absolute bottom-6 left-1/2 max-w-[44ch] -translate-x-1/2 text-center text-[14px] leading-snug text-dim max-[960px]:hidden"
+          data-testid="thin-result"
+        >
+          {thinResultNote(data.nodes.length, data.edges.length)}
         </p>
       ) : null}
 

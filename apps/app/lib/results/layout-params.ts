@@ -15,7 +15,7 @@ export interface LayoutResponse {
 }
 
 /** Bumped whenever the parameters change, so cached positions from older settings are recomputed. */
-export const LAYOUT_VERSION = 5;
+export const LAYOUT_VERSION = 6;
 
 export function layoutSettings(order: number): { settings: ForceAtlas2Settings; iterations: number } {
   return {
