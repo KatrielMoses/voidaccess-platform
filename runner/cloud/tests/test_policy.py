@@ -73,6 +73,18 @@ def test_policy_requires_the_full_cloud_deny_list(monkeypatch):
         policy.verify_policy()
 
 
+def test_a_source_the_engine_adds_to_its_cloud_deny_list_stops_the_runner(monkeypatch):
+    """G2: the engine's CLOUD_DISABLED_SOURCES is the floor. If a later engine names one more source, the runner's
+    presets.yaml no longer covers it and the run must refuse to start rather than collect from it."""
+    sc = pytest.importorskip("sources.source_control", reason="engine tree not on PYTHONPATH")
+    policy.apply_cloud_policy_base()
+    policy.apply_cloud_profile()
+    policy.verify_policy()
+    monkeypatch.setattr(sc, "CLOUD_DISABLED_SOURCES", sc.CLOUD_DISABLED_SOURCES + ",github")
+    with pytest.raises(policy.PolicyError, match="github"):
+        policy.verify_policy()
+
+
 def test_policy_requires_rss_snippet_only(monkeypatch):
     pytest.importorskip("sources.enrichment_allowlist", reason="engine tree not on PYTHONPATH")
     policy.apply_cloud_policy_base()

@@ -11,7 +11,15 @@ export { STAGES, Stage, STAGE_TOTAL } from "./stages";
 export const EventType = z.enum(["stage", "counts", "refined", "completed", "failed", "cancelled"]);
 export type EventType = z.infer<typeof EventType>;
 
-export const FailureReason = z.enum(["blocked_query", "no_results", "deadline", "error", "cancelled"]);
+export const FailureReason = z.enum([
+  "blocked_query",
+  "no_results",
+  "deadline",
+  "error",
+  "cancelled",
+  // R2b: Tor never bootstrapped, or most onion search engines failed and no onion page had content (full refund).
+  "sources_unreachable",
+]);
 export type FailureReason = z.infer<typeof FailureReason>;
 
 export const StageStatus = z.enum(["start", "end", "skipped", "failed"]);

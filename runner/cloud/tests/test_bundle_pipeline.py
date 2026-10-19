@@ -1,6 +1,6 @@
 """The bundle builder, exports and page archive on a fixture run with planted credentials (guarantee 5).
 
-Needs the engine (bf2213c) on PYTHONPATH: it builds the run's SQLite database with the engine's own models,
+Needs the engine (v2.1.0) on PYTHONPATH: it builds the run's SQLite database with the engine's own models,
 and uses the engine's sanitizer and exporters.
 """
 
@@ -150,19 +150,41 @@ def text_of(obj) -> str:
 
 
 def test_bundle_validates_against_the_schema_and_is_consistent(built):
-    from cloud.bundle import deep_scrub, integrity_problems
+    from cloud.bundle import integrity_problems, scrub_bundle
     from cloud.spec import schema_errors
 
-    b = deep_scrub(built.bundle, built.raw)
+    b = scrub_bundle(built.bundle, built.raw)
     assert schema_errors("ResultBundle", b) == []
     assert integrity_problems(b) == []
     assert b["schema_version"] == 1 and b["depth"] == "quick"
 
 
-def test_planted_credentials_do_not_survive_anywhere_in_the_bundle(built):
-    from cloud.bundle import deep_scrub
+def test_an_excerpt_at_the_cap_still_validates_when_masking_makes_it_longer(built):
+    """R2b root cause: a 500-character excerpt holding a 5-character secret grew to 505 when the secret was replaced
+    by `[redacted]`, the bundle failed `sources/0/excerpt: maxLength` and the run ended `failed: error`."""
+    import copy
 
-    flat = text_of(deep_scrub(built.bundle, built.raw))
+    from cloud import constants as C
+    from cloud.bundle import RawSecrets, scrub_bundle
+    from cloud.spec import schema_errors
+
+    raw = copy.deepcopy(built.raw)
+    raw.add("pw123", "[redacted]")
+    bundle = copy.deepcopy(built.bundle)
+    excerpt = ("pw123 " * 100)[: C.EXCERPT_MAX_CHARS]
+    assert len(excerpt) == C.EXCERPT_MAX_CHARS
+    bundle["sources"][0]["excerpt"] = excerpt
+    assert len(RawSecrets.replace_pairs(raw, excerpt)) > C.EXCERPT_MAX_CHARS  # the failure mode is real
+
+    out = scrub_bundle(bundle, raw)
+    assert schema_errors("ResultBundle", out) == []
+    assert len(out["sources"][0]["excerpt"]) <= C.EXCERPT_MAX_CHARS and "pw123" not in out["sources"][0]["excerpt"]
+
+
+def test_planted_credentials_do_not_survive_anywhere_in_the_bundle(built):
+    from cloud.bundle import scrub_bundle
+
+    flat = text_of(scrub_bundle(built.bundle, built.raw))
     for planted in PLANTED:
         assert planted not in flat, f"{planted!r} leaked into the bundle"
 

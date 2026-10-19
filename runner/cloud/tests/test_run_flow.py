@@ -378,3 +378,129 @@ def test_the_engine_env_setup_turns_trace_events_on(monkeypatch, tmp_path):
     finally:
         os.environ.clear()
         os.environ.update(saved)
+
+
+# -- R2b: unreachable sources end as `failed: sources_unreachable` (G5) ----------------------------------------------
+
+def engine_with_sources(run, *, engines_ok: int, engines_failed: int, onion_pages_ok: int, clearnet_pages_ok: int = 0,
+                        onion_urls: int | None = None):
+    """A fake engine whose collect/fetch stages emit the engine's own trace kinds for onion engines and pages."""
+    from cloud.reachability import onion_engine_names
+
+    names = sorted(onion_engine_names())
+    assert len(names) >= engines_ok + engines_failed, "the engine catalog has fewer onion engines than the test needs"
+    onion_urls = onion_pages_ok if onion_urls is None else onion_urls
+    called: list[str] = []
+
+    async def fake(self, query, cli_depth, out_dir, timeout_s):
+        def emit(**kw):
+            self.on_engine_event(progress.ProgressEvent(**kw))
+
+        def tr(stage, kind, **data):
+            self.on_engine_event({"type": "trace", "schema": 2, "stage": stage, "kind": kind, "data": data})
+
+        for i, st in enumerate(STAGES, 1):
+            called.append(st)
+            emit(type="stage", stage=progress.Stage(st), stage_index=i, status="start")
+            if st == "collect":
+                for n, name in enumerate(names[: engines_ok + engines_failed]):
+                    tr("collect", "search.request", engine=name, query_index=0)
+                    status = "ok" if n < engines_ok else ("timeout" if n % 2 else "error")
+                    tr("collect", "search.result", engine=name, query_index=0, status=status, results=3 if status == "ok" else 0)
+                tr("collect", "search.request", engine="github", query_index=0)  # a side source: not an onion engine
+                tr("collect", "search.result", engine="github", query_index=0, status="ok", results=4)
+                for u in range(onion_urls):
+                    tr("collect", "url.found", url_id=f"o{u}", host="abcdefgh…wxyz[.]onion", depth=0)
+                for u in range(clearnet_pages_ok):
+                    tr("collect", "url.found", url_id=f"c{u}", host="github[.]com", depth=0)
+            if st == "fetch":
+                for u in range(onion_urls):
+                    tr("fetch", "page.fetched", url_id=f"o{u}", outcome="ok" if u < onion_pages_ok else "timeout")
+                for u in range(clearnet_pages_ok):
+                    tr("fetch", "page.fetched", url_id=f"c{u}", outcome="ok")
+            emit(type="stage", stage=progress.Stage(st), stage_index=i, status="end", duration_ms=10)
+            await asyncio.sleep(0)
+        emit(type="completed")
+
+    run_mod.Run._run_engine = fake
+    return called
+
+
+def test_all_onion_engines_timing_out_and_no_onion_page_fails_as_sources_unreachable(monkeypatch, world):
+    run = make_run(monkeypatch, world)
+    engine_with_sources(run, engines_ok=1, engines_failed=9, onion_pages_ok=0, onion_urls=1)
+    assert run.run() == 0  # a clean, delivered failure: not a crash
+    (t,) = world.terminals()
+    assert (t["type"], t["reason"]) == ("failed", "sources_unreachable")
+    assert t["stages_completed"] == STAGES[:4]  # decided at the end of fetch, before extract spends on the LLM
+    assert world.died.is_set() and run.recorder.token_budget == 0  # the engine is stopped, no further LLM call
+    assert "upload" not in world.order
+
+
+def test_no_onion_url_at_all_is_decided_at_the_end_of_collect(monkeypatch, world):
+    run = make_run(monkeypatch, world)
+    engine_with_sources(run, engines_ok=0, engines_failed=10, onion_pages_ok=0, onion_urls=0)
+    assert run.run() == 0
+    (t,) = world.terminals()
+    assert t["reason"] == "sources_unreachable" and t["stages_completed"] == STAGES[:2]
+
+
+def test_a_normal_run_completes(monkeypatch, world):
+    run = make_run(monkeypatch, world)
+    engine_with_sources(run, engines_ok=8, engines_failed=2, onion_pages_ok=6, onion_urls=9)
+    assert run.run() == 0
+    (t,) = world.terminals()
+    assert t["type"] == "completed" and "upload" in world.order and not run.unreachable.is_set()
+
+
+def test_clearnet_only_pages_with_onion_engines_answering_complete(monkeypatch, world):
+    run = make_run(monkeypatch, world)
+    engine_with_sources(run, engines_ok=9, engines_failed=1, onion_pages_ok=0, onion_urls=4, clearnet_pages_ok=3)
+    assert run.run() == 0
+    (t,) = world.terminals()
+    assert t["type"] == "completed"
+
+
+def test_some_onion_pages_save_a_run_whose_engines_mostly_failed(monkeypatch, world):
+    run = make_run(monkeypatch, world)
+    engine_with_sources(run, engines_ok=1, engines_failed=9, onion_pages_ok=2, onion_urls=3)
+    assert run.run() == 0
+    (t,) = world.terminals()
+    assert t["type"] == "completed"
+
+
+def test_tor_that_never_bootstraps_fails_as_sources_unreachable_before_the_engine(monkeypatch, world):
+    from cloud import tor
+
+    def no_tor(should_stop=lambda: False, **kw):
+        raise tor.TorError("tor bootstrap failed after 3 attempts: tor bootstrap exceeded 60s")
+
+    monkeypatch.setattr(tor, "start_tor_with_retry", no_tor)
+    run = make_run(monkeypatch, world)
+    called = engine_with_sources(run, engines_ok=10, engines_failed=0, onion_pages_ok=5)
+    assert run.run() == 0
+    (t,) = world.terminals()
+    assert (t["type"], t["reason"]) == ("failed", "sources_unreachable") and called == []
+
+
+def test_a_runner_failure_logs_its_class_stage_and_a_safe_message(monkeypatch, world, capsys):
+    run = make_run(monkeypatch, world)
+    engine_events(run)
+
+    def boom(self, out_dir):
+        self.phase = "finalize:validate"
+        raise RuntimeError(
+            "bundle failed schema validation: sources/0/excerpt: maxLength (lockbit leak site at "
+            "http://abcdefghijklmnopabcdefghijklmnopabcdefghijklmnopabcd.onion/x and boss@victim.example)"
+        )
+
+    monkeypatch.setattr(run_mod.Run, "finalize_and_upload", boom)
+    assert run.run() == 1
+    err = capsys.readouterr().err
+    line = next(x for x in err.splitlines() if "run failed" in x)
+    assert "(RuntimeError) stage=finalize:validate" in line
+    assert "bundle failed schema validation: sources/0/excerpt: maxLength" in line
+    for leak in ("lockbit leak site", ".onion", "boss@victim", "http"):
+        assert leak not in line, leak
+    (t,) = world.terminals()
+    assert t["reason"] == "error" and t["message"] == "runner error: RuntimeError at finalize:validate"

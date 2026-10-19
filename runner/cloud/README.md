@@ -1,7 +1,7 @@
 # runner/cloud: the production runner (lane R0)
 
 One Cloud Run Job execution (`va-runner`) = one investigation. `python -m cloud.run` fetches the single-use RunSpec,
-runs the engine pipeline (public engine commit `9db5262`, VoidAccess 2.1.0: E1B cloud profile, E1C clean-ups and deny-list, RSS snippet-only) with Tor as a client only, streams
+runs the engine pipeline (VoidAccess 2.1.0, tag `v2.1.0` = public engine commit `c66b9a0`, identical to PyPI `voidaccess==2.1.0`: E1B cloud profile, E1C clean-ups and deny-list, RSS snippet-only, E3 trace events, E4 enrichment deadline, E5 quality fixes) with Tor as a client only, streams
 signed progress events to the app, builds a contract-valid `ResultBundle`, uploads the artifacts and only then sends
 `completed`. Contract: `docs/ENGINE-CONTRACT.md` v0.3.
 
@@ -14,6 +14,8 @@ signed progress events to the app, builds a contract-valid `ResultBundle`, uploa
 | `events.py`, `signing.py` | signed (HMAC over `<ts>.<body>`), ordered, retrying, non-blocking callback sender |
 | `trace.py` | contract v2 `trace` events: the runner's mirror of engine-client `trace.ts` (kinds, limits, safety rule); `events.py` posts them in batches of up to 50 (or after 300 ms), best effort and dropped first under backpressure |
 | `policy.py`, `presets.yaml` | cloud policy G1-G10 env, depth presets, E1B `cloud_profile` (copied from `runner/baseline`, which stays untouched) |
+| `reachability.py` | the unreachable-sources rule (G5): onion engines and onion pages from the engine's trace events |
+| `canary.py` | one fixed-query engine run inside any image, one `CANARY` summary line (`scripts/canary.sh`) |
 | `llm_budget.py` | per-call token accounting and the per-run token budget (raises `BudgetExceeded`) |
 | `tor.py` | Tor client with baked consensus, bootstrap retried, start jitter |
 | `bundle.py`, `taxonomy.py`, `masking.py` | CLI JSON + run SQLite -> `ResultBundle`; masking rules ported from `packages/engine-client` |
@@ -26,8 +28,8 @@ signed progress events to the app, builds a contract-valid `ResultBundle`, uploa
 ## Tests
 
 ```bash
-# Python 3.11, the engine at 9db5262 importable, pytest, jsonschema, pyyaml:
-git -C ../voidaccess archive 9db5262 | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
+# Python 3.11, the engine at v2.1.0 (c66b9a0) importable, pytest, jsonschema, pyyaml:
+mkdir -p /tmp/engine && git -C ../voidaccess archive v2.1.0 | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
 pip install /tmp/engine pytest jsonschema==4.23.0 && python -m spacy download en_core_web_sm
 cd runner && PYTHONPATH=/tmp/engine python -m pytest        # 0 skipped expected
 ```
@@ -38,7 +40,8 @@ The signing and masking tests are cross-checked against `tests/vectors/engine-cl
 ## Image
 
 ```bash
-bash runner/cloud/scripts/prepare_build_context.sh /tmp/ctx          # engine from `git archive`, secret scan, prints TAG
+bash runner/cloud/scripts/prepare_build_context.sh /tmp/ctx          # engine from `git archive` of ENGINE_REF (default v2.1.0,
+                                                                     # must resolve to c66b9a0), secret scan, prints TAG
 (cd /tmp/ctx && gcloud builds submit . --config runner/cloud/cloudbuild.yaml \
    --substitutions _ENGINE_GIT_SHA=<engine>,_RUNNER_GIT_SHA=<runner>,_TAG=<engine>-<runner>)
 terraform -chdir=infra/terraform apply -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:<tag> -target=module.runner
@@ -53,5 +56,49 @@ contains a `.env`, a `*.db` or a key-shaped string.
   proof runs and can only **tighten** the built-in limits (`constants.py`).
 - Exit codes: 0 after any delivered terminal event except `failed: error`; 1 for a crash or an undelivered terminal
   event; 3 when no RunSpec could be fetched (the app's watchdog fails the run).
+- **Unreachable sources (G5).** A run whose dark-web sources were unreachable ends `failed: sources_unreachable`
+  (the app refunds every failed run in full; the user sees "We couldn't reach the dark-web sources this time...").
+  The rule (`reachability.py`, thresholds in `constants.py`): Tor never bootstrapped (3 attempts), or at least 75% of
+  the onion search engines asked never answered `ok` (timed out, errored or were cut by the search deadline) AND no
+  onion page with content was fetched. It is decided at the end of `collect` when not a single onion URL was found,
+  otherwise at the end of `fetch`, before extraction spends on the LLM: the token budget is closed, the terminal event
+  is sent and the process exits 0. Built from the engine's trace events; an engine that sends none never trips it.
+- **Failure lines.** A runner failure logs `va-runner: run failed (<class>) stage=<setup|tor|engine:<stage>|
+  finalize:<step>> message=<scrubbed>`; the message has no query, refined query, URL, onion host or e-mail address.
+  A failed Tor bootstrap attempt logs Tor's last notices.
+- **Image build.** Base image and the Tor package are pinned (Dockerfile) to what `runner:bf2213c-95be6a1` was built
+  from. `scripts/tor_warmup.sh` fails the build unless Tor reaches "Bootstrapped 100%" (it prints Tor's exit code and
+  last lines on a failed attempt). Bumping the pins: build, then canary the new image against production first.
+- **Canary (any image, before production).** `scripts/canary.sh <tag> [rounds]` deploys the job `va-runner-canary`
+  (same service account, 1 vCPU / 2 GiB, 900 s, secret and egress as `va-runner`) with that image and starts, per round,
+  "LockBit ransomware" (quick) and "RedLine stealer infostealer logs" (standard). No app, callbacks, uploads or user
+  data. Each run prints one `CANARY {...}` line: Tor bootstrap ms and attempts, onion engines started / ok / timed out
+  / error / cut by the deadline, onion URLs scraped, pages (onion and total) with content, entities, relationships,
+  whether the ResultBundle passes schema and integrity, wall time, exit code, and what the unreachable rule would say.
+  Compare against production by running the production image on a second job at the same time:
+  ```bash
+  CANARY_JOB=va-runner-canary-base runner/cloud/scripts/canary.sh <production tag> 2 &
+  runner/cloud/scripts/canary.sh <new tag> 2
+  gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name:"va-runner-canary" AND textPayload:"CANARY "' \
+    --freshness=2h --format='value(resource.labels.job_name,textPayload)'
+  ```
+  A new image goes to production only if it is at least as good on Tor bootstrap (no failed first attempt), engines
+  answering and onion pages with content, and within the caps (quick 480 s, standard 600 s).
+- **Switch and rollback.** Images are never deleted from Artifact Registry, so rollback is re-pointing the job. Switch
+  only from a saved, reviewed plan (`infra/terraform/plans/` is gitignored):
+  ```bash
+  mkdir -p infra/terraform/plans
+  terraform -chdir=infra/terraform plan -target=module.runner \
+    -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:<tag> -out=plans/runner-<tag>.tfplan
+  terraform -chdir=infra/terraform apply plans/runner-<tag>.tfplan     # expect 0 add, 1 change (the image), 0 destroy
+  ```
+  Rollback to the previous production image (engine bf2213c), one command:
+  ```bash
+  terraform -chdir=infra/terraform apply -auto-approve -target=module.runner \
+    -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:bf2213c-95be6a1
+  ```
+  If Terraform is unavailable: `gcloud run jobs update va-runner --region us-central1 --image
+  us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:bf2213c-95be6a1` (then re-apply Terraform with the same
+  image so state matches). Running executions keep their image; only new runs pick up the change.
 - `scripts/check_artifacts.py` validates downloaded artifacts (schema, integrity, completeness, raw-credential scan);
   `scripts/check_logs.py` is the log-leak check over exported Cloud Logging JSON.

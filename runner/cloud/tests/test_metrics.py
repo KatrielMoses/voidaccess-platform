@@ -103,3 +103,16 @@ def test_enrichment_calls_uses_real_request_counts_from_e1c_engines():
         "shodan": {"status": "ok", "count": 1, "requests": 4},  # not on the allowlist
     }
     assert enrichment_calls(used, "nvd,rdap,crtsh") == {"nvd": 6, "rdap": 2}
+
+
+def test_enrichment_calls_counts_every_request_made_under_the_2_1_0_statuses():
+    used = {
+        "nvd": {"status": "ok", "count": 2, "requests": 3},
+        "rdap": {"status": "partial", "count": 1, "requests": 4},
+        "crtsh": {"status": "timed_out", "count": 0, "requests": 1},
+        "wayback": {"status": "timed_out", "count": 0, "requests": 0},
+        "cisa_kev": {"status": "skipped_by_allowlist", "count": 0, "requests": 0},
+        "mitre_attack": {"status": "no_key", "count": 0, "requests": 0},
+        "openphish": {"status": "disabled", "count": 0, "requests": 0},
+    }
+    assert enrichment_calls(used, ALLOW) == {"nvd": 3, "rdap": 4, "crtsh": 1}

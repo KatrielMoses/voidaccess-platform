@@ -15,7 +15,7 @@ variable "app_image_tag" {
 }
 
 variable "runner_image" {
-  description = "Full runner image reference, e.g. us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:bf2213c-7cfd4b1."
+  description = "Full runner image reference, e.g. us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:c66b9a0-<runner sha> (engine v2.1.0; tag = <engine sha>-<runner sha>)."
   type        = string
 }
 

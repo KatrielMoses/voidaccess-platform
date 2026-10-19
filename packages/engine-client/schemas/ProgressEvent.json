@@ -84,7 +84,7 @@
     },
     "reason": {
       "type": "string",
-      "enum": ["blocked_query", "no_results", "deadline", "error", "cancelled"]
+      "enum": ["blocked_query", "no_results", "deadline", "error", "cancelled", "sources_unreachable"]
     },
     "metrics": {
       "type": "object",

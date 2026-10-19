@@ -56,6 +56,27 @@ def scrub(text: str) -> str:
     return pattern.sub(REDACTED, text) if pattern else text
 
 
+SAFE_MESSAGE_MAX = 200
+_URL_RE = re.compile(r"\b[a-z][a-z0-9+.-]*://\S+", re.IGNORECASE)
+_ONION_RE = re.compile(r"\b[a-z2-7]{16,56}\.onion\b\S*", re.IGNORECASE)
+_EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
+
+
+def safe_exception_message(exc: BaseException) -> str:
+    """An exception's message fit for a log line: registered secrets (query, refined queries, keys) replaced, URLs,
+    onion hosts and e-mail addresses removed, whitespace collapsed, at most SAFE_MESSAGE_MAX characters. The runner's
+    own messages (e.g. `bundle failed schema validation: sources/0/excerpt: maxLength`) survive intact."""
+    try:
+        text = str(exc)
+    except Exception:
+        return "(unprintable)"
+    text = _URL_RE.sub("[url]", text)
+    text = _ONION_RE.sub("[onion]", text)
+    text = _EMAIL_RE.sub("[email]", text)
+    text = scrub(" ".join(text.split()))
+    return (text[: SAFE_MESSAGE_MAX - 1] + "…") if len(text) > SAFE_MESSAGE_MAX else (text or "(no message)")
+
+
 def contains_secret(text: str) -> bool:
     pattern = _pattern
     return bool(pattern and pattern.search(text))

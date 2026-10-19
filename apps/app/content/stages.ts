@@ -29,6 +29,8 @@ export function failureCopy(reason: string | null): string {
       return "The investigation took longer than the time limit, so we stopped it.";
     case "cancelled":
       return "The investigation was cancelled.";
+    case "sources_unreachable":
+      return "We couldn't reach the dark-web sources this time, so we stopped the investigation. Your credits were refunded. Please try again in a few minutes.";
     default:
       return "Something went wrong on our side before we could finish.";
   }
