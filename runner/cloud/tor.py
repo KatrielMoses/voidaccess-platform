@@ -76,8 +76,17 @@ def start_tor_with_retry(
             last = exc
             if str(exc) == "stopped":
                 raise
-            print(f"tor bootstrap attempt {attempt} failed: {exc}", flush=True)
+            print(f"tor bootstrap attempt {attempt} failed: {exc}; last tor log lines: {_log_tail()}", flush=True)
     raise TorError(f"tor bootstrap failed after {attempts} attempts: {last}")
+
+
+def _log_tail(n: int = 4) -> str:
+    """Tor's own last notices (bootstrap progress, warnings): no query, URL or secret ever reaches this log."""
+    try:
+        lines = TOR_LOG_PATH.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return "(no log)"
+    return " | ".join(line.strip()[:200] for line in lines[-n:]) or "(empty)"
 
 
 def stop_tor(proc: subprocess.Popen[bytes] | None) -> None:

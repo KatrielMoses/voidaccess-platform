@@ -3,7 +3,8 @@
 # Sized for 1 vCPU / 2 GiB (E1B measured peak RSS 625 MB standard with the allowlist; deep at 1 GiB was never
 # measured, so the job keeps 2 GiB).
 
-FROM python:3.11-slim AS builder
+# Base and Tor are pinned to what runner:bf2213c-95be6a1 (the last good production image) was built from (R2b).
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce AS builder
 
 WORKDIR /build
 
@@ -19,7 +20,7 @@ WORKDIR /build/engine
 RUN pip install --no-cache-dir . \
     && python -m spacy download en_core_web_sm
 
-FROM python:3.11-slim
+FROM python:3.11-slim@sha256:e88e9763f943ec1834f992a4b51e0f24500486803e8bc534e5767af9ea65f6ce
 
 ARG ENGINE_GIT_SHA=unknown
 ARG RUNNER_GIT_SHA=unknown
@@ -34,7 +35,7 @@ ENV PYTHONPATH=/app/engine:/app/runner
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    tor ca-certificates \
+    tor=0.4.9.14-0+deb13u1 ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 10001 runner \
     && mkdir -p /var/lib/tor-cloud /tmp/va-run \
@@ -54,11 +55,8 @@ RUN chown -R runner:runner /app/engine
 
 USER runner
 
-# Warm the Tor consensus/descriptor cache (client-only torrc) so a run bootstraps from cached directory state.
-RUN printf 'SocksPort 127.0.0.1:9050\nDataDirectory /var/lib/tor-cloud\nLog notice file /tmp/tor-warm.log\n' > /tmp/torrc \
-    && (tor -f /tmp/torrc & TOR_PID=$!; \
-        for i in $(seq 1 150); do grep -q 'Bootstrapped 100%' /tmp/tor-warm.log 2>/dev/null && break; kill -0 $TOR_PID 2>/dev/null || break; sleep 1; done; \
-        tail -n 3 /tmp/tor-warm.log; kill $TOR_PID 2>/dev/null; wait $TOR_PID 2>/dev/null; true) \
-    && rm -f /tmp/tor-warm.log /tmp/torrc
+# Warm the Tor consensus/descriptor cache (client-only torrc) so a run bootstraps from cached directory state. The
+# build fails unless Tor reaches "Bootstrapped 100%" (scripts/tor_warmup.sh logs Tor's exit code and last lines).
+RUN bash /app/runner/cloud/scripts/tor_warmup.sh
 
 ENTRYPOINT ["python", "-m", "cloud.run"]
