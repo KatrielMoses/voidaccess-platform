@@ -1,8 +1,9 @@
-// Billing end-to-end run (dev server on :3400): fake Creem provider, signed webhooks built exactly as Creem signs them.
+// Billing end-to-end run (dev server on :3400): fake Creem and crypto providers, signed webhooks and IPNs built exactly
+// as Creem and NOWPayments sign them.
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "@playwright/test";
-import { WEBHOOK_SECRET, appUrl } from "./e2e/billing-global-setup";
+import { IPN_SECRET, WEBHOOK_SECRET, appUrl } from "./e2e/billing-global-setup";
 import { DEV_CONTEXT_KEY } from "@voidaccess/db/client";
 import { localSystemUrl } from "@voidaccess/db/local";
 
@@ -41,6 +42,9 @@ export default defineConfig({
       BILLING_PROVIDER: "fake",
       CREEM_ENV: "test_mode",
       CREEM_WEBHOOK_SECRET: WEBHOOK_SECRET,
+      CRYPTO_PAYMENTS: "on",
+      CRYPTO_PROVIDER: "fake",
+      NOWPAYMENTS_IPN_SECRET: IPN_SECRET,
     },
     stdout: "ignore",
     stderr: "pipe",

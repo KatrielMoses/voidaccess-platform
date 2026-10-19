@@ -8,9 +8,8 @@ export const dynamic = "force-dynamic";
 export function POST(req: Request) {
   const blocked = assertSameOrigin(req);
   if (blocked) return blocked;
-  return withUserRoute(async (user) =>
-    (await resumeSubscription(user.id))
-      ? NextResponse.json({ ok: true })
-      : NextResponse.json({ error: "nothing_to_resume" }, { status: 409 }),
-  );
+  return withUserRoute(async (user) => {
+    const r = await resumeSubscription(user.id);
+    return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: r.error }, { status: 409 });
+  });
 }

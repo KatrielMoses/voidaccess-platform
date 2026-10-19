@@ -16,6 +16,8 @@ export const ownerUrl = () => withDb(BILLING_DB);
 export const appUrl = () =>
   withDb(BILLING_DB, ["va_app", process.env.VA_APP_LOCAL_PASSWORD ?? "va_app_local"]);
 export const WEBHOOK_SECRET = "whsec_e2e-webhook-secret-0123456789abc";
+/** NOWPayments IPN key for the e2e run (fake crypto provider; not a real secret). */
+export const IPN_SECRET = "e2e-ipn-secret-0123456789";
 
 /** Fresh database, migrations, and the (fake-provider) Creem catalogue so checkout has products to point at. */
 export default async function setup() {

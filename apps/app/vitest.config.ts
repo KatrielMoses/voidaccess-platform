@@ -44,6 +44,10 @@ export default defineConfig({
       BILLING_PROVIDER: "fake",
       CREEM_ENV: "test_mode",
       CREEM_WEBHOOK_SECRET: "whsec_test-webhook-secret-0123456789ab",
+      // crypto payments: on, with the local fake provider and a fixed (non-secret) IPN key
+      CRYPTO_PAYMENTS: "on",
+      CRYPTO_PROVIDER: "fake",
+      NOWPAYMENTS_IPN_SECRET: "test-ipn-secret-0123456789",
     },
   },
 });

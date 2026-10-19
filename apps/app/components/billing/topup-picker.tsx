@@ -18,15 +18,18 @@ import { num, usd } from "@/lib/billing/format";
 /**
  * Pay-as-you-go top-up: any whole-dollar amount in the config range, with one-tap picks. The credit count shown is
  * config's topupBreakdown() for the user's plan, the same function the webhook uses to grant.
+ * With `crypto`, the same amount can be paid with crypto (NOWPayments) from its own minimum; the credits are the same.
  */
 export function TopupPicker({
   plan,
   busy,
   onBuy,
+  crypto,
 }: {
   plan: PlanId;
   busy: boolean;
   onBuy: (usd: number) => void;
+  crypto?: { minUsd: number; busy: boolean; onBuy: (usd: number) => void };
 }) {
   const [raw, setRaw] = useState(String(TOPUP_QUICK_PICKS_USD[1] ?? TOPUP_MIN_USD));
   const id = useId();
@@ -41,6 +44,7 @@ export function TopupPicker({
         : error === "above_maximum"
           ? fill(copy.topups.errors.max, { max: usd(TOPUP_MAX_USD) })
           : fill(copy.topups.errors.min, { min: usd(TOPUP_MIN_USD) });
+  const cryptoOk = crypto !== undefined && b !== null && b.usd >= crypto.minUsd;
 
   return (
     <div className="flex flex-col gap-6 rounded-lg border border-line p-5 md:p-6" data-testid="topup-picker">
@@ -102,6 +106,18 @@ export function TopupPicker({
           >
             {b ? fill(copy.topups.buy, { usd: usd(b.usd) }) : copy.topups.buyDisabled}
           </Button>
+          {crypto ? (
+            <Button
+              variant="ghost"
+              disabled={!cryptoOk}
+              loading={crypto.busy}
+              onClick={() => b && cryptoOk && crypto.onBuy(b.usd)}
+              aria-describedby={`${id}-crypto`}
+              data-testid="crypto-topup-buy"
+            >
+              {copy.crypto.pay}
+            </Button>
+          ) : null}
         </div>
         <p
           id={`${id}-result`}
@@ -135,6 +151,13 @@ export function TopupPicker({
             </span>
           )}
         </p>
+        {crypto ? (
+          <p id={`${id}-crypto`} className="font-mono text-[12px] text-mute" data-testid="crypto-topup-min">
+            {b && !cryptoOk
+              ? fill(copy.crypto.topupBelowMin, { min: usd(crypto.minUsd) })
+              : fill(copy.crypto.topupFrom, { min: usd(crypto.minUsd) })}
+          </p>
+        ) : null}
       </div>
 
       <p className="text-[15px] text-mute">

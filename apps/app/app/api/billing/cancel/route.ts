@@ -17,6 +17,6 @@ export function POST(req: Request) {
     );
     return r.ok
       ? NextResponse.json({ endsAt: r.endsAt })
-      : NextResponse.json({ error: "no_subscription" }, { status: 409 });
+      : NextResponse.json({ error: r.error ?? "no_subscription" }, { status: 409 });
   });
 }

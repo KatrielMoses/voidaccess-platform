@@ -36,6 +36,7 @@ const MACHINE = [
   /^\/api\/engine\//,
   /^\/api\/cron\//,
   /^\/api\/webhooks\/creem$/,
+  /^\/api\/webhooks\/nowpayments$/,
   /^\/api\/health$/,
   /^\/api\/founding\/seats$/,
   /^\/api\/unsubscribe$/,
@@ -122,12 +123,14 @@ describe("signed-out guard (guarantee 1)", () => {
       "/api/cronjobs",
       "/api/engine",
       "/api/webhooks/creem/x",
+      "/api/webhooks/nowpayments/x",
       "/api/founding/seats/x",
     ]) {
       expect(classifyPath(p), p).not.toBe("machine");
     }
     for (const p of [
       "/api/auth",
+      "/api/webhooks/nowpayments",
       "/api/auth/sign-in/email",
       "/api/health",
       "/api/cron/watchdog",

@@ -1,6 +1,6 @@
 // The one place that decides who may reach what on the app origin. proxy.ts applies it to every request.
 //   - machine endpoints authenticate themselves (Better Auth, the engine's per-run tokens, cron OIDC, the Creem
-//     webhook signature, the signed unsubscribe link) or are public by design (health, the founding seat counter);
+//     webhook signature, the NOWPayments IPN signature, the signed unsubscribe link) or are public by design (health, the founding seat counter);
 //   - the old auth pages moved to the site and redirect there;
 //   - everything else needs a session cookie here and a valid session in the page/route (requireUser/pageUser):
 //     pages redirect to the site's sign-in, APIs answer 401 JSON.
@@ -10,6 +10,7 @@ const MACHINE_PREFIXES = ["/api/auth", "/api/engine/", "/api/cron/"];
 // /unsubscribe and /api/unsubscribe are public on purpose: an email's signed link works without signing in.
 const MACHINE_EXACT = new Set([
   "/api/webhooks/creem",
+  "/api/webhooks/nowpayments", // NOWPayments IPN: HMAC-SHA512 signature
   "/api/health",
   "/api/founding/seats",
   "/unsubscribe",

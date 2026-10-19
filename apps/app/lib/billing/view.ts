@@ -1,9 +1,11 @@
 /** Server-side assembly of everything the /billing page shows. All numbers come from @voidaccess/config. */
 import { and, desc, eq, gt, inArray } from "drizzle-orm";
-import { FOUNDING, PLANS, type PlanId } from "@voidaccess/config";
+import { CRYPTO_TOPUP_MIN_USD, FOUNDING, PLANS, type PlanId } from "@voidaccess/config";
 import { availableSeats, foundingNotices, getDatabase, type Database } from "@voidaccess/db";
 import { desiredCatalog, FOUNDING_KEY, type Interval } from "./catalog";
 import { currentSubscription, foundingState } from "./plan-ops";
+import { isCardProvider, passPriceUsd } from "./crypto/passes";
+import { cryptoEnabled } from "./crypto/provider";
 
 export interface PlanView {
   id: PlanId;
@@ -27,6 +29,8 @@ export interface BillingView {
     cancelAt: string | null;
     pending: null | { plan: PlanId; interval: Interval; at: string | null };
     isFounding: boolean;
+    /** a one-time crypto pass: no renewal, no cancel, change or portal */
+    cryptoPass: boolean;
   };
   founding: {
     held: boolean;
@@ -38,6 +42,12 @@ export interface BillingView {
   seats: { available: number; total: number };
   canClaimFounding: boolean;
   plans: PlanView[];
+  /** Pay with crypto (CRYPTO_PAYMENTS=on): pay-as-you-go credits from minTopupUsd, and passes at the plans' config prices */
+  crypto: {
+    enabled: boolean;
+    minTopupUsd: number;
+    passes: { plan: "pro" | "pro_plus"; interval: Interval; usd: number }[];
+  };
 }
 
 export async function loadBillingView(
@@ -99,6 +109,7 @@ export async function loadBillingView(
                 }
               : null,
           isFounding: sub.isFounding || sub.productKey === FOUNDING_KEY,
+          cryptoPass: !isCardProvider(sub.provider),
         }
       : null,
     founding,
@@ -117,5 +128,15 @@ export async function loadBillingView(
         requiresCard: p.requiresCard,
       };
     }),
+    crypto: {
+      enabled: cryptoEnabled(),
+      minTopupUsd: CRYPTO_TOPUP_MIN_USD,
+      passes: (["pro", "pro_plus"] as const).flatMap((p) =>
+        (["month", "year"] as const).flatMap((interval) => {
+          const usd = passPriceUsd(p, interval);
+          return usd === null ? [] : [{ plan: p, interval, usd }];
+        }),
+      ),
+    },
   };
 }

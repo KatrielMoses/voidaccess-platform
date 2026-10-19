@@ -12,12 +12,12 @@ export const metadata = { title: "Billing" };
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string; from?: string }>;
+  searchParams: Promise<{ checkout?: string; from?: string; crypto?: string }>;
 }) {
   const user = await pageUser();
   const sp = await searchParams;
   const view = await loadBillingView(user.id, user.plan);
-  if (user.plan !== "pro_plus" && !sp.checkout)
+  if (user.plan !== "pro_plus" && !sp.checkout && !sp.crypto)
     await trackEvent("upgrade_viewed", {
       userId: user.id,
       props: { from: sp.from ?? null, plan: user.plan },
@@ -25,7 +25,7 @@ export default async function BillingPage({
   return (
     <div className="va-rise flex flex-col gap-12">
       <PageHeader title={copy.title} lede={fill(copy.intro, { expiryMonths: TOPUP_EXPIRY_MONTHS })} />
-      <BillingClient view={view} checkout={sp.checkout} />
+      <BillingClient view={view} checkout={sp.checkout} crypto={sp.crypto} />
     </div>
   );
 }

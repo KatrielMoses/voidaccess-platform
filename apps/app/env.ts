@@ -59,6 +59,17 @@ export const envSchema = z.object({
   CREEM_WEBHOOK_SECRET: z.string().min(8).optional(),
   /** "fake" swaps in an in-memory provider (tests, e2e). Never used in production. */
   BILLING_PROVIDER: z.enum(["creem", "fake"]).optional(),
+  // ---- crypto payments (NOWPayments): pay-as-you-go credits and plan passes that don't renew ----
+  /** "on" shows Pay with crypto and opens the checkout route. Off unless set; production sets it from terraform. */
+  CRYPTO_PAYMENTS: z.enum(["off", "on"]).default("off"),
+  /** "fake" swaps in a local provider (tests, e2e). Never used in production. Default: nowpayments. */
+  CRYPTO_PROVIDER: z.enum(["nowpayments", "fake"]).optional(),
+  /** NOWPayments API key (Secret Manager: nowpayments-api-key). */
+  NOWPAYMENTS_API_KEY: z.string().min(1).optional(),
+  /** NOWPayments IPN secret (Secret Manager: nowpayments-ipn-secret). Required to accept IPN callbacks. */
+  NOWPAYMENTS_IPN_SECRET: z.string().min(8).optional(),
+  /** API base; override with the sandbox (https://api-sandbox.nowpayments.io/v1) for test mode. */
+  NOWPAYMENTS_API_BASE: z.url().default("https://api.nowpayments.io/v1"),
   /** Marketing-site origin allowed to read GET /api/founding/seats. */
   SITE_ORIGIN: z.url().default("https://voidaccess.pro"),
 });

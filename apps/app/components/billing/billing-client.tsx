@@ -42,7 +42,15 @@ async function post<T>(url: string, body: unknown): Promise<{ ok: boolean; statu
 const monthsFree = (p: PlanId) =>
   PLANS[p].annualUsd ? 12 - Math.round(PLANS[p].annualUsd! / PLANS[p].monthlyUsd) : 0;
 
-export function BillingClient({ view, checkout }: { view: BillingView; checkout?: string }) {
+export function BillingClient({
+  view,
+  checkout,
+  crypto,
+}: {
+  view: BillingView;
+  checkout?: string;
+  crypto?: string;
+}) {
   const [interval, setInterval] = useState<Interval>(view.sub?.interval ?? "month");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +60,14 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
 
   const live = view.sub && view.sub.status !== "cancelled";
   const ending = view.sub?.cancelAt ?? null;
+  // a crypto pass: shown as a plan that ends, with no cancel, change or portal (the card provider has no part in it)
+  const pass = live && view.sub!.cryptoPass ? view.sub! : null;
+  const cardLive = live && !pass;
+  const cryptoOn = view.crypto.enabled;
+  const passPrice = (plan: PlanId, iv: Interval) =>
+    view.crypto.passes.find((x) => x.plan === plan && x.interval === iv)?.usd ?? null;
+  const buyPass = (plan: PlanId, iv: Interval) =>
+    go("/api/billing/crypto/checkout", { kind: "pass", plan, interval: iv }, `crypto-${plan}-${iv}`);
 
   async function go(url: string, body: unknown, id: string) {
     setBusy(id);
@@ -59,10 +75,15 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
     const r = await post<{ url?: string; error?: string }>(url, body);
     if (r.ok && r.data.url) window.location.href = r.data.url;
     else {
+      const isCrypto = url.includes("/crypto/");
       setError(
         r.data.error === "founding_unavailable"
           ? copy.founding.soldOut
-          : "That didn't work. Please try again.",
+          : isCrypto && r.data.error === "pass_active"
+            ? copy.crypto.passActive
+            : isCrypto && r.data.error === "already_subscribed"
+              ? copy.crypto.alreadySubscribed
+              : "That didn't work. Please try again.",
       );
       setBusy(null);
     }
@@ -120,8 +141,22 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
 
   return (
     <div className="flex flex-col gap-14">
-      {checkout === "success" || error || view.sub?.status === "past_due" ? (
+      {checkout === "success" ||
+      error ||
+      view.sub?.status === "past_due" ||
+      crypto === "pending" ||
+      crypto === "cancelled" ? (
         <div className="flex flex-col gap-3">
+          {crypto === "pending" ? (
+            <Notice role="status" mark="✓" tone="quiet" data-testid="crypto-pending">
+              <p className="text-paper">{copy.crypto.pending}</p>
+            </Notice>
+          ) : null}
+          {crypto === "cancelled" ? (
+            <Notice role="status" mark="-" tone="quiet" data-testid="crypto-cancelled">
+              <p className="text-paper">{copy.crypto.cancelled}</p>
+            </Notice>
+          ) : null}
           {checkout === "success" ? (
             <Notice role="status" mark="✓" tone="quiet" data-testid="checkout-return">
               <p className="text-paper">
@@ -150,7 +185,45 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
 
       {live || view.founding.held ? (
         <div className="flex flex-col">
-          {live ? (
+          {pass ? (
+            <Row title={copy.subscription.heading} testId="pass-panel">
+              <div className="flex flex-col gap-2">
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <span className="text-[21px] font-medium tracking-[-0.02em]">{PLANS[pass.plan].name}</span>
+                  <span className="font-mono text-[12.5px] text-dim">{copy.crypto.term[pass.interval]}</span>
+                </p>
+                <p className="text-[15px] text-dim" data-testid="pass-line">
+                  {fill(copy.crypto.passPanel, {
+                    plan: PLANS[pass.plan].name,
+                    date: dateFmt(pass.currentPeriodEnd),
+                  })}
+                </p>
+              </div>
+              {cryptoOn ? (
+                <div className="flex flex-col gap-2.5">
+                  <p className="font-mono text-[12px] text-mute">{copy.crypto.extend}</p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {(["month", "year"] as const).map((iv) => {
+                      const price = passPrice(pass.plan, iv);
+                      return price === null ? null : (
+                        <Button
+                          key={iv}
+                          variant="secondary"
+                          loading={busy === `crypto-${pass.plan}-${iv}`}
+                          onClick={() => buyPass(pass.plan, iv)}
+                          data-testid={`crypto-extend-${iv}`}
+                        >
+                          {fill(copy.crypto.extendTerm, { term: copy.crypto.term[iv], price: usd(price) })}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              <p className="text-[15px] text-mute">{copy.crypto.passHelp}</p>
+            </Row>
+          ) : null}
+          {cardLive ? (
             <Row title={copy.subscription.heading} testId="subscription-panel">
               <div className="flex flex-col gap-2">
                 <p className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -382,7 +455,23 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
                     ) : null,
                   )}
                 </ul>
-                {p.id === "free" || isCurrent ? null : live ? (
+                {p.id === "free" || isCurrent ? null : pass ? (
+                  p.id === pass.plan && cryptoOn && passPrice(p.id, interval) !== null ? (
+                    <Button
+                      variant="secondary"
+                      loading={busy === `crypto-${p.id}-${interval}`}
+                      onClick={() => buyPass(p.id, interval)}
+                      data-testid={`crypto-pass-${p.id}`}
+                    >
+                      {fill(copy.crypto.extendTerm, {
+                        term: copy.crypto.term[interval],
+                        price: usd(passPrice(p.id, interval)!),
+                      })}
+                    </Button>
+                  ) : p.id !== pass.plan ? (
+                    <p className="text-[15px] leading-[1.5] text-mute">{copy.crypto.otherPlanDuringPass}</p>
+                  ) : null
+                ) : live ? (
                   <Button
                     variant="secondary"
                     loading={busy === `change-${p.id}`}
@@ -409,12 +498,36 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
                         per: interval === "year" ? "per year" : "per month",
                       })}
                     </p>
+                    {cryptoOn && passPrice(p.id, interval) !== null ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          loading={busy === `crypto-${p.id}-${interval}`}
+                          onClick={() => buyPass(p.id, interval)}
+                          data-testid={`crypto-pass-${p.id}`}
+                        >
+                          {copy.crypto.pay}
+                        </Button>
+                        <p className="text-[15px] leading-[1.5] text-mute">
+                          {fill(copy.crypto.passLine, {
+                            plan: p.name,
+                            term: copy.crypto.term[interval],
+                            price: usd(passPrice(p.id, interval)!),
+                          })}
+                        </p>
+                      </>
+                    ) : null}
                   </div>
                 )}
               </li>
             );
           })}
         </ul>
+        {cryptoOn ? (
+          <p className="text-[15px] text-mute" data-testid="crypto-note">
+            {copy.crypto.note}
+          </p>
+        ) : null}
       </section>
 
       <section aria-labelledby="topups-h" className="flex flex-col gap-6" id="topups">
@@ -426,6 +539,16 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
           plan={view.plan}
           busy={busy === "topup"}
           onBuy={(amount) => go("/api/billing/checkout", { kind: "topup", usd: amount }, "topup")}
+          crypto={
+            cryptoOn
+              ? {
+                  minUsd: view.crypto.minTopupUsd,
+                  busy: busy === "crypto-topup",
+                  onBuy: (amount) =>
+                    go("/api/billing/crypto/checkout", { kind: "topup", usd: amount }, "crypto-topup"),
+                }
+              : undefined
+          }
         />
       </section>
 

@@ -1,14 +1,16 @@
 import pg from "pg";
 import { expect, test, type Page } from "@playwright/test";
-import { PLANS, TOPUP_MAX_USD, TOPUP_MIN_USD, topupCredits } from "@voidaccess/config";
+import { CRYPTO_TOPUP_MIN_USD, PLANS, TOPUP_MAX_USD, TOPUP_MIN_USD, topupCredits } from "@voidaccess/config";
 import { BILLING_EMAIL_LOG } from "../playwright.billing.config";
-import { ownerUrl } from "./billing-global-setup";
+import { IPN_SECRET, ownerUrl } from "./billing-global-setup";
+import { signIpn } from "../lib/billing/crypto/signature";
 import { deliver, signed, subscriptionObject, topupCheckoutCompleted } from "./creem-webhook";
 import { pillBalance, signUpAndVerify as signUpAndVerifyWith, uniqueEmail } from "./helpers";
 
 const signUpAndVerify = (page: Page, email: string) =>
   signUpAndVerifyWith(page, email, "Billing E2E", BILLING_EMAIL_LOG);
 const SHOTS = process.env.P7_SHOTS; // a directory: write the top-up control screenshots there
+const CRYPTO_SHOTS = process.env.CRYPTO_SHOTS; // a directory: write the Billing page with crypto options there
 
 async function q<T = Record<string, unknown>>(sql: string, args: unknown[] = []): Promise<T[]> {
   const c = new pg.Client({ connectionString: ownerUrl() });
@@ -193,5 +195,147 @@ test("subscribe, pay-as-you-go top-up, change plan, cancel and resume, against t
   await expect(page.getByTestId("renewal-line")).toContainText("Renews on");
   expect((await q<{ plan: string }>("select plan from users where id = $1", [user!.id]))[0]!.plan).toBe(
     "pro_plus",
+  );
+});
+
+test("crypto: pay-as-you-go credits and a Pro pass with crypto, signed finished IPNs credit them once, the pass shows when it ends", async ({
+  page,
+  request,
+}) => {
+  const email = uniqueEmail("crypto");
+  await signUpAndVerify(page, email);
+  await expect.poll(() => pillBalance(page)).toBe(PLANS.free.monthlyCredits);
+  const [user] = await q<{ id: string }>("select id from users where email = $1", [email]);
+
+  await page.goto("/billing");
+  await expect(page.getByTestId("crypto-note")).toContainText("NOWPayments");
+  await expect(page.getByTestId("crypto-note")).toHaveCount(1);
+  await expect(page.getByTestId("crypto-pass-pro")).toHaveText("Pay with crypto");
+  await expect(page.getByTestId("plan-pro")).toContainText("It doesn't renew.");
+  // the crypto minimum is shown, and an amount below it can only be paid by card
+  const amount = page.getByTestId("topup-amount");
+  await expect(page.getByTestId("crypto-topup-min")).toContainText(
+    `Crypto top-ups from $${CRYPTO_TOPUP_MIN_USD}`,
+  );
+  await amount.fill(String(CRYPTO_TOPUP_MIN_USD - 1));
+  await expect(page.getByTestId("topup-buy")).toBeEnabled();
+  await expect(page.getByTestId("crypto-topup-buy")).toBeDisabled();
+  await expect(page.getByTestId("crypto-topup-min")).toContainText(`start at $${CRYPTO_TOPUP_MIN_USD}`);
+  // the server refuses it too
+  const below = await page.request.post("/api/billing/crypto/checkout", {
+    data: { kind: "topup", usd: CRYPTO_TOPUP_MIN_USD - 1 },
+    headers: { origin: new URL(page.url()).origin },
+  });
+  expect(below.status()).toBe(400);
+  expect(await below.json()).toMatchObject({ error: "topup_invalid", reason: "below_minimum" });
+
+  const usd = 25;
+  await amount.fill(String(usd));
+  await expect(page.getByTestId("crypto-topup-buy")).toBeEnabled();
+  if (CRYPTO_SHOTS)
+    for (const w of [1440, 390]) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.waitForTimeout(1200); // let the page's rise-in animation finish
+      await page.screenshot({ path: `${CRYPTO_SHOTS}/billing-crypto-${w}.png`, fullPage: true });
+      await page.locator("#topups").screenshot({ path: `${CRYPTO_SHOTS}/billing-crypto-topup-${w}.png` });
+    }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  // the fake provider's hosted page is our own billing page, as if the payment was sent at once
+  await page.getByTestId("crypto-topup-buy").click();
+  await page.waitForURL(/\/billing\?crypto=pending&invoice=fake_inv_/);
+  await expect(page.getByTestId("crypto-pending")).toContainText("Payment received by NOWPayments");
+
+  const ipn = async (orderId: string, paid: number, status: string, paymentId: number) => {
+    const body = {
+      payment_id: paymentId,
+      payment_status: status,
+      pay_address: "e2e-address",
+      price_amount: paid,
+      price_currency: "usd",
+      pay_amount: 0.001,
+      actually_paid: 0.001,
+      pay_currency: "usdttrc20",
+      order_id: `va_${orderId}`,
+      order_description: "e2e",
+      purchase_id: paymentId + 1,
+      outcome_amount: 0.001,
+      outcome_currency: "usdttrc20",
+    };
+    return request.post("/api/webhooks/nowpayments", {
+      data: JSON.stringify(body),
+      headers: { "content-type": "application/json", "x-nowpayments-sig": signIpn(IPN_SECRET, body) },
+    });
+  };
+  const [topupOrder] = await q<{ id: string; price_cents: number; topup_usd: number }>(
+    "select id, price_cents, topup_usd from crypto_orders where user_id = $1 and kind = 'topup'",
+    [user!.id],
+  );
+  expect(topupOrder).toMatchObject({ price_cents: usd * 100, topup_usd: usd });
+  const bad = await request.post("/api/webhooks/nowpayments", {
+    data: JSON.stringify({ payment_id: 1, payment_status: "finished", order_id: `va_${topupOrder!.id}` }),
+    headers: { "content-type": "application/json", "x-nowpayments-sig": "00" },
+  });
+  expect(bad.status()).toBe(400);
+  // signed with the shared secret, but another product's order (MailAccess uses ma_): refused
+  const maBody = {
+    payment_id: 2,
+    payment_status: "finished",
+    price_amount: usd,
+    price_currency: "usd",
+    order_id: `ma_${topupOrder!.id}`,
+  };
+  const other = await request.post("/api/webhooks/nowpayments", {
+    data: JSON.stringify(maBody),
+    headers: { "content-type": "application/json", "x-nowpayments-sig": signIpn(IPN_SECRET, maBody) },
+  });
+  expect(other.status()).toBe(403);
+  const pay = 7_000_000_000 + Math.floor(Math.random() * 1_000_000);
+  expect((await (await ipn(topupOrder!.id, usd, "waiting", pay)).json()).outcome).toBe("status_updated");
+  // a short payment is not credited
+  expect((await (await ipn(topupOrder!.id, usd - 1, "finished", pay + 9)).json()).outcome).toBe("rejected");
+  const fin = await ipn(topupOrder!.id, usd, "finished", pay);
+  expect(fin.status()).toBe(200);
+  expect((await fin.json()).outcome).toBe("applied");
+  expect((await (await ipn(topupOrder!.id, usd, "finished", pay)).json()).outcome).toBe("duplicate");
+  expect((await (await ipn(topupOrder!.id, usd, "finished", pay + 1)).json()).outcome).toBe("ignored");
+  const [ev] = await q<{ provider: string; mode: string }>(
+    "select provider, mode from billing_events where event_id = $1",
+    [`${pay}:finished`],
+  );
+  expect(ev).toEqual({ provider: "nowpayments", mode: "test" });
+
+  const credits = topupCredits(usd, "free");
+  await page.goto("/usage");
+  await expect(page.getByTestId("bucket-topup")).toContainText(credits.toLocaleString("en-US"));
+  await expect.poll(() => pillBalance(page)).toBe(PLANS.free.monthlyCredits + credits);
+
+  // a Pro pass for one month, at the config price
+  await page.goto("/billing");
+  await page.getByTestId("interval-month").click();
+  await page.getByTestId("crypto-pass-pro").click();
+  await page.waitForURL(/\/billing\?crypto=pending/);
+  const [passOrder] = await q<{ id: string; price_cents: number }>(
+    "select id, price_cents from crypto_orders where user_id = $1 and kind = 'pass'",
+    [user!.id],
+  );
+  expect(passOrder!.price_cents).toBe(PLANS.pro.monthlyUsd * 100);
+  expect((await (await ipn(passOrder!.id, PLANS.pro.monthlyUsd, "finished", pay + 2)).json()).outcome).toBe(
+    "applied",
+  );
+  await page.goto("/billing");
+  await expect(page.getByTestId("pass-panel")).toContainText("Pro pass, paid with crypto. Ends on");
+  await expect(page.getByTestId("pass-panel")).toContainText("doesn't renew");
+  await expect(page.getByTestId("crypto-extend-month")).toBeVisible();
+  await expect(page.getByTestId("portal")).toHaveCount(0);
+  await expect(page.getByTestId("cancel-open")).toHaveCount(0);
+  await expect(page.getByTestId("subscribe-pro_plus")).toHaveCount(0);
+  if (CRYPTO_SHOTS)
+    for (const w of [1440, 390]) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.waitForTimeout(1200);
+      await page.screenshot({ path: `${CRYPTO_SHOTS}/billing-crypto-pass-${w}.png`, fullPage: true });
+    }
+  expect((await q<{ plan: string }>("select plan from users where id = $1", [user!.id]))[0]!.plan).toBe(
+    "pro",
   );
 });

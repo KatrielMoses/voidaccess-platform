@@ -1,6 +1,8 @@
 /**
  * User-initiated subscription changes. None of these touch users.plan or the ledger: they ask Creem (or record a
  * pending downgrade) and the plan follows Creem's webhook. Upgrades show an estimate of the prorated charge first.
+ * A crypto pass (provider nowpayments) is not a card subscription: there is nothing to cancel, change or manage at
+ * the card provider, so every operation here answers not_supported for it and never calls the provider.
  */
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { PLANS, type PlanId } from "@voidaccess/config";
@@ -10,7 +12,8 @@ import { trackEvent } from "../analytics";
 import { activeCatalogEntry, FOUNDING_KEY, planRank, productRank, subKey, type Interval } from "./catalog";
 import { dateFmt } from "./format";
 import { getBillingProvider, type BillingProvider } from "./provider";
-import { userContact } from "./post-effects";
+import { portalLinkFor, userContact } from "./post-effects";
+import { isCardProvider } from "./crypto/passes";
 
 type Deps = { provider?: BillingProvider; database?: Database };
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
@@ -73,13 +76,18 @@ export interface ChangePreview {
 }
 
 export type ChangeError =
-  "no_subscription" | "plan_invalid" | "not_in_catalog" | "founding_release_confirmation_required";
+  | "no_subscription"
+  | "plan_invalid"
+  | "not_in_catalog"
+  | "founding_release_confirmation_required"
+  | "not_supported";
 
 async function target(userId: string, plan: PlanId, interval: Interval, deps: Deps) {
   const provider = deps.provider ?? getBillingProvider();
   const database = deps.database ?? getDatabase();
   const sub = await currentSubscription(userId, database);
   if (!sub || sub.status === "cancelled") return { ok: false as const, error: "no_subscription" as const };
+  if (!isCardProvider(sub.provider)) return { ok: false as const, error: "not_supported" as const };
   if ((plan !== "pro" && plan !== "pro_plus") || (interval !== "month" && interval !== "year"))
     return { ok: false as const, error: "plan_invalid" as const };
   const key = subKey(plan, interval);
@@ -196,11 +204,12 @@ export async function cancelAtPeriodEnd(
   userId: string,
   reason: string | undefined,
   deps: Deps = {},
-): Promise<{ ok: boolean; endsAt: Date | null }> {
-  const provider = deps.provider ?? getBillingProvider();
+): Promise<{ ok: boolean; endsAt: Date | null; error?: "no_subscription" | "not_supported" }> {
   const database = deps.database ?? getDatabase();
   const sub = await currentSubscription(userId, database);
-  if (!sub || sub.status === "cancelled") return { ok: false, endsAt: null };
+  if (!sub || sub.status === "cancelled") return { ok: false, endsAt: null, error: "no_subscription" };
+  if (!isCardProvider(sub.provider)) return { ok: false, endsAt: null, error: "not_supported" };
+  const provider = deps.provider ?? getBillingProvider();
   await provider.setCancelAtPeriodEnd({ subscriptionId: sub.providerSubscriptionId, cancel: true, reason });
   await database.withSystem(
     "billing.cancel",
@@ -221,18 +230,32 @@ export async function cancelAtPeriodEnd(
   return { ok: true, endsAt: sub.currentPeriodEnd };
 }
 
-export async function resumeSubscription(userId: string, deps: Deps = {}): Promise<boolean> {
-  const provider = deps.provider ?? getBillingProvider();
+export async function resumeSubscription(
+  userId: string,
+  deps: Deps = {},
+): Promise<{ ok: true } | { ok: false; error: "nothing_to_resume" | "not_supported" }> {
   const database = deps.database ?? getDatabase();
   const sub = await currentSubscription(userId, database);
-  if (!sub || !sub.cancelAt) return false;
+  if (!sub || !sub.cancelAt) return { ok: false, error: "nothing_to_resume" };
+  if (!isCardProvider(sub.provider)) return { ok: false, error: "not_supported" };
+  const provider = deps.provider ?? getBillingProvider();
   await provider.setCancelAtPeriodEnd({ subscriptionId: sub.providerSubscriptionId, cancel: false });
   await database.withSystem(
     "billing.resume",
     (tx) => tx.update(subscriptions).set({ cancelAt: null }).where(eq(subscriptions.id, sub.id)),
     { audit: false },
   );
-  return true;
+  return { ok: true };
+}
+
+/** The card provider's customer portal, unless the current plan is a crypto pass (nothing to manage there). */
+export async function billingPortal(
+  userId: string,
+  deps: { database?: Database; portal?: (userId: string) => Promise<string> } = {},
+): Promise<{ ok: true; url: string } | { ok: false; error: "not_supported" }> {
+  const sub = await currentSubscription(userId, deps.database ?? getDatabase());
+  if (sub && !isCardProvider(sub.provider)) return { ok: false, error: "not_supported" };
+  return { ok: true, url: await (deps.portal ?? portalLinkFor)(userId) };
 }
 
 export const planName = (p: PlanId) => PLANS[p].name;
