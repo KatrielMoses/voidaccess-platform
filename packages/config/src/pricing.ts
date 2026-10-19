@@ -165,10 +165,14 @@ export const isValidTopupUsd = (usd: number) => topupAmountError(usd) === null;
 
 /**
  * Crypto top-ups (NOWPayments) follow the same rule and calculator as card top-ups, with a higher floor: NOWPayments
- * enforces a per-currency minimum (dynamic, per coin and network; see docs/BILLING.md), and below about $10 most
- * coins can't be offered on the invoice. Same maximum, same credits for the same dollars.
+ * enforces a per-currency minimum (dynamic, per coin and network; see docs/BILLING.md). Live minimums on 2026-10-19:
+ * USDT-TRC20 $11.30, BTC $21.51, most others under $2. $25 keeps the common coins payable with headroom. The same
+ * floor applies to crypto plan passes, so only the annual passes are offered in crypto. Same maximum, same credits.
  */
-export const CRYPTO_TOPUP_MIN_USD = 10;
+export const CRYPTO_TOPUP_MIN_USD = 25;
+
+/** Crypto plan passes below the crypto floor aren't offered (the monthly $9/$19 passes; annual ones are). */
+export const cryptoPassAllowed = (usd: number): boolean => usd >= CRYPTO_TOPUP_MIN_USD;
 
 /** Why an amount can't be bought with crypto, or null if it can. */
 export function cryptoTopupAmountError(usd: number): TopupAmountError | null {

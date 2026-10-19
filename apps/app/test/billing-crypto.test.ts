@@ -145,7 +145,29 @@ async function cardSubscriber(plan: "pro" | "pro_plus" = "pro") {
 /** A user holding a paid crypto pass, bought now. */
 async function passHolder(plan: "pro" | "pro_plus" = "pro", interval: "month" | "year" = "month") {
   const u = await makeBillingUser();
-  const id = await order(u.id, { kind: "pass", plan, interval });
+  // Only annual passes are sold in crypto (the monthly ones sit below NOWPayments' coin minimums). The IPN still
+  // handles a monthly pass order, so lifecycle tests create one directly.
+  const id =
+    interval === "year"
+      ? await order(u.id, { kind: "pass", plan, interval })
+      : (
+          await db().withSystem(
+            "t",
+            (tx) =>
+              tx
+                .insert(cryptoOrders)
+                .values({
+                  userId: u.id,
+                  mode: "test",
+                  kind: "pass",
+                  plan,
+                  interval,
+                  priceCents: PLANS[plan].monthlyUsd * 100,
+                })
+                .returning({ id: cryptoOrders.id }),
+            { audit: false },
+          )
+        )[0]!.id;
   const usd = interval === "year" ? PLANS[plan].annualUsd! : PLANS[plan].monthlyUsd;
   const r = await ipn(ipnBody({ orderId: id, status: "finished", paymentId: paymentId(), usd }));
   expect(r.body.outcome).toBe("applied");
@@ -265,12 +287,20 @@ describe("crypto checkout", () => {
         { provider: crypto },
       ),
     ).toMatchObject({ ok: false, error: "plan_invalid" });
+    // monthly passes ($9, $19) are below the crypto floor: not sold in crypto; the annual ones are
+    for (const plan of ["pro", "pro_plus"] as const)
+      expect(
+        await createCryptoCheckout(u.id, { kind: "pass", plan, interval: "month" }, { provider: crypto }),
+      ).toMatchObject({ ok: false, error: "plan_invalid" });
+    expect((await loadBillingView(u.id, "free")).crypto.passes.map((p) => `${p.plan}:${p.interval}`)).toEqual(
+      ["pro:year", "pro_plus:year"],
+    );
 
     const card = await cardSubscriber();
     expect(
       await createCryptoCheckout(
         card.id,
-        { kind: "pass", plan: "pro", interval: "month" },
+        { kind: "pass", plan: "pro", interval: "year" },
         { provider: crypto },
       ),
     ).toEqual({ ok: false, error: "already_subscribed" });
@@ -283,7 +313,7 @@ describe("crypto checkout", () => {
     expect(
       await createCryptoCheckout(
         holder.id,
-        { kind: "pass", plan: "pro_plus", interval: "month" },
+        { kind: "pass", plan: "pro_plus", interval: "year" },
         { provider: crypto },
       ),
     ).toEqual({ ok: false, error: "pass_active" });
@@ -327,13 +357,13 @@ describe("crypto checkout", () => {
 
     const card = await cardSubscriber();
     asUser(card.session);
-    const sub = await cryptoCheckoutPOST(mk({ kind: "pass", plan: "pro", interval: "month" }));
+    const sub = await cryptoCheckoutPOST(mk({ kind: "pass", plan: "pro", interval: "year" }));
     expect(sub.status).toBe(409);
     expect(await sub.json()).toMatchObject({ error: "already_subscribed" });
 
     const { u: holder } = await passHolder("pro");
     asUser(holder.session);
-    const other = await cryptoCheckoutPOST(mk({ kind: "pass", plan: "pro_plus", interval: "month" }));
+    const other = await cryptoCheckoutPOST(mk({ kind: "pass", plan: "pro_plus", interval: "year" }));
     expect(other.status).toBe(409);
     expect(await other.json()).toMatchObject({
       error: "pass_active",
@@ -752,16 +782,17 @@ describe("IPN: plan passes", () => {
 
 describe("crypto top-ups: the shared pay-as-you-go rule, with the crypto minimum", () => {
   it("the crypto minimum sits above the card minimum and is what the billing page shows", async () => {
-    expect(CRYPTO_TOPUP_MIN_USD).toBe(10);
+    expect(CRYPTO_TOPUP_MIN_USD).toBe(25);
     expect(CRYPTO_TOPUP_MIN_USD).toBeGreaterThanOrEqual(TOPUP_MIN_USD);
     const u = await makeBillingUser();
-    expect((await loadBillingView(u.id, "free")).crypto).toMatchObject({ enabled: true, minTopupUsd: 10 });
+    expect((await loadBillingView(u.id, "free")).crypto).toMatchObject({ enabled: true, minTopupUsd: 25 });
   });
 
   it("refuses below the crypto minimum, fractions, non-numbers and above the shared maximum, with the reason", async () => {
     const u = await makeBillingUser();
     const cases: [unknown, string][] = [
-      [9, "below_minimum"],
+      [24, "below_minimum"],
+      [10, "below_minimum"],
       [TOPUP_MIN_USD, "below_minimum"], // fine by card, not by crypto
       [0, "below_minimum"],
       [-10, "below_minimum"],
@@ -788,7 +819,7 @@ describe("crypto top-ups: the shared pay-as-you-go rule, with the crypto minimum
       new Request("http://localhost/api/billing/crypto/checkout", {
         method: "POST",
         headers: sameOrigin,
-        body: JSON.stringify({ kind: "topup", usd: 9 }),
+        body: JSON.stringify({ kind: "topup", usd: 24 }),
       }),
     );
     expect(r.status).toBe(400);
@@ -799,17 +830,17 @@ describe("crypto top-ups: the shared pay-as-you-go rule, with the crypto minimum
     ).toBe(true);
   });
 
-  it("$10, $25 and $50 are invoiced and credited exactly per topupCredits(), volume and subscriber bonus included", async () => {
+  it("$25, $50 and $100 are invoiced and credited exactly per topupCredits(), volume and subscriber bonus included", async () => {
     // explicit numbers so a change to the shared rule shows up here too
     const expected = {
-      free: { 10: 1000, 25: 2750, 50: 6000 },
-      pro: { 10: 1200, 25: 3300, 50: 7200 },
-      pro_plus: { 10: 1300, 25: 3575, 50: 7800 },
+      free: { 25: 2750, 50: 6000, 100: 12000 },
+      pro: { 25: 3300, 50: 7200, 100: 14400 },
+      pro_plus: { 25: 3575, 50: 7800, 100: 15600 },
     } as const;
     for (const plan of ["free", "pro", "pro_plus"] as const) {
       const u = await makeBillingUser(plan);
       let total = 0;
-      for (const usd of [10, 25, 50] as const) {
+      for (const usd of [25, 50, 100] as const) {
         crypto.calls.length = 0;
         const id = await order(u.id, { kind: "topup", usd });
         expect(crypto.calls[0]!.priceUsd).toBe(usd);

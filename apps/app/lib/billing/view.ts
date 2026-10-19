@@ -1,6 +1,6 @@
 /** Server-side assembly of everything the /billing page shows. All numbers come from @voidaccess/config. */
 import { and, desc, eq, gt, inArray } from "drizzle-orm";
-import { CRYPTO_TOPUP_MIN_USD, FOUNDING, PLANS, type PlanId } from "@voidaccess/config";
+import { CRYPTO_TOPUP_MIN_USD, FOUNDING, PLANS, cryptoPassAllowed, type PlanId } from "@voidaccess/config";
 import { availableSeats, foundingNotices, getDatabase, type Database } from "@voidaccess/db";
 import { desiredCatalog, FOUNDING_KEY, type Interval } from "./catalog";
 import { currentSubscription, foundingState } from "./plan-ops";
@@ -134,7 +134,7 @@ export async function loadBillingView(
       passes: (["pro", "pro_plus"] as const).flatMap((p) =>
         (["month", "year"] as const).flatMap((interval) => {
           const usd = passPriceUsd(p, interval);
-          return usd === null ? [] : [{ plan: p, interval, usd }];
+          return usd === null || !cryptoPassAllowed(usd) ? [] : [{ plan: p, interval, usd }];
         }),
       ),
     },

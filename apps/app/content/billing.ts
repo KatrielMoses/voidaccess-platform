@@ -138,7 +138,7 @@ export const billingCopy = {
   crypto: {
     pay: "Pay with crypto",
     passLine: "Or a {plan} pass for {term} at {price}, paid once in crypto. It doesn't renew.",
-    note: "Crypto payments are one-time: credits and plan passes that don't renew. Paid in USDT, USDC, BTC, ETH and more via NOWPayments.",
+    note: "Crypto payments are one-time: credits from {min} and annual plan passes, which don't renew. Paid in USDT, USDC, BTC, ETH and more via NOWPayments.",
     topupFrom: "Crypto top-ups from {min}.",
     topupBelowMin: "Crypto top-ups start at {min}; card top-ups start lower.",
     passPanel: "{plan} pass, paid with crypto. Ends on {date}.",

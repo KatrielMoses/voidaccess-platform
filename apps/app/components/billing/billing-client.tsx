@@ -525,7 +525,7 @@ export function BillingClient({
         </ul>
         {cryptoOn ? (
           <p className="text-[15px] text-mute" data-testid="crypto-note">
-            {copy.crypto.note}
+            {copy.crypto.note.replace("{min}", usd(view.crypto.minTopupUsd))}
           </p>
         ) : null}
       </section>

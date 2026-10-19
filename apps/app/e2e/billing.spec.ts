@@ -210,12 +210,16 @@ test("crypto: pay-as-you-go credits and a Pro pass with crypto, signed finished 
   await page.goto("/billing");
   await expect(page.getByTestId("crypto-note")).toContainText("NOWPayments");
   await expect(page.getByTestId("crypto-note")).toHaveCount(1);
+  // crypto passes are annual only (the monthly ones sit below NOWPayments' coin minimums)
+  await page.getByTestId("interval-month").click();
+  await expect(page.getByTestId("crypto-pass-pro")).toHaveCount(0);
+  await page.getByTestId("interval-year").click();
   await expect(page.getByTestId("crypto-pass-pro")).toHaveText("Pay with crypto");
   await expect(page.getByTestId("plan-pro")).toContainText("It doesn't renew.");
   // the crypto minimum is shown, and an amount below it can only be paid by card
   const amount = page.getByTestId("topup-amount");
   await expect(page.getByTestId("crypto-topup-min")).toContainText(
-    `Crypto top-ups from $${CRYPTO_TOPUP_MIN_USD}`,
+    new RegExp(`Crypto top-ups (from|start at) \\$${CRYPTO_TOPUP_MIN_USD}`),
   );
   await amount.fill(String(CRYPTO_TOPUP_MIN_USD - 1));
   await expect(page.getByTestId("topup-buy")).toBeEnabled();
@@ -309,23 +313,24 @@ test("crypto: pay-as-you-go credits and a Pro pass with crypto, signed finished 
   await expect(page.getByTestId("bucket-topup")).toContainText(credits.toLocaleString("en-US"));
   await expect.poll(() => pillBalance(page)).toBe(PLANS.free.monthlyCredits + credits);
 
-  // a Pro pass for one month, at the config price
+  // a Pro pass for one year, at the config price
   await page.goto("/billing");
-  await page.getByTestId("interval-month").click();
+  await page.getByTestId("interval-year").click();
   await page.getByTestId("crypto-pass-pro").click();
   await page.waitForURL(/\/billing\?crypto=pending/);
   const [passOrder] = await q<{ id: string; price_cents: number }>(
     "select id, price_cents from crypto_orders where user_id = $1 and kind = 'pass'",
     [user!.id],
   );
-  expect(passOrder!.price_cents).toBe(PLANS.pro.monthlyUsd * 100);
-  expect((await (await ipn(passOrder!.id, PLANS.pro.monthlyUsd, "finished", pay + 2)).json()).outcome).toBe(
+  expect(passOrder!.price_cents).toBe(PLANS.pro.annualUsd! * 100);
+  expect((await (await ipn(passOrder!.id, PLANS.pro.annualUsd!, "finished", pay + 2)).json()).outcome).toBe(
     "applied",
   );
   await page.goto("/billing");
   await expect(page.getByTestId("pass-panel")).toContainText("Pro pass, paid with crypto. Ends on");
   await expect(page.getByTestId("pass-panel")).toContainText("doesn't renew");
-  await expect(page.getByTestId("crypto-extend-month")).toBeVisible();
+  await expect(page.getByTestId("crypto-extend-year")).toBeVisible();
+  await expect(page.getByTestId("crypto-extend-month")).toHaveCount(0);
   await expect(page.getByTestId("portal")).toHaveCount(0);
   await expect(page.getByTestId("cancel-open")).toHaveCount(0);
   await expect(page.getByTestId("subscribe-pro_plus")).toHaveCount(0);

@@ -4,7 +4,7 @@
  * report before anything is credited.
  */
 import { eq } from "drizzle-orm";
-import type { TopupAmountError } from "@voidaccess/config";
+import { cryptoPassAllowed, type TopupAmountError } from "@voidaccess/config";
 import { cryptoOrders, getDatabase, type Database } from "@voidaccess/db";
 import { getEnv } from "../../../env";
 import type { Interval } from "../catalog";
@@ -60,7 +60,9 @@ export function parseCryptoCheckout(
   }
   if (o.kind === "pass") {
     if (!isPassPlan(o.plan) || !isInterval(o.interval)) return { ok: false, error: "plan_invalid" };
-    if (passPriceUsd(o.plan, o.interval) === null) return { ok: false, error: "plan_invalid" };
+    const passUsd = passPriceUsd(o.plan, o.interval);
+    // below the crypto floor (the monthly passes) NOWPayments can't offer the common coins: not sold in crypto
+    if (passUsd === null || !cryptoPassAllowed(passUsd)) return { ok: false, error: "plan_invalid" };
     return { ok: true, input: { kind: "pass", plan: o.plan, interval: o.interval } };
   }
   return { ok: false, error: "bad_request" };
