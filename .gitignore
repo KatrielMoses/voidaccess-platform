@@ -21,3 +21,5 @@ next-env.d.ts
 *.tsbuildinfo
 out/
 .next-*/
+*.tfplan
+infra/terraform/plans/

@@ -14,6 +14,8 @@ signed progress events to the app, builds a contract-valid `ResultBundle`, uploa
 | `events.py`, `signing.py` | signed (HMAC over `<ts>.<body>`), ordered, retrying, non-blocking callback sender |
 | `trace.py` | contract v2 `trace` events: the runner's mirror of engine-client `trace.ts` (kinds, limits, safety rule); `events.py` posts them in batches of up to 50 (or after 300 ms), best effort and dropped first under backpressure |
 | `policy.py`, `presets.yaml` | cloud policy G1-G10 env, depth presets, E1B `cloud_profile` (copied from `runner/baseline`, which stays untouched) |
+| `reachability.py` | the unreachable-sources rule (G5): onion engines and onion pages from the engine's trace events |
+| `canary.py` | one fixed-query engine run inside any image, one `CANARY` summary line (`scripts/canary.sh`) |
 | `llm_budget.py` | per-call token accounting and the per-run token budget (raises `BudgetExceeded`) |
 | `tor.py` | Tor client with baked consensus, bootstrap retried, start jitter |
 | `bundle.py`, `taxonomy.py`, `masking.py` | CLI JSON + run SQLite -> `ResultBundle`; masking rules ported from `packages/engine-client` |
@@ -54,14 +56,43 @@ contains a `.env`, a `*.db` or a key-shaped string.
   proof runs and can only **tighten** the built-in limits (`constants.py`).
 - Exit codes: 0 after any delivered terminal event except `failed: error`; 1 for a crash or an undelivered terminal
   event; 3 when no RunSpec could be fetched (the app's watchdog fails the run).
-- **Switch and rollback (R2, engine 2.1.0).** Images are never deleted from Artifact Registry, so rollback is re-pointing
-  the job. Switch from a saved, reviewed plan only:
+- **Unreachable sources (G5).** A run whose dark-web sources were unreachable ends `failed: sources_unreachable`
+  (the app refunds every failed run in full; the user sees "We couldn't reach the dark-web sources this time...").
+  The rule (`reachability.py`, thresholds in `constants.py`): Tor never bootstrapped (3 attempts), or at least 75% of
+  the onion search engines asked never answered `ok` (timed out, errored or were cut by the search deadline) AND no
+  onion page with content was fetched. It is decided at the end of `collect` when not a single onion URL was found,
+  otherwise at the end of `fetch`, before extraction spends on the LLM: the token budget is closed, the terminal event
+  is sent and the process exits 0. Built from the engine's trace events; an engine that sends none never trips it.
+- **Failure lines.** A runner failure logs `va-runner: run failed (<class>) stage=<setup|tor|engine:<stage>|
+  finalize:<step>> message=<scrubbed>`; the message has no query, refined query, URL, onion host or e-mail address.
+  A failed Tor bootstrap attempt logs Tor's last notices.
+- **Image build.** Base image and the Tor package are pinned (Dockerfile) to what `runner:bf2213c-95be6a1` was built
+  from. `scripts/tor_warmup.sh` fails the build unless Tor reaches "Bootstrapped 100%" (it prints Tor's exit code and
+  last lines on a failed attempt). Bumping the pins: build, then canary the new image against production first.
+- **Canary (any image, before production).** `scripts/canary.sh <tag> [rounds]` deploys the job `va-runner-canary`
+  (same service account, 1 vCPU / 2 GiB, 900 s, secret and egress as `va-runner`) with that image and starts, per round,
+  "LockBit ransomware" (quick) and "RedLine stealer infostealer logs" (standard). No app, callbacks, uploads or user
+  data. Each run prints one `CANARY {...}` line: Tor bootstrap ms and attempts, onion engines started / ok / timed out
+  / error / cut by the deadline, onion URLs scraped, pages (onion and total) with content, entities, relationships,
+  whether the ResultBundle passes schema and integrity, wall time, exit code, and what the unreachable rule would say.
+  Compare against production by running the production image on a second job at the same time:
   ```bash
-  terraform -chdir=infra/terraform plan -target=module.runner \
-    -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:c66b9a0-8b4519c -out=/tmp/r2-switch.tfplan
-  terraform -chdir=infra/terraform apply /tmp/r2-switch.tfplan
+  CANARY_JOB=va-runner-canary-base runner/cloud/scripts/canary.sh <production tag> 2 &
+  runner/cloud/scripts/canary.sh <new tag> 2
+  gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name:"va-runner-canary" AND textPayload:"CANARY "' \
+    --freshness=2h --format='value(resource.labels.job_name,textPayload)'
   ```
-  Rollback (previous production image, engine bf2213c), one command:
+  A new image goes to production only if it is at least as good on Tor bootstrap (no failed first attempt), engines
+  answering and onion pages with content, and within the caps (quick 480 s, standard 600 s).
+- **Switch and rollback.** Images are never deleted from Artifact Registry, so rollback is re-pointing the job. Switch
+  only from a saved, reviewed plan (`infra/terraform/plans/` is gitignored):
+  ```bash
+  mkdir -p infra/terraform/plans
+  terraform -chdir=infra/terraform plan -target=module.runner \
+    -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:<tag> -out=plans/runner-<tag>.tfplan
+  terraform -chdir=infra/terraform apply plans/runner-<tag>.tfplan     # expect 0 add, 1 change (the image), 0 destroy
+  ```
+  Rollback to the previous production image (engine bf2213c), one command:
   ```bash
   terraform -chdir=infra/terraform apply -auto-approve -target=module.runner \
     -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:bf2213c-95be6a1

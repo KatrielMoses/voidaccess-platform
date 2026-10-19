@@ -82,8 +82,11 @@ def main(argv: list[str]) -> int:
     os.environ["VOIDACCESS_DB_PATH"] = str(db)
     os.environ["DATABASE_URL"] = f"sqlite:///{db.as_posix()}"
 
-    from cloud import policy, tor
+    from cloud import policy, scrub, tor
 
+    # Older engines print a live display even with quiet=True; keep the query out of the job's logs like the runner.
+    scrub.register(query)
+    scrub.install_stream_scrubbers()
     policy.apply_cloud_policy_base()
     cli_depth = policy.apply_depth_preset(depth)
     policy.apply_cloud_profile()
@@ -177,7 +180,9 @@ def main(argv: list[str]) -> int:
         tor.stop_tor(proc)
         out["wall_s"] = round(time.monotonic() - t0, 1)
         out["exit_code"] = exit_code
-        print("CANARY " + json.dumps(out, sort_keys=True), flush=True)
+        # Straight to file descriptor 1: an engine's live display may still hold a redirected sys.stdout here, and the
+        # process leaves with os._exit (R2b: the old image's standard canary lost its line that way).
+        os.write(1, ("CANARY " + json.dumps(out, sort_keys=True) + "\n").encode("utf-8"))
     return exit_code
 
 
