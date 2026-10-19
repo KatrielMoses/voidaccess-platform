@@ -2,7 +2,7 @@
  * Settlement: every terminal state settles the ledger exactly once.
  *
  * - completed: no ledger change
- * - failed (blocked_query, no_results, deadline, error, watchdog, launcher/ingest failure): full refund
+ * - failed (blocked_query, no_results, deadline, error, sources_unreachable, watchdog, launcher/ingest failure): full refund
  * - cancelled: refund ceil(charged x weight of stages NOT completed / 100)
  *
  * Exactly-once comes from three layers: the investigation row is locked (FOR UPDATE) and its status checked

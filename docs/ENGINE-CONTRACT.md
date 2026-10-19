@@ -49,7 +49,7 @@ type ProgressEvent = {
   counts?: { sources_queried: number; results_found: number; pages_fetched: number; entities_found: number; actors_found: number };
   message?: string;                                 // human label; never raw dark-web text
   stages_completed?: Stage[];                       // on failed/cancelled → partial refund
-  reason?: "blocked_query" | "no_results" | "deadline" | "error" | "cancelled";
+  reason?: "blocked_query" | "no_results" | "deadline" | "error" | "cancelled" | "sources_unreachable";
   metrics?: RunMetrics;                             // on terminal events
 };
 ```
@@ -128,4 +128,4 @@ type RunMetrics = {
 | G7 | The run is fully self-contained: a fresh SQLite DB in the container, and no network calls except Tor, the listed clearnet sources, OpenRouter, the callback URL and the artifact URLs. |
 | G8 | Depth presets follow ROADMAP E2. LLM usage and cost are recorded per call. |
 | G9 | A blocked query emits `failed` with reason `blocked_query` **before** any collection starts, so the platform refunds in full and logs it for abuse review. |
-| G10 | Exit code 0 on completed, cancelled or no_results; non-zero only on a crash. The platform treats a crash without a terminal event as `failed` (watchdog). |
+| G10 | Exit code 0 on completed, cancelled, no_results or sources_unreachable (Tor never bootstrapped, or most onion search engines failed and no onion page had content: the run stops before further LLM spend); non-zero only on a crash. The platform treats a crash without a terminal event as `failed` (watchdog). |

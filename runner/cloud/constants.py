@@ -25,6 +25,15 @@ FINALIZE_RESERVE_S = 75
 # its non-LLM paths and the fallback summary.
 LLM_TOKEN_BUDGET = {"quick": 70_000, "standard": 140_000, "deep": 210_000}
 
+# --- unreachable sources (G5, R2b-5) ---------------------------------------------------------------------
+
+# A run ends `failed: sources_unreachable` (full refund) when Tor never bootstrapped, or when at least this share of
+# the onion search engines it asked never answered (timeout, error, cut by the search deadline) AND no onion page with
+# content was fetched (no onion URL at all, already at the end of collect). R2b evidence: the two bad runs had 9/12
+# and 10/12 engines timed out with 0 onion pages; the last three good production runs had 0, 0 and 5 of ~12.
+UNREACHABLE_ENGINE_FAIL_RATIO = 0.75
+UNREACHABLE_MESSAGE = "dark-web sources unreachable"
+
 # --- signals ---------------------------------------------------------------------------------------
 
 # Cloud Run sends SIGTERM and then SIGKILL after 10 s on `executions.cancel`. Waiting for the next

@@ -572,6 +572,17 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
     return BuiltBundle(bundle, raw, sanitized, page_info, dict(dropped))
 
 
+def scrub_bundle(bundle: dict[str, Any], raw: RawSecrets) -> dict[str, Any]:
+    """`deep_scrub`, then the contract's length limits again: a masked form can be longer than the raw value it
+    replaces (a 5-character secret becomes `[redacted]`), so an excerpt cut to 500 characters before masking can
+    leave masking at 505 and fail the schema (R2b: a standard run ended `failed: error` this way)."""
+    out = deep_scrub(bundle, raw)
+    for src in out.get("sources") or []:
+        if isinstance(src.get("excerpt"), str):
+            src["excerpt"] = src["excerpt"][: C.EXCERPT_MAX_CHARS]
+    return out
+
+
 def deep_scrub(obj: Any, raw: RawSecrets, skip: tuple[str, ...] = ("query", "refined_queries")) -> Any:
     """Replace every raw sensitive value found in any string of `obj` (the user's own query and its refinements are
     left alone: they are the user's input, not page content)."""

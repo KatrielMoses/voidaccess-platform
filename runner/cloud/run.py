@@ -33,8 +33,9 @@ from typing import Any, Mapping
 from . import constants as C
 from . import policy, scrub
 from .archive import build_pages_archive
-from .bundle import BundleInputs, build_bundle, deep_scrub, integrity_problems
+from .bundle import BundleInputs, build_bundle, integrity_problems, scrub_bundle
 from .metrics import enrichment_calls, lower_only
+from .reachability import Reachability
 from .events import TERMINAL_TYPES, EventSender, utc_now_iso
 from .exports import EXPORT_CONTENT_TYPE, EXPORT_FORMATS, build_exports, redact_local_db
 from .identity import TokenSource
@@ -89,6 +90,9 @@ class Run:
         self.delivered = False
         self.cancel_requested = threading.Event()
         self.exit_code = EXIT_OK
+        self.phase = "start"  # where the run is, for a failure log line: setup, tor, engine:<stage>, finalize:<step>
+        self.reach = Reachability()
+        self.unreachable = threading.Event()
 
     # ---- terminal ---------------------------------------------------------------------------------------
 
@@ -199,20 +203,40 @@ class Run:
             pass
         threading.Thread(target=self._cancel_watch, name="va-cancel", daemon=True).start()
 
+    # ---- unreachable sources (G5) ------------------------------------------------------------------------
+
+    def sources_unreachable(self, where: str) -> None:
+        """End the run as `failed: sources_unreachable` (the app refunds every failed run in full). No further LLM call
+        is made: the token budget is closed before the terminal event is sent. Runs on the thread that decided."""
+        if self.unreachable.is_set():
+            return
+        self.unreachable.set()
+        self.recorder.token_budget = 0
+        print(f"va-runner: sources unreachable {where} {json.dumps(self.reach.summary(), sort_keys=True)}", flush=True)
+        if self.finish("failed", "sources_unreachable", message=C.UNREACHABLE_MESSAGE):
+            self._die()
+
     # ---- progress ---------------------------------------------------------------------------------------
 
     def on_engine_event(self, event: Any) -> None:
-        """CallbackSink target (runs on the engine emitter's worker thread). Never blocks, never raises."""
+        """CallbackSink target (runs on the engine emitter's worker thread). Never raises; it blocks only to end the run
+        as `sources_unreachable` (the engine must not go on spending)."""
         try:
             d = event.to_dict() if hasattr(event, "to_dict") else dict(event)
             etype = d.get("type")
             if etype == "trace":  # contract v2: best effort, batched by the sender; never part of the run's state
+                self.reach.observe(d)
                 if self.sender is not None:
                     self.sender.emit(d)
                 return
             if etype in TERMINAL_TYPES:
                 self.state.engine_terminal = (etype, d.get("reason"))  # the runner decides what to send
                 return
+            if etype == "refined":  # the refined queries are the user's query in other words: keep them out of logs
+                for q in d.get("refined_queries") or []:
+                    scrub.register(str(q))
+            if etype == "stage" and d.get("status") == "start" and d.get("stage"):
+                self.phase = f"engine:{d['stage']}"
             if etype == "stage" and d.get("status") in ("end", "skipped") and d.get("stage"):
                 if d["stage"] not in self.state.stages_completed:
                     self.state.stages_completed.append(d["stage"])
@@ -222,6 +246,8 @@ class Run:
                 self.state.last_counts = dict(d["counts"])
             if self.sender is not None:
                 self.sender.emit(d)
+            if etype == "stage" and d.get("status") in ("end", "skipped") and self.reach.check(str(d.get("stage"))):
+                self.sources_unreachable(f"after {d['stage']}")
         except Exception:
             pass
 
@@ -283,6 +309,7 @@ class Run:
         """Build everything, upload it (the bundle last). Returns the bundle's metrics."""
         assert self.db_path is not None
         s = self.state
+        self.phase = "finalize:read_result"
         s.cli_payload = self._latest_cli_json(out_dir)
         if not s.cli_payload:
             raise RuntimeError("the engine wrote no result file")
@@ -290,6 +317,7 @@ class Run:
         urls = self.spec["artifact_put_urls"]
         uploader = Uploader(self.tokens, self.spec["callback_url"])
 
+        self.phase = "finalize:build_bundle"
         built = build_bundle(
             BundleInputs(
                 run_id=self.spec["run_id"],
@@ -306,6 +334,7 @@ class Run:
         s.dropped_entities = built.dropped_entities
 
         # Exports run on the database after its sensitive rows were rewritten to their masked forms.
+        self.phase = "finalize:exports"
         redact_local_db(self.db_path, built.raw)
         wanted = tuple(f for f in EXPORT_FORMATS if f in urls.get("exports", {}))
         exports, s.export_errors = build_exports(
@@ -317,6 +346,7 @@ class Run:
             except UploadError:
                 s.export_errors[fmt] = "upload_failed"
         if urls.get("pages"):
+            self.phase = "finalize:pages"
             try:
                 archive = build_pages_archive(
                     {pid: built.raw.replace_pairs(t) for pid, t in built.sanitized_pages.items()}, built.page_rows
@@ -325,13 +355,15 @@ class Run:
             except UploadError:
                 s.export_errors["pages"] = "upload_failed"
 
+        self.phase = "finalize:validate"
         metrics = self.build_metrics(live_prices=True)
-        bundle = deep_scrub(built.bundle, built.raw)
+        bundle = scrub_bundle(built.bundle, built.raw)
         bundle["metrics"] = metrics
         bundle["completed_at"] = utc_now_iso()
         problems = schema_errors("ResultBundle", bundle) or integrity_problems(bundle)
         if problems:
             raise RuntimeError("bundle failed schema validation: " + "; ".join(problems))
+        self.phase = "finalize:upload_bundle"
         uploader.put(urls["bundle"], json.dumps(bundle, ensure_ascii=False).encode("utf-8"), "application/json")
         return metrics
 
@@ -380,6 +412,7 @@ class Run:
         out_dir = self.work / "results"
         out_dir.mkdir(parents=True, exist_ok=True)
         try:
+            self.phase = "setup"
             cli_depth = self._setup_engine_env(spec["query"], spec["depth"])
             from utils.content_safety import is_blocked_query
 
@@ -395,7 +428,16 @@ class Run:
 
             if self.cancel_requested.wait(tor.start_jitter_s()):
                 return self.exit_code if self._finished.is_set() else EXIT_OK
-            self._tor, self.state.tor_bootstrap_ms, _ = tor.start_tor_with_retry(self.cancel_requested.is_set)
+            self.phase = "tor"
+            try:
+                self._tor, self.state.tor_bootstrap_ms, _ = tor.start_tor_with_retry(self.cancel_requested.is_set)
+            except tor.TorError as exc:
+                if self.cancel_requested.is_set():
+                    raise
+                print(f"va-runner: sources unreachable: {exc}", flush=True)  # TorError text is ours: no query or URL
+                self.unreachable.set()
+                self.finish("failed", "sources_unreachable", message=C.UNREACHABLE_MESSAGE)
+                return self.exit_code
             os.environ["TOR_PROXY_HOST"], os.environ["TOR_PROXY_PORT"] = "127.0.0.1", "9050"
 
             engine_timeout = max(budget - (time.monotonic() - self.state.t0) - C.FINALIZE_RESERVE_S, 5.0)
@@ -403,6 +445,12 @@ class Run:
                 asyncio.run(self._run_engine(spec["query"], cli_depth, out_dir, engine_timeout))
             except asyncio.TimeoutError:
                 self.finish("failed", "deadline")
+                return self.exit_code
+            except Exception:
+                if not self.unreachable.is_set():
+                    raise
+            if self.unreachable.is_set():  # decided mid-run; an LLM call refused after it may have ended the engine
+                self.finish("failed", "sources_unreachable", message=C.UNREACHABLE_MESSAGE)
                 return self.exit_code
             term = self.state.engine_terminal
             if term is None:
@@ -418,8 +466,15 @@ class Run:
             self.finish("completed", metrics=metrics)
         except BaseException as exc:  # a crash in the engine or the runner: still exactly one terminal event
             if not isinstance(exc, SystemExit):
-                print(f"va-runner: run failed ({type(exc).__name__})", file=sys.stderr, flush=True)
-            self.finish("failed", "error", message=f"runner error: {type(exc).__name__}")
+                print(
+                    f"va-runner: run failed ({type(exc).__name__}) stage={self.phase} "
+                    f"message={scrub.safe_exception_message(exc)}",
+                    file=sys.stderr, flush=True,
+                )
+            if self.unreachable.is_set():
+                self.finish("failed", "sources_unreachable", message=C.UNREACHABLE_MESSAGE)
+            else:
+                self.finish("failed", "error", message=f"runner error: {type(exc).__name__} at {self.phase}")
         finally:
             from .tor import stop_tor
 
