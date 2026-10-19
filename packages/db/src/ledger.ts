@@ -7,10 +7,10 @@ import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
 import {
   DEPTHS,
   PLANS,
-  TOPUPS,
   TOPUP_EXPIRY_MONTHS,
   depthCredits,
-  topupCredits,
+  topupAmountError,
+  topupBreakdown,
   type Depth,
   type PlanId,
 } from "@voidaccess/config";
@@ -254,8 +254,9 @@ export async function grantMonthly(
 }
 
 /**
- * Top-up purchase. Credits come from config's topupCredits() (tier + subscriber bonus for the user's plan);
- * the base and the bonus are separate ledger rows on one lot. `paymentRef` (the provider payment id)
+ * Top-up purchase. Credits come from config's topupBreakdown() (whole dollars at the base rate plus the volume
+ * bonus, then the subscriber bonus for the user's plan at payment time); the purchased credits (base + volume bonus)
+ * and the subscriber bonus are separate ledger rows on one lot. `paymentRef` (the provider payment id)
  * makes the call idempotent for webhook retries.
  */
 export async function topup(
@@ -265,8 +266,8 @@ export async function topup(
   ctx: Ctx = {},
 ): Promise<{ lotId: string; credits: number; duplicate: boolean }> {
   const now = nowOf(ctx);
-  const tier = TOPUPS.find((t) => t.usd === usd);
-  if (!tier) throw new Error(`No top-up tier for $${usd}`);
+  const invalid = topupAmountError(usd);
+  if (invalid) throw new Error(`Invalid top-up amount $${usd}: ${invalid}`);
   return inSystem(ctx, "ledger.topup", async (tx) => {
     await lockUserCredits(tx, userId);
     const [dup] = await tx
@@ -276,8 +277,9 @@ export async function topup(
     if (dup) return { lotId: dup.id, credits: dup.creditsInitial, duplicate: true };
     const [u] = await tx.select({ plan: users.plan }).from(users).where(eq(users.id, userId));
     if (!u) throw new Error("topup: unknown user");
-    const credits = topupCredits(usd, u.plan);
-    const bonus = credits - tier.credits;
+    const b = topupBreakdown(usd, u.plan);
+    const credits = b.credits;
+    const bonus = credits - b.withVolume;
     const [lot] = await tx
       .insert(topupLots)
       .values({
@@ -293,7 +295,7 @@ export async function topup(
     await tx.insert(creditLedger).values({
       userId,
       bucket: "topup",
-      amount: tier.credits,
+      amount: b.withVolume,
       reason: "topup",
       lotId: lot!.id,
       expiresAt: lot!.expiresAt,

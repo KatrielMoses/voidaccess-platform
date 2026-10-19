@@ -117,12 +117,21 @@ export const RUN_LIMITS = {
 /** Subscription credits reset monthly, no rollover. Spend order: grant, then top-ups. */
 export const ROLLOVER = false;
 
-export const TOPUPS = [
-  { usd: 10, credits: 1000 },
-  { usd: 25, credits: 2750 },
-  { usd: 50, credits: 6000 },
+/**
+ * Pay-as-you-go top-ups (decided 2026-10-19): any whole-dollar amount from TOPUP_MIN_USD to TOPUP_MAX_USD,
+ * TOPUP_CREDITS_PER_USD credits per dollar, a volume bonus from the listed amounts, then the plan's subscriber
+ * bonus (Plan.topupBonus) on top. topupCredits() is the only calculator; checkout, webhook, UI and site use it.
+ */
+export const TOPUP_MIN_USD = 5;
+export const TOPUP_MAX_USD = 500;
+export const TOPUP_CREDITS_PER_USD = 100;
+/** Highest matching tier wins. */
+export const TOPUP_VOLUME_BONUSES = [
+  { fromUsd: 25, bonus: 0.1 },
+  { fromUsd: 50, bonus: 0.2 },
 ] as const;
-export const TOPUP_MIN_USD = 10;
+/** Amounts the app offers as one-tap picks (any other whole amount in range is fine too). */
+export const TOPUP_QUICK_PICKS_USD = [5, 10, 25, 50] as const;
 export const TOPUP_EXPIRY_MONTHS = 12;
 
 /** Founding offer (amendment 1): renewable 12-month term, not lifetime. */
@@ -139,13 +148,55 @@ export const FOUNDING = {
   copy: "Founding price $7/mo, kept every year you stay active.",
 } as const;
 
-export const PAYMENT_FEE = { percent: 0.04, fixedUsd: 0.5 } as const;
+/** Creem (merchant of record): 3.9% + $0.40 per transaction. */
+export const PAYMENT_FEE = { percent: 0.039, fixedUsd: 0.4 } as const;
 
-/** Credits granted for a top-up, including the subscriber bonus. */
+export type TopupAmountError = "not_whole_dollars" | "below_minimum" | "above_maximum";
+
+/** Why an amount can't be bought, or null if it can. */
+export function topupAmountError(usd: number): TopupAmountError | null {
+  if (!Number.isInteger(usd)) return "not_whole_dollars";
+  if (usd < TOPUP_MIN_USD) return "below_minimum";
+  if (usd > TOPUP_MAX_USD) return "above_maximum";
+  return null;
+}
+
+export const isValidTopupUsd = (usd: number) => topupAmountError(usd) === null;
+
+/** The volume-bonus fraction for an amount (0 below the first tier). */
+export function topupVolumeBonus(usd: number): number {
+  let b = 0;
+  for (const t of TOPUP_VOLUME_BONUSES) if (usd >= t.fromUsd) b = Math.max(b, t.bonus);
+  return b;
+}
+
+export interface TopupBreakdown {
+  usd: number;
+  /** credits at the base rate */
+  base: number;
+  /** base + volume bonus */
+  withVolume: number;
+  volumeBonusPct: number;
+  subscriberBonusPct: number;
+  /** what the user gets */
+  credits: number;
+}
+
+/** Integer maths in whole percents, so every caller gets the same number. Throws on an invalid amount. */
+export function topupBreakdown(usd: number, plan: PlanId): TopupBreakdown {
+  const err = topupAmountError(usd);
+  if (err) throw new Error(`Invalid top-up amount $${usd}: ${err}`);
+  const base = usd * TOPUP_CREDITS_PER_USD;
+  const volumeBonusPct = Math.round(topupVolumeBonus(usd) * 100);
+  const subscriberBonusPct = Math.round(PLANS[plan].topupBonus * 100);
+  const withVolume = base + Math.floor((base * volumeBonusPct) / 100);
+  const credits = withVolume + Math.floor((withVolume * subscriberBonusPct) / 100);
+  return { usd, base, withVolume, volumeBonusPct, subscriberBonusPct, credits };
+}
+
+/** Credits granted for a top-up of `usd` dollars, including the volume and subscriber bonuses. */
 export function topupCredits(usd: number, plan: PlanId): number {
-  const tier = TOPUPS.find((t) => t.usd === usd);
-  if (!tier) throw new Error(`No top-up tier for $${usd}`);
-  return Math.floor(tier.credits * (1 + PLANS[plan].topupBonus));
+  return topupBreakdown(usd, plan).credits;
 }
 
 export function hasFeature(plan: PlanId, feature: Feature): boolean {

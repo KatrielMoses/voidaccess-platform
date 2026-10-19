@@ -1,6 +1,14 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { PLANS, TOPUPS, depthCredits, topupCredits, type Depth, type PlanId } from "@voidaccess/config";
+import {
+  PLANS,
+  TOPUP_QUICK_PICKS_USD,
+  TOPUP_MAX_USD,
+  depthCredits,
+  topupCredits,
+  type Depth,
+  type PlanId,
+} from "@voidaccess/config";
 import { adminGrant, addMonths, expireLots, getBalance, grantMonthly, refund, reserve, topup } from "../src";
 import { creditLedger, investigations, topupLots } from "../src/schema";
 import { appDb, makeUser, ownerPool, pgError } from "./helpers";
@@ -150,21 +158,25 @@ describe("ledger", () => {
     await assertConsistent(u);
   });
 
-  it("every top-up credit amount equals topupCredits() for every tier and plan; idempotent on payment ref", async () => {
+  it("every top-up credit amount equals topupCredits() for each amount and plan; idempotent on payment ref", async () => {
+    const amounts = [...TOPUP_QUICK_PICKS_USD, 7, TOPUP_MAX_USD];
     for (const plan of Object.keys(PLANS) as PlanId[]) {
       const u = await makeUser(plan);
-      for (const tier of TOPUPS) {
-        const r = await topup(u, tier.usd, `pay_${u}_${tier.usd}`, ctx);
-        expect(r.credits).toBe(topupCredits(tier.usd, plan));
-        const again = await topup(u, tier.usd, `pay_${u}_${tier.usd}`, ctx);
+      for (const usd of amounts) {
+        const r = await topup(u, usd, `pay_${u}_${usd}`, ctx);
+        expect(r.credits).toBe(topupCredits(usd, plan));
+        const again = await topup(u, usd, `pay_${u}_${usd}`, ctx);
         expect(again).toMatchObject({ duplicate: true, lotId: r.lotId, credits: r.credits });
       }
       const rows = await ledgerRows(u);
       const total = rows.reduce((a, r) => a + r.amount, 0);
-      expect(total).toBe(TOPUPS.reduce((a, t) => a + topupCredits(t.usd, plan), 0));
+      expect(total).toBe(amounts.reduce((a, usd) => a + topupCredits(usd, plan), 0));
       await assertConsistent(u);
     }
-    await expect(topup(await makeUser("pro"), 7, "x", ctx)).rejects.toThrow(/No top-up tier/);
+    const u = await makeUser("pro");
+    await expect(topup(u, 4, "x4", ctx)).rejects.toThrow(/Invalid top-up amount/);
+    await expect(topup(u, TOPUP_MAX_USD + 1, "x501", ctx)).rejects.toThrow(/Invalid top-up amount/);
+    await expect(topup(u, 5.5, "x5.5", ctx)).rejects.toThrow(/Invalid top-up amount/);
   });
 
   it("refund: full, partial by stages, idempotent, returns credits to the buckets they came from", async () => {

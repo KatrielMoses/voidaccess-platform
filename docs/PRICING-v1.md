@@ -46,14 +46,22 @@ Subscription credits reset monthly with no rollover. Spend order: monthly grant 
 - **(d) Founding is monthly only.** Upgrading to Pro+ releases the seat, with a warning before confirming.
 - **(e) Seat claims are race-safe:** a DB constraint guarantees at most 100 held seats.
 
-## Top-ups (all plans, including Free)
-| Pay | Credits | Bonus vs base |
-|---:|---:|---|
-| $10 (minimum) | 1,000 | — |
-| $25 | 2,750 | +10% |
-| $50 | 6,000 | +20% |
+## Top-ups (all plans, including Free): pay as you go (decided 2026-10-19, replaces the three fixed packs)
+- **Any whole-dollar amount from $5 to $500** per purchase; **$1 = 100 credits**.
+- **Volume bonus** by amount: **+10% from $25**, **+20% from $50** (the same rates the $25/$50 packs had).
+- **Subscriber bonus** on top of that, unchanged: Pro +20%, Pro+ +30%.
+- Credits = floor(floor(usd × 100 × (1 + volume)) × (1 + subscriber)), computed in whole percents by `topupCredits()` in config. The plan is read at payment time.
+- Top-up credits expire 12 months after purchase and are spent after monthly credits.
 
-Subscribers get an extra bonus on top: Pro +20%, Pro+ +30%. Top-up credits expire 12 months after purchase.
+| Pay | Free | Pro | Pro+ |
+|---:|---:|---:|---:|
+| $5 (minimum) | 500 | 600 | 650 |
+| $10 | 1,000 | 1,200 | 1,300 |
+| $25 | 2,750 | 3,300 | 3,575 |
+| $50 | 6,000 | 7,200 | 7,800 |
+| $500 (maximum) | 60,000 | 72,000 | 78,000 |
+
+Checkout: one Creem one-time product, priced per checkout (`custom_price`). The server checks the amount before creating the checkout, and the webhook credits only what was actually paid for a checkout the server created.
 
 ## Margin rule
 - ≥ 80% gross margin per action at p90 cost on standard Pro pricing. Founding and annual seats may sit at 75–80%.
@@ -66,7 +74,9 @@ Subscribers get an extra bonus on top: Pro +20%, Pro+ +30%. Top-up credits expir
 | Pro annual | $7.16 | 79.3% | 82.4% |
 | Pro+ $19 | $17.74 | 81.2% | 84.0% |
 | Pro+ annual | $15.16 | 78.0% | 81.3% |
-| Top-ups | — | 87.8–91.8% (lowest: $50 with the Pro+ bonus) | — |
+| Top-ups (Creem fee) | — | 87.9–91.6% (lowest: $50 to $500 with the Pro+ bonus; $5 Free is the highest) | — |
+
+Plan rows were computed with Dodo's fee (4% + $0.50); Creem's (3.9% + $0.40, P7) is lower, so they are conservative. A $5 top-up pays 11.9% in fees ($0.595); the margin still clears 89%.
 
 ## Paid threat feed
 Approved: up to $100/mo for one commercial victim/ransomware feed. Buy at launch if it clearly improves the "search a company → see which group hit it" demo; otherwise buy at 20 paid subscribers. A second feed needs ≥ $1K MRR.
@@ -78,7 +88,7 @@ Approved: up to $100/mo for one commercial victim/ransomware feed. Buy at launch
 
 ## Engineering defaults for points the decision doesn't cover (Growth may override)
 1. *(Superseded by amendment 1; see Founding offer.)*
-2. **Upgrade Pro → Pro+ mid-cycle:** Dodo prorates the charge, and the credit difference (2,500) is granted immediately. **Downgrade:** takes effect at period end; credits are not clawed back.
+2. **Upgrade Pro → Pro+ mid-cycle:** Creem prorates the charge (`proration-charge-immediately`; the app shows an estimate first), and the credit difference (2,500) is granted immediately. **Downgrade:** takes effect at period end; credits are not clawed back.
 3. **Founding to Pro+:** upgrading gives up the founding price, with a warning shown before confirming.
 4. **Priority queue:** runs start immediately on Cloud Run Jobs. A global concurrency cap protects spend, and Pro+ jumps the line only when that cap is reached.
 5. **`/check`** needs a search-only engine mode (the source-gathering stage only). It is scheduled as an engine item with P1 `/check`; it is not part of launch.
