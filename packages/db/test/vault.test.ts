@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { LocalKeyWrapper, decryptCredential, storeCredential } from "../src";
+import { LocalKeyWrapper, OPAQUE_MASK, decryptCredential, maskForKind, storeCredential } from "../src";
 import { appDb, makeUser, ownerPool, pgError } from "./helpers";
 
 const db = appDb();
@@ -21,6 +21,26 @@ describe("credential vault", () => {
     expect(dump).not.toContain("s3cr3t");
     expect(dump).not.toContain(secret);
     expect(rows[0].masked_value).toBe(s.maskedValue);
+  });
+
+  it("our own secrets (admin_totp, admin_totp_pending) get a constant mask that reveals nothing", async () => {
+    const u = await makeUser("pro");
+    const secret = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
+    for (const kind of ["admin_totp", "admin_totp_pending"]) {
+      const s = await storeCredential({ userId: u, type: kind, value: secret }, { database: db }, opts);
+      expect(s.maskedValue).toBe(OPAQUE_MASK);
+      const { rows } = await ownerPool().query(`select * from credential_vault where id=$1`, [s.id]);
+      expect(rows[0].kind).toBe(kind);
+      expect(rows[0].masked_value).toBe(OPAQUE_MASK);
+      const dump = JSON.stringify(rows[0]) + rows[0].ciphertext.toString("latin1");
+      expect(dump).not.toContain(secret);
+      expect(dump).not.toContain(secret.slice(0, 4));
+      expect(await decryptCredential(s.id, { actor: u, reason: "test" }, { database: db }, opts)).toBe(
+        secret,
+      );
+    }
+    // entity kinds keep their usual mask
+    expect(maskForKind("API_KEY", "abc")).toBe("len:3");
   });
 
   it("decrypts through the single audited function and writes an audit row each time", async () => {
