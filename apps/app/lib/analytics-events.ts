@@ -76,13 +76,13 @@ export const FUNNEL_EVENTS: FunnelEvent[] = [
     name: "subscribed",
     emitters: ["lib/billing/post-effects.ts"],
     status: "emitted",
-    note: "Dodo webhook, after the subscription commits (plan in props).",
+    note: "Creem webhook, after the subscription commits (plan in props).",
   },
   {
     name: "topup_purchased",
     emitters: ["lib/billing/post-effects.ts"],
     status: "emitted",
-    note: "Dodo webhook, after the top-up commits.",
+    note: "Creem webhook, after the top-up commits (usd in props).",
   },
   {
     name: "monitor_created",

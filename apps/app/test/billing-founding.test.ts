@@ -238,10 +238,10 @@ describe("yearly renewal check, release, notices", () => {
       provider.calls.filter(
         (c) => c.op === "changePlan" && (c.args as { subscriptionId: string }).subscriptionId === loseSub,
       );
-    expect(forLoser()).toHaveLength(0); // 20 days out: nothing asked of Dodo yet
+    expect(forLoser()).toHaveLength(0); // 20 days out: nothing asked of Creem yet
     expect(await planOf(lose.id)).toBe("pro");
 
-    // the day before the period ends the cron asks Dodo for a no-charge product switch, once
+    // the day before the period ends the cron asks Creem for a no-charge product switch, once
     expect(await applyPendingChanges(addDays(now, 19.5), { database: db(), provider })).toBe(1);
     expect(await applyPendingChanges(addDays(now, 19.6), { database: db(), provider })).toBe(0);
     const call = provider.calls.find((c) => c.op === "changePlan")!.args as {
@@ -251,10 +251,10 @@ describe("yearly renewal check, release, notices", () => {
     expect(call.billing).toBe("do_not_bill");
     expect(call.productId).toBe(await productId("pro_month"));
 
-    // Dodo then renews on the standard Pro product: plan stays Pro, grant for the new period
+    // Creem then renews on the standard Pro product: plan stays Pro, grant for the new period
     const t1 = addDays(now, 20);
     await deliver(
-      "subscription.renewed",
+      "subscription.paid",
       await subSnapshot({
         user: lose,
         subId: loseSub,
@@ -318,7 +318,7 @@ describe("yearly renewal check, release, notices", () => {
 });
 
 describe("moving off the founding price", () => {
-  it("upgrading to Pro+ needs an explicit confirmation, then releases the seat when Dodo applies the change", async () => {
+  it("upgrading to Pro+ needs an explicit confirmation, then releases the seat when Creem applies the change", async () => {
     const u = await makeBillingUser();
     const sub = await activateFounding(u);
     expect(await requestPlanChange(u.id, { plan: "pro_plus", interval: "month" }, { provider })).toEqual({
@@ -339,7 +339,7 @@ describe("moving off the founding price", () => {
     );
 
     await deliver(
-      "subscription.plan_changed",
+      "subscription.update",
       await subSnapshot({
         user: u,
         subId: sub,

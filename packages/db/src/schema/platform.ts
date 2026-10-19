@@ -60,7 +60,7 @@ export const auditLog = pgTable(
   "audit_log",
   {
     id: pk(),
-    actor: text("actor").notNull(), // user id, "system", "cron", "webhook:dodo" ...
+    actor: text("actor").notNull(), // user id, "system", "cron", "webhook:creem" ...
     action: text("action").notNull(),
     target: text("target"),
     at: tstz("at").notNull().defaultNow(),

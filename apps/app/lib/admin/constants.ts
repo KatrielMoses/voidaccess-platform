@@ -23,4 +23,4 @@ export const OVERVIEW_COHORT_WEEKS = 8;
 /** The #1 metric (PRD §7): % of verified signups completing a first investigation inside this window. */
 export const FIRST_INVESTIGATION_WINDOW_HOURS = 24;
 
-export const DODO_DASHBOARD_URL = "https://app.dodopayments.com";
+export const CREEM_DASHBOARD_URL = "https://creem.io/dashboard";

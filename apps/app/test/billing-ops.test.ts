@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { PLANS, TOPUPS } from "@voidaccess/config";
+import { PLANS, TOPUP_MIN_USD } from "@voidaccess/config";
 import {
   billingCatalog,
   billingCustomers,
@@ -12,7 +12,7 @@ import {
   users,
 } from "@voidaccess/db";
 import { alertLevel, creditUsage, sendDueAlerts } from "@/lib/billing/alerts";
-import { desiredCatalog } from "@/lib/billing/catalog";
+import { desiredCatalog, TOPUP_KEY } from "@/lib/billing/catalog";
 import { createSubscriptionCheckout, createTopupCheckout } from "@/lib/billing/checkout";
 import { runCreditAlerts, runGrants } from "@/lib/billing/cron";
 import { authorizeBillingCron } from "@/lib/billing/cron-auth";
@@ -24,7 +24,7 @@ import {
   requestPlanChange,
   resumeSubscription,
 } from "@/lib/billing/plan-ops";
-import { FakeProvider } from "@/lib/billing/provider";
+import { CreemProvider, FakeProvider, prorationEstimate } from "@/lib/billing/provider";
 import { syncCatalog } from "@/lib/billing/sync";
 import { getLedger } from "@/lib/billing/usage";
 import { POST as checkoutPOST } from "@/app/api/billing/checkout/route";
@@ -76,7 +76,7 @@ describe("catalogue sync from config", () => {
         "pro_plus_month",
         "pro_plus_year",
         "pro_year",
-        ...TOPUPS.map((t) => `topup_${t.usd}`),
+        "topup_credits",
       ].sort(),
     );
     const p = new FakeProvider();
@@ -84,6 +84,107 @@ describe("catalogue sync from config", () => {
     expect(rep.created).toHaveLength(0);
     expect(rep.unchanged).toHaveLength(desiredCatalog().length);
     expect(p.calls.filter((c) => c.op === "createProduct")).toHaveLength(0);
+  });
+
+  it("product names, prices and periods match the products made in the Creem dashboard", () => {
+    const byKey = Object.fromEntries(desiredCatalog().map((e) => [e.key, e]));
+    expect(byKey.pro_month).toMatchObject({
+      name: "VoidAccess Pro",
+      amountCents: PLANS.pro.monthlyUsd * 100,
+    });
+    expect(byKey.pro_year).toMatchObject({
+      name: "VoidAccess Pro (annual)",
+      amountCents: PLANS.pro.annualUsd! * 100,
+    });
+    expect(byKey.pro_plus_month).toMatchObject({ name: "VoidAccess Pro+" });
+    expect(byKey.pro_plus_year).toMatchObject({ name: "VoidAccess Pro+ (annual)" });
+    expect(byKey.founding_pro_month).toMatchObject({ name: "VoidAccess Pro (Founder)", interval: "month" });
+    expect(byKey[TOPUP_KEY]).toMatchObject({
+      name: "VoidAccess credits",
+      kind: "topup",
+      amountCents: TOPUP_MIN_USD * 100,
+    });
+  });
+
+  it("adopts existing provider products (name + price + period) without creating any; refuses a mismatched one", async () => {
+    // live mode keeps this isolated from the test-mode catalogue the other tests use
+    const live = new FakeProvider("live");
+    live.products = desiredCatalog().map((e, i) => ({
+      id: `prod_live_${i}_${Date.now()}`,
+      name: e.name,
+      priceCents: e.amountCents,
+      currency: "USD",
+      billingType: e.kind === "topup" ? ("onetime" as const) : ("recurring" as const),
+      period: e.kind === "topup" ? "once" : e.interval!,
+      active: true,
+    }));
+    // an archived product with a configured name is ignored
+    live.products.push({ ...live.products[0]!, id: "prod_live_archived", priceCents: 1, active: false });
+    const rep = await syncCatalog(live);
+    expect(rep.adopted.sort()).toEqual(
+      desiredCatalog()
+        .map((e) => e.key)
+        .sort(),
+    );
+    expect(rep.created).toEqual([]);
+    expect(rep.conflicts).toEqual([]);
+    expect(live.calls.some((c) => c.op === "createProduct")).toBe(false);
+    for (const e of desiredCatalog())
+      expect(rep.products[e.key]!.id).toBe(live.products.find((p) => p.name === e.name && p.active)!.id);
+    expect((await syncCatalog(live)).unchanged).toHaveLength(desiredCatalog().length);
+
+    // a config price change while the provider only has the old price under that name: refused, nothing written
+    const original = PLANS.pro_plus.monthlyUsd;
+    try {
+      PLANS.pro_plus.monthlyUsd = original + 1;
+      const before = await db().withSystem(
+        "t",
+        (tx) =>
+          tx
+            .select()
+            .from(billingCatalog)
+            .where(and(eq(billingCatalog.mode, "live"), eq(billingCatalog.key, "pro_plus_month"))),
+        { audit: false },
+      );
+      const r2 = await syncCatalog(live);
+      expect(r2.conflicts.map((c) => c.key)).toEqual(["pro_plus_month"]);
+      expect(live.calls.some((c) => c.op === "createProduct")).toBe(false);
+      const after = await db().withSystem(
+        "t",
+        (tx) =>
+          tx
+            .select()
+            .from(billingCatalog)
+            .where(and(eq(billingCatalog.mode, "live"), eq(billingCatalog.key, "pro_plus_month"))),
+        { audit: false },
+      );
+      expect(after).toEqual(before);
+    } finally {
+      PLANS.pro_plus.monthlyUsd = original;
+    }
+
+    // a period mismatch is refused too (same name and price, wrong billing period)
+    const odd = new FakeProvider("live");
+    odd.products = [
+      {
+        id: "prod_odd",
+        name: "VoidAccess Pro (annual)",
+        priceCents: PLANS.pro.annualUsd! * 100,
+        currency: "USD",
+        billingType: "recurring",
+        period: "month",
+        active: true,
+      },
+    ];
+    await db().withSystem("t", (tx) => tx.delete(billingCatalog).where(eq(billingCatalog.mode, "live")), {
+      audit: false,
+    });
+    const r3 = await syncCatalog(odd);
+    expect(r3.conflicts.map((c) => c.key)).toContain("pro_year");
+    expect(r3.products.pro_year).toBeUndefined();
+    await db().withSystem("t", (tx) => tx.delete(billingCatalog).where(eq(billingCatalog.mode, "live")), {
+      audit: false,
+    });
   });
 
   it("a config price change adds a NEW product and points the catalogue at it; the old product still resolves for existing subscribers", async () => {
@@ -101,8 +202,8 @@ describe("catalogue sync from config", () => {
         (tx) => tx.select().from(billingCatalog).where(eq(billingCatalog.key, "pro_month")),
         { audit: false },
       );
-      expect(rows.find((r) => r.dodoProductId === oldId)!.active).toBe(false);
-      expect(rows.find((r) => r.dodoProductId === newId)!.amountCents).toBe((original + 2) * 100);
+      expect(rows.find((r) => r.providerProductId === oldId)!.active).toBe(false);
+      expect(rows.find((r) => r.providerProductId === newId)!.amountCents).toBe((original + 2) * 100);
       // an existing subscription on the old product still applies
       const u = await makeBillingUser();
       const data = {
@@ -113,7 +214,7 @@ describe("catalogue sync from config", () => {
           periodStart: t0,
           periodEnd: addDays(t0, 30),
         })),
-        product_id: oldId,
+        product: { id: oldId },
       };
       expect((await deliver("subscription.active", data, { at: t0 })).body.outcome).toBe("applied");
     } finally {
@@ -124,24 +225,35 @@ describe("catalogue sync from config", () => {
 });
 
 describe("checkout", () => {
-  it("creates the Dodo customer once, sends the user id as metadata, and uses the catalogue product", async () => {
+  it("creates the Creem customer once, sends the user id as metadata, and uses the catalogue product", async () => {
     const u = await makeBillingUser();
     await db().withSystem("t", (tx) => tx.delete(billingCustomers).where(eq(billingCustomers.userId, u.id)), {
       audit: false,
     });
     provider.calls.length = 0;
     const a = await createSubscriptionCheckout(u.id, { plan: "pro", interval: "year" }, { provider });
-    const b = await createTopupCheckout(u.id, TOPUPS[0].usd, { provider });
+    const b = await createTopupCheckout(u.id, TOPUP_MIN_USD, { provider });
     expect(a).toMatchObject({ ok: true, key: "pro_year" });
-    expect(b).toMatchObject({ ok: true, key: `topup_${TOPUPS[0].usd}` });
+    expect(b).toMatchObject({ ok: true, key: TOPUP_KEY });
     expect(provider.calls.filter((c) => c.op === "createCustomer")).toHaveLength(1);
     const ck = provider.calls
       .filter((c) => c.op === "createCheckout")
-      .map((c) => c.args as { productId: string; metadata: Record<string, string>; returnUrl: string });
+      .map(
+        (c) =>
+          c.args as {
+            productId: string;
+            metadata: Record<string, string>;
+            successUrl: string;
+            customPriceCents?: number;
+          },
+      );
     expect(ck[0]!.productId).toBe(await productId("pro_year"));
     expect(ck[0]!.metadata.user_id).toBe(u.id);
-    expect(ck[0]!.returnUrl).toContain("/billing");
-    expect(a.ok && a.url).toMatch(/^https:\/\/test\.checkout\.dodopayments\.com\//);
+    expect(ck[0]!.successUrl).toContain("/billing?checkout=success");
+    expect(ck[0]!.customPriceCents).toBeUndefined(); // subscriptions carry the product's own price
+    expect(ck[1]!.productId).toBe(await productId(TOPUP_KEY));
+    expect(ck[1]!.customPriceCents).toBe(TOPUP_MIN_USD * 100);
+    expect(a.ok && a.url).toMatch(/^https:\/\/creem\.io\/test\/checkout\//);
   });
 
   it("refuses an unknown plan or amount, and a second subscription while one is live; Free-plan users can top up", async () => {
@@ -149,8 +261,12 @@ describe("checkout", () => {
     expect(
       await createSubscriptionCheckout(u.id, { plan: "free" as never, interval: "month" }, { provider }),
     ).toEqual({ ok: false, error: "plan_invalid" });
-    expect(await createTopupCheckout(u.id, 7, { provider })).toEqual({ ok: false, error: "topup_invalid" });
-    expect((await createTopupCheckout(u.id, TOPUPS[1].usd, { provider })).ok).toBe(true);
+    expect(await createTopupCheckout(u.id, TOPUP_MIN_USD - 1, { provider })).toEqual({
+      ok: false,
+      error: "topup_invalid",
+      reason: "below_minimum",
+    });
+    expect((await createTopupCheckout(u.id, TOPUP_MIN_USD + 2, { provider })).ok).toBe(true);
     const { u: sub } = await pro();
     expect(
       await createSubscriptionCheckout(sub.id, { plan: "pro_plus", interval: "month" }, { provider }),
@@ -164,25 +280,34 @@ describe("checkout", () => {
       new Request("http://localhost/api/billing/checkout", {
         method: "POST",
         headers: { "content-type": "application/json", ...headers },
-        body: JSON.stringify({ kind: "topup", usd: TOPUPS[0].usd }),
+        body: JSON.stringify({ kind: "topup", usd: TOPUP_MIN_USD }),
       });
     expect((await checkoutPOST(mk({ "sec-fetch-site": "cross-site" }))).status).toBe(403);
     expect((await checkoutPOST(mk({ "sec-fetch-site": "same-origin" }))).status).toBe(401);
     asUser(u.session);
     const ok = await checkoutPOST(mk({ "sec-fetch-site": "same-origin" }));
     expect(ok.status).toBe(200);
-    expect(((await ok.json()) as { url: string }).url).toContain("dodopayments.com");
+    expect(((await ok.json()) as { url: string }).url).toContain("creem.io/test/checkout/");
+    const bad = await checkoutPOST(
+      new Request("http://localhost/api/billing/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json", "sec-fetch-site": "same-origin" },
+        body: JSON.stringify({ kind: "topup", usd: TOPUP_MIN_USD + 0.5 }),
+      }),
+    );
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: "topup_invalid", reason: "not_whole_dollars" });
     asUser(null);
   });
 });
 
 describe("upgrade, downgrade, cancel", () => {
-  it("previews the upgrade with Dodo's prorated amount before charging, and never calls Dodo for a downgrade preview", async () => {
+  it("previews the upgrade with an estimated prorated amount before charging, and never calls Creem for a downgrade preview", async () => {
     const { u } = await pro();
     provider.calls.length = 0;
     provider.previewCents = 1234;
     const up = await previewPlanChange(u.id, { plan: "pro_plus", interval: "month" }, { provider });
-    expect(up).toMatchObject({ ok: true, preview: { kind: "upgrade", amountCents: 1234 } });
+    expect(up).toMatchObject({ ok: true, preview: { kind: "upgrade", amountCents: 1234, estimated: true } });
     expect(provider.calls.some((c) => c.op === "changePlan")).toBe(false);
     const { u: big } = await pro("pro_plus", "pro_plus_month");
     provider.calls.length = 0;
@@ -195,7 +320,7 @@ describe("upgrade, downgrade, cancel", () => {
     });
   });
 
-  it("a downgrade is only recorded (no Dodo call) and can be undone", async () => {
+  it("a downgrade is only recorded (no Creem call) and can be undone", async () => {
     const { u, sub } = await pro("pro_plus", "pro_plus_month");
     provider.calls.length = 0;
     const r = await requestPlanChange(u.id, { plan: "pro", interval: "month" }, { provider });
@@ -458,5 +583,108 @@ describe("usage ledger and isolation", () => {
       { audit: false },
     );
     expect(uRows).toHaveLength(1);
+  });
+});
+
+describe("CreemProvider (HTTP shape, no network)", () => {
+  const TEST_KEY = "creem_test_" + "x".repeat(16);
+  function mock(responses: Record<string, unknown> = {}) {
+    const seen: { method: string; url: string; headers: Record<string, string>; body: unknown }[] = [];
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      seen.push({
+        method: init.method!,
+        url,
+        headers: init.headers as Record<string, string>,
+        body: init.body ? JSON.parse(String(init.body)) : undefined,
+      });
+      const path = new URL(url).pathname;
+      const out = responses[path] ?? {};
+      return new Response(JSON.stringify(out), { status: (out as { status?: number }).status ?? 200 });
+    }) as unknown as typeof fetch;
+    return { seen, fetchImpl };
+  }
+
+  it("refuses a live key in test mode and a test key in live mode", () => {
+    expect(() => new CreemProvider("creem_" + "x".repeat(16), "test")).toThrow(/test API key/);
+    expect(() => new CreemProvider(TEST_KEY, "live")).toThrow(/live mode/);
+    expect(() => new CreemProvider(TEST_KEY, "test")).not.toThrow();
+  });
+
+  it("calls the documented endpoints on the test API with x-api-key", async () => {
+    const { seen, fetchImpl } = mock({
+      "/v1/customers": { id: "cust_1" },
+      "/v1/checkouts": { id: "ch_1", checkout_url: "https://creem.io/test/checkout/prod_c/ch_1" },
+      "/v1/customers/billing": { customer_portal_link: "https://creem.io/test/my-orders/login/x" },
+    });
+    const c = new CreemProvider(TEST_KEY, "test", fetchImpl);
+    expect(await c.createCustomer({ email: "a@example.com", name: "A", userId: "u1" })).toEqual({
+      id: "cust_1",
+    });
+    const co = await c.createCheckout({
+      customerId: "cust_1",
+      productId: "prod_c",
+      requestId: "req_1",
+      metadata: { user_id: "u1" },
+      successUrl: "https://app.example/billing?checkout=success",
+      customPriceCents: 700,
+    });
+    expect(co).toEqual({ checkoutId: "ch_1", url: "https://creem.io/test/checkout/prod_c/ch_1" });
+    await c.changePlan({ subscriptionId: "sub_1", productId: "prod_up", billing: "prorated_immediately" });
+    await c.changePlan({ subscriptionId: "sub_1", productId: "prod_down", billing: "do_not_bill" });
+    await c.setCancelAtPeriodEnd({ subscriptionId: "sub_1", cancel: true });
+    await c.setCancelAtPeriodEnd({ subscriptionId: "sub_1", cancel: false });
+    expect(await c.portalLink("cust_1")).toContain("creem.io");
+    expect(seen.every((r) => r.url.startsWith("https://test-api.creem.io/v1/"))).toBe(true);
+    expect(seen.every((r) => r.headers["x-api-key"] === TEST_KEY)).toBe(true);
+    expect(seen.map((r) => `${r.method} ${new URL(r.url).pathname}`)).toEqual([
+      "POST /v1/customers",
+      "POST /v1/checkouts",
+      "POST /v1/subscriptions/sub_1/upgrade",
+      "POST /v1/subscriptions/sub_1/upgrade",
+      "POST /v1/subscriptions/sub_1/cancel",
+      "POST /v1/subscriptions/sub_1/resume",
+      "POST /v1/customers/billing",
+    ]);
+    expect(seen[0]!.body).toMatchObject({ email: "a@example.com", external_id: "u1" });
+    expect(seen[1]!.body).toEqual({
+      product_id: "prod_c",
+      request_id: "req_1",
+      units: 1,
+      custom_price: 700,
+      customer: { id: "cust_1" },
+      success_url: "https://app.example/billing?checkout=success",
+      metadata: { user_id: "u1" },
+    });
+    expect(seen[2]!.body).toEqual({ product_id: "prod_up", update_behavior: "proration-charge-immediately" });
+    expect(seen[3]!.body).toEqual({ product_id: "prod_down", update_behavior: "proration-none" });
+    expect(seen[4]!.body).toEqual({ mode: "scheduled", onExecute: "cancel" });
+  });
+
+  it("surfaces Creem errors without the key", async () => {
+    const { fetchImpl } = mock({
+      "/v1/checkouts": {
+        status: 400,
+        message: "custom_price is only supported for one-time payment products",
+      },
+    });
+    const c = new CreemProvider(TEST_KEY, "test", fetchImpl);
+    const err = await c
+      .createCheckout({
+        customerId: "c",
+        productId: "p",
+        requestId: "r",
+        metadata: {},
+        successUrl: "s",
+        customPriceCents: 100,
+      })
+      .catch((e: Error) => e);
+    expect(String(err)).toMatch(/400.*one-time/);
+    expect(String(err)).not.toContain(TEST_KEY);
+  });
+
+  it("estimates the prorated upgrade charge", () => {
+    expect(prorationEstimate(900, "every-month", 1900, "every-month", 0.5)).toBe(500);
+    expect(prorationEstimate(900, "every-month", 9000, "every-year", 0.5)).toBe(8550);
+    expect(prorationEstimate(1900, "every-month", 900, "every-month", 0.5)).toBe(0);
   });
 });

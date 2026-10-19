@@ -13,7 +13,7 @@ const STATUS = {
   not_in_catalog: 503,
 } as const;
 
-/** POST { kind: "subscription", plan, interval, founding? } | { kind: "topup", usd } -> { url } (Dodo test/live checkout). */
+/** POST { kind: "subscription", plan, interval, founding? } | { kind: "topup", usd } -> { url } (Creem test/live checkout). */
 export function POST(req: Request) {
   const blocked = assertSameOrigin(req);
   if (blocked) return blocked;
@@ -23,18 +23,18 @@ export function POST(req: Request) {
       plan?: string;
       interval?: string;
       founding?: boolean;
-      usd?: number;
+      usd?: unknown;
     } | null;
     if (!b) return NextResponse.json({ error: "bad_request" }, { status: 400 });
     const r =
       b.kind === "topup"
-        ? await createTopupCheckout(user.id, Number(b.usd))
+        ? await createTopupCheckout(user.id, b.usd)
         : await createSubscriptionCheckout(user.id, {
             plan: b.plan as never,
             interval: b.interval as never,
             founding: b.founding === true,
           });
-    if (!r.ok) return NextResponse.json({ error: r.error }, { status: STATUS[r.error] });
+    if (!r.ok) return NextResponse.json({ error: r.error, reason: r.reason }, { status: STATUS[r.error] });
     return NextResponse.json({ url: r.url });
   });
 }

@@ -1,6 +1,6 @@
 /**
- * User-initiated subscription changes. None of these touch users.plan or the ledger: they ask Dodo (or record a
- * pending downgrade) and the plan follows Dodo's webhook. Upgrades show Dodo's prorated amount first.
+ * User-initiated subscription changes. None of these touch users.plan or the ledger: they ask Creem (or record a
+ * pending downgrade) and the plan follows Creem's webhook. Upgrades show an estimate of the prorated charge first.
  */
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { PLANS, type PlanId } from "@voidaccess/config";
@@ -62,8 +62,9 @@ export async function foundingState(
 export type ChangeKind = "upgrade" | "downgrade" | "same";
 export interface ChangePreview {
   kind: ChangeKind;
-  /** what Dodo would charge right now (cents), for upgrades */
+  /** what the upgrade would charge right now (cents, an estimate: Creem computes the exact proration) */
   amountCents: number | null;
+  estimated: boolean;
   currency: string | null;
   /** when a downgrade takes effect */
   effectiveAt: Date | null;
@@ -117,13 +118,15 @@ export async function previewPlanChange(
   if (!t.ok) return { ok: false, error: t.error };
   let amountCents: number | null = null;
   let currency: string | null = null;
+  let estimated = false;
   if (t.kind === "upgrade") {
     const p = await t.provider.previewChange({
       subscriptionId: t.sub.providerSubscriptionId,
-      productId: t.entry.dodoProductId,
+      productId: t.entry.providerProductId,
     });
     amountCents = p.amountCents;
     currency = p.currency;
+    estimated = p.estimated;
   }
   return {
     ok: true,
@@ -131,6 +134,7 @@ export async function previewPlanChange(
       kind: t.kind,
       amountCents,
       currency,
+      estimated,
       effectiveAt: t.kind === "downgrade" ? t.sub.currentPeriodEnd : null,
       releasesFoundingSeat: t.releases,
       targetKey: t.key,
@@ -151,12 +155,12 @@ export async function requestPlanChange(
   if (t.kind === "upgrade") {
     await t.provider.changePlan({
       subscriptionId: t.sub.providerSubscriptionId,
-      productId: t.entry.dodoProductId,
+      productId: t.entry.providerProductId,
       billing: "prorated_immediately",
     });
     return { ok: true, kind: "upgrade", effectiveAt: null };
   }
-  // downgrade: record it; the cron asks Dodo shortly before the period ends, and the plan drops when the new period starts
+  // downgrade: record it; the cron asks Creem shortly before the period ends, and the plan drops when the new period starts
   await t.database.withSystem(
     "billing.pending.set",
     (tx) =>

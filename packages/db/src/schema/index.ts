@@ -10,6 +10,6 @@ export * from "./platform";
 export * from "./vault";
 export * from "./archive";
 export * from "./waitlist";
-export * from "./billing-dodo";
+export * from "./billing-provider";
 export * from "./ops";
 export * from "./hardening";

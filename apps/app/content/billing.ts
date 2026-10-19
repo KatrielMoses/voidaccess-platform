@@ -28,10 +28,10 @@ export const billingCopy = {
   checkout: {
     subscribe: "Subscribe to {plan}",
     notice:
-      "You'll pay {price} {per} on Dodo's secure checkout. Cancel any time; it takes effect at the end of the period you've paid for.",
+      "You'll pay {price} {per} on Creem's secure checkout. Cancel any time; it takes effect at the end of the period you've paid for.",
     foundingTitle: "Founding seat",
     foundingCta: "Claim a founding seat",
-    foundingNotice: "You'll pay {price} per month on Dodo's secure checkout. {line}",
+    foundingNotice: "You'll pay {price} per month on Creem's secure checkout. {line}",
   },
   founding: {
     heading: "Founding price {price}/mo",
@@ -53,9 +53,22 @@ export const billingCopy = {
   },
   topups: {
     heading: "Top-ups",
-    body: "Need more this month? Buy credits any time, on any plan. Subscribers get a bonus.",
-    columns: { pay: "You pay", credits: "You get", bonus: "Your bonus" },
-    buy: "Buy {usd}",
+    body: "Need more this month? Buy credits any time, on any plan, for any whole-dollar amount. Subscribers get a bonus.",
+    quickPicks: "Quick picks",
+    amountLabel: "Amount in dollars ({min} to {max})",
+    buy: "Buy {usd} of credits",
+    buyDisabled: "Buy credits",
+    youGet: "You get {credits} credits.",
+    breakdown: "{base} at the base rate, plus {bonuses}.",
+    volumeBonus: "a {pct}% volume bonus",
+    subscriberBonus: "your {pct}% subscriber bonus",
+    errors: {
+      whole: "Enter a whole number of dollars.",
+      min: "The minimum top-up is {min}.",
+      max: "The maximum top-up is {max} per purchase.",
+    },
+    rule: "Volume bonus: {bonuses}. Subscriber bonuses apply on top.",
+    ruleTier: "+{pct}% from {from}",
     expiry:
       "Top-up credits are used after your monthly credits and expire {expiryMonths} months after purchase.",
   },
@@ -68,14 +81,15 @@ export const billingCopy = {
     cancelReason: "What made you leave? (optional)",
     resume: "Keep my subscription",
     portal: "Manage billing",
-    portalHelp: "Update your card and download invoices and receipts (handled by Dodo Payments).",
+    portalHelp:
+      "Update your card and download invoices and receipts (handled by Creem, our merchant of record).",
     pendingDowngrade: "Your plan changes to {plan} on {date}.",
     pastDue: "Your last payment failed. Update your payment method to keep your plan.",
   },
   change: {
     upgradeTitle: "Upgrade to {plan}",
     upgradeBody:
-      "Dodo will charge {amount} now for the rest of this period (prorated). You get the extra credits straight away.",
+      "Creem will charge about {amount} now for the rest of this period (prorated; the exact amount is on your receipt). You get the extra credits straight away.",
     downgradeTitle: "Switch to {plan}",
     downgradeBody:
       "Your plan changes on {date}, the end of the period you've paid for. Until then nothing changes.",

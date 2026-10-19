@@ -5,7 +5,7 @@ import { requestPlanChange } from "@/lib/billing/plan-ops";
 
 export const dynamic = "force-dynamic";
 
-/** POST { plan, interval, confirmReleaseFounding? }. Upgrades go to Dodo now; downgrades are recorded for the period end. */
+/** POST { plan, interval, confirmReleaseFounding? }. Upgrades go to Creem now; downgrades are recorded for the period end. */
 export function POST(req: Request) {
   const blocked = assertSameOrigin(req);
   if (blocked) return blocked;

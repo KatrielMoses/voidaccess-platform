@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { billingCustomers, getDatabase, users, type Database } from "@voidaccess/db";
 import type { BillingProvider } from "./provider";
 
-/** The user's Dodo customer id, created on first use. One customer per user and mode; a race resolves to the same row. */
+/** The user's payment-provider customer id, created on first use. One customer per user and mode; a race resolves to the same row. */
 export async function ensureCustomer(
   userId: string,
   provider: BillingProvider,
@@ -13,7 +13,7 @@ export async function ensureCustomer(
       "billing.customer.lookup",
       async (tx) => {
         const [m] = await tx
-          .select({ id: billingCustomers.dodoCustomerId })
+          .select({ id: billingCustomers.providerCustomerId })
           .from(billingCustomers)
           .where(and(eq(billingCustomers.userId, userId), eq(billingCustomers.mode, provider.mode)));
         return m?.id ?? null;
@@ -34,7 +34,7 @@ export async function ensureCustomer(
     (tx) =>
       tx
         .insert(billingCustomers)
-        .values({ userId, mode: provider.mode, dodoCustomerId: created.id })
+        .values({ userId, mode: provider.mode, providerCustomerId: created.id })
         .onConflictDoNothing(),
     { audit: false },
   );

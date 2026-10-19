@@ -1,7 +1,7 @@
 import { PLANS } from "@voidaccess/config";
 import { adminPage } from "@/lib/admin/guard";
 import { getOverview } from "@/lib/admin/queries";
-import { DODO_DASHBOARD_URL, FIRST_INVESTIGATION_WINDOW_HOURS } from "@/lib/admin/constants";
+import { CREEM_DASHBOARD_URL, FIRST_INVESTIGATION_WINDOW_HOURS } from "@/lib/admin/constants";
 import { Bar, Empty, Num, Page, Section, Stack, Stat, StatGrid, T, Td } from "@/components/admin/ui";
 import { int, pct, usd } from "@/components/admin/format";
 
@@ -35,8 +35,8 @@ export default async function AdminOverview() {
           label="MRR (subscriptions)"
           value={usd(o.subscriptions.mrrUsd, 2)}
           sub={
-            <a href={DODO_DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="va-link">
-              Open Dodo dashboard
+            <a href={CREEM_DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="va-link">
+              Open Creem dashboard
             </a>
           }
           testId="stat-mrr"

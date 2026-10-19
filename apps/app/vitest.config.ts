@@ -40,10 +40,10 @@ export default defineConfig({
       MOCK_ARTIFACT_DIR: join(tmpdir(), "va-p2-test-artifacts"),
       VA_FINGERPRINT_KEY: "test-fingerprint-key",
       VA_LOCAL_KEK: Buffer.alloc(32, 7).toString("base64"),
-      // billing (P5): fake provider, fixed webhook secret, test mode
+      // billing (P7): fake provider, fixed webhook secret, test mode
       BILLING_PROVIDER: "fake",
-      DODO_ENV: "test_mode",
-      DODO_WEBHOOK_SECRET: "whsec_" + Buffer.from("test-webhook-secret-0123456789ab").toString("base64"),
+      CREEM_ENV: "test_mode",
+      CREEM_WEBHOOK_SECRET: "whsec_test-webhook-secret-0123456789ab",
     },
   },
 });

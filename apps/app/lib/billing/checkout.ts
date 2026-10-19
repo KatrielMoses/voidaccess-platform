@@ -1,29 +1,36 @@
 /**
- * Checkout sessions. Prices are never sent from here: the Dodo product (created from config by the sync script)
- * carries the price, and the UI shows the same config number before the user clicks.
+ * Checkout sessions. Subscription prices are never sent from here: the provider product (adopted or created from
+ * config by creem:sync) carries the price, and the UI shows the same config number before the user clicks.
+ * Top-ups are pay-as-you-go: the amount is validated against config, recorded in billing_checkouts and sent as the
+ * checkout's custom price; the webhook credits only what was paid for a checkout recorded here.
  */
 import { and, eq, inArray } from "drizzle-orm";
-import { TOPUPS, type PlanId } from "@voidaccess/config";
-import { availableSeats, foundingSeats, getDatabase, subscriptions, type Database } from "@voidaccess/db";
+import { topupAmountError, type PlanId, type TopupAmountError } from "@voidaccess/config";
+import {
+  availableSeats,
+  billingCheckouts,
+  foundingSeats,
+  getDatabase,
+  subscriptions,
+  type Database,
+} from "@voidaccess/db";
 import { getEnv } from "../../env";
-import { activeCatalogEntry, FOUNDING_KEY, subKey, topupKey, type Interval } from "./catalog";
+import { activeCatalogEntry, FOUNDING_KEY, subKey, TOPUP_KEY, type Interval } from "./catalog";
 import { ensureCustomer } from "./customers";
 import { getBillingProvider, type BillingProvider } from "./provider";
 
 export type CheckoutError =
   "plan_invalid" | "already_subscribed" | "founding_unavailable" | "not_in_catalog" | "topup_invalid";
 
-export type CheckoutResult = { ok: true; url: string; key: string } | { ok: false; error: CheckoutError };
+export type CheckoutResult =
+  { ok: true; url: string; key: string } | { ok: false; error: CheckoutError; reason?: TopupAmountError };
 
 export interface CheckoutDeps {
   provider?: BillingProvider;
   database?: Database;
 }
 
-const returnUrls = () => {
-  const base = getEnv().APP_URL.replace(/\/$/, "");
-  return { returnUrl: `${base}/billing?checkout=success`, cancelUrl: `${base}/billing?checkout=cancelled` };
-};
+const successUrl = () => `${getEnv().APP_URL.replace(/\/$/, "")}/billing?checkout=success`;
 
 export async function createSubscriptionCheckout(
   userId: string,
@@ -69,17 +76,21 @@ export async function createSubscriptionCheckout(
   return startCheckout(userId, key, provider, database);
 }
 
+/** `usd` is whatever the client sent: only a whole-dollar amount inside the config range gets a checkout. */
 export async function createTopupCheckout(
   userId: string,
-  usd: number,
+  usd: unknown,
   deps: CheckoutDeps = {},
 ): Promise<CheckoutResult> {
-  if (!TOPUPS.some((t) => t.usd === usd)) return { ok: false, error: "topup_invalid" };
+  const n = typeof usd === "number" ? usd : typeof usd === "string" && usd.trim() !== "" ? Number(usd) : NaN;
+  const reason = topupAmountError(n);
+  if (reason) return { ok: false, error: "topup_invalid", reason };
   return startCheckout(
     userId,
-    topupKey(usd),
+    TOPUP_KEY,
     deps.provider ?? getBillingProvider(),
     deps.database ?? getDatabase(),
+    n,
   );
 }
 
@@ -88,6 +99,7 @@ async function startCheckout(
   key: string,
   provider: BillingProvider,
   database: Database,
+  topupUsd?: number,
 ): Promise<CheckoutResult> {
   const entry = await database.withSystem(
     "billing.catalog.lookup",
@@ -96,13 +108,39 @@ async function startCheckout(
   );
   if (!entry) return { ok: false, error: "not_in_catalog" };
   const customerId = await ensureCustomer(userId, provider, database);
-  const { returnUrl, cancelUrl } = returnUrls();
+  const amountCents = topupUsd !== undefined ? topupUsd * 100 : entry.amountCents;
+  const [row] = await database.withSystem(
+    "billing.checkout.record",
+    (tx) =>
+      tx
+        .insert(billingCheckouts)
+        .values({
+          userId,
+          mode: provider.mode,
+          kind: entry.kind,
+          key,
+          amountCents,
+          topupUsd: topupUsd ?? null,
+        })
+        .returning({ id: billingCheckouts.id }),
+    { audit: false },
+  );
   const s = await provider.createCheckout({
     customerId,
-    productId: entry.dodoProductId,
-    metadata: { user_id: userId, key },
-    returnUrl,
-    cancelUrl,
+    productId: entry.providerProductId,
+    requestId: row!.id,
+    metadata: { user_id: userId, key, checkout_ref: row!.id },
+    successUrl: successUrl(),
+    ...(topupUsd !== undefined ? { customPriceCents: amountCents } : {}),
   });
+  await database.withSystem(
+    "billing.checkout.link",
+    (tx) =>
+      tx
+        .update(billingCheckouts)
+        .set({ providerCheckoutId: s.checkoutId })
+        .where(eq(billingCheckouts.id, row!.id)),
+    { audit: false },
+  );
   return { ok: true, url: s.url, key };
 }

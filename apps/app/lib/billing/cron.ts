@@ -132,7 +132,7 @@ export async function endCancelledSubscriptions(now: Date, database: Database): 
 }
 
 /**
- * Pending downgrades: shortly before the period ends, ask Dodo to switch the product without billing, so the
+ * Pending downgrades: shortly before the period ends, ask Creem to switch the product without billing, so the
  * renewal charges the lower price and the new period starts on the lower plan (applied by the webhook).
  */
 export async function applyPendingChanges(now: Date, deps: Deps = {}): Promise<number> {
@@ -164,7 +164,7 @@ export async function applyPendingChanges(now: Date, deps: Deps = {}): Promise<n
     if (!entry) continue;
     await provider.changePlan({
       subscriptionId: s.providerSubscriptionId,
-      productId: entry.dodoProductId,
+      productId: entry.providerProductId,
       billing: "do_not_bill",
     });
     await database.withSystem(

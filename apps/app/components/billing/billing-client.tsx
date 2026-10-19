@@ -14,12 +14,13 @@ import {
   Textarea,
   cn,
 } from "@voidaccess/ui";
-import { FOUNDING, PLANS, TOPUP_EXPIRY_MONTHS, type PlanId } from "@voidaccess/config";
+import { FOUNDING, PLANS, type PlanId } from "@voidaccess/config";
 import { billingCopy as copy, fill } from "@/content/billing";
 import { dateFmt, centsToUsd, num, usd } from "@/lib/billing/format";
 import type { BillingView } from "@/lib/billing/view";
 import { Notice, Row, SectionTitle } from "@/components/page-header";
 import { SUPPORT_EMAIL } from "@/lib/site";
+import { TopupPicker } from "./topup-picker";
 
 type Interval = "month" | "year";
 interface Preview {
@@ -124,7 +125,8 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
           {checkout === "success" ? (
             <Notice role="status" mark="✓" tone="quiet" data-testid="checkout-return">
               <p className="text-paper">
-                Thanks! Your plan updates as soon as Dodo confirms the payment, usually within a minute.
+                Thanks! Your plan or credits update as soon as Creem confirms the payment, usually within a
+                minute.
               </p>
             </Notice>
           ) : null}
@@ -194,6 +196,7 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
                   <Button
                     loading={busy === "/api/billing/resume"}
                     onClick={() => simple("/api/billing/resume")}
+                    data-testid="resume"
                   >
                     {copy.subscription.resume}
                   </Button>
@@ -419,59 +422,11 @@ export function BillingClient({ view, checkout }: { view: BillingView; checkout?
           <SectionTitle id="topups-h">{copy.topups.heading}</SectionTitle>
           <p className="text-[15px] text-dim">{copy.topups.body}</p>
         </div>
-        <div className="overflow-x-auto">
-          <table
-            className="w-full min-w-[28rem] border-collapse text-left text-[15px]"
-            data-testid="topup-table"
-          >
-            <thead>
-              <tr className="border-b border-line">
-                <th className="h-11 pr-4 font-mono text-[12px] font-normal text-mute">
-                  {copy.topups.columns.pay}
-                </th>
-                <th className="h-11 px-4 font-mono text-[12px] font-normal text-mute">
-                  {copy.topups.columns.credits}
-                </th>
-                <th className="h-11 px-4 font-mono text-[12px] font-normal text-mute">
-                  {copy.topups.columns.bonus}
-                </th>
-                <th className="h-11 pl-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {view.topups.map((t) => (
-                <tr key={t.usd} className="border-b border-line transition-colors duration-300 hover:bg-bg-2">
-                  <th
-                    scope="row"
-                    className="py-3 pr-4 font-mono text-[14px] font-normal text-paper tabular-nums"
-                  >
-                    {usd(t.usd)}
-                  </th>
-                  <td className="px-4 py-3 font-mono text-[14px] tabular-nums">{num(t.credits)}</td>
-                  <td className="px-4 py-3 font-mono text-[13px] text-dim">
-                    {t.bonusPct > 0 ? `+${t.bonusPct}%` : "-"}
-                  </td>
-                  <td className="py-3 pl-4 text-right">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      loading={busy === `topup-${t.usd}`}
-                      onClick={() =>
-                        go("/api/billing/checkout", { kind: "topup", usd: t.usd }, `topup-${t.usd}`)
-                      }
-                      data-testid={`topup-${t.usd}`}
-                    >
-                      {fill(copy.topups.buy, { usd: usd(t.usd) })}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-[15px] text-mute">
-          {fill(copy.topups.expiry, { expiryMonths: TOPUP_EXPIRY_MONTHS })}
-        </p>
+        <TopupPicker
+          plan={view.plan}
+          busy={busy === "topup"}
+          onBuy={(amount) => go("/api/billing/checkout", { kind: "topup", usd: amount }, "topup")}
+        />
       </section>
 
       <p className="text-[15px] text-dim">

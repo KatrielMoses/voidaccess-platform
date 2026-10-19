@@ -29,7 +29,7 @@ export const subscriptions = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull().default("dodo"),
+    provider: text("provider").notNull().default("creem"),
     providerSubscriptionId: text("provider_subscription_id").notNull(),
     providerCustomerId: text("provider_customer_id"),
     plan: planEnum("plan").notNull(),
@@ -69,7 +69,7 @@ export const payments = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull().default("dodo"),
+    provider: text("provider").notNull().default("creem"),
     providerPaymentId: text("provider_payment_id").notNull(),
     /** minor units (cents) */
     amountCents: integer("amount_cents").notNull(),

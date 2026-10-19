@@ -26,7 +26,7 @@ Your investigation "{{query}}" has finished.
 
 View the results: {{resultsUrl}}`,
   },
-  // ---- billing (P5). Receipts and invoices come from Dodo; these are the founder-voiced extras. ----
+  // ---- billing (P5). Receipts and invoices come from Creem; these are the founder-voiced extras. ----
   welcomePro: {
     subject: "Welcome to VoidAccess {{plan}}",
     body: `Hi {{name}},
@@ -35,7 +35,7 @@ You're on {{plan}}. {{credits}} credits are in your account now and renew every 
 
 Start an investigation: {{url}}
 
-Receipts and invoices come from our payment provider, Dodo Payments. You can manage your card and cancel any time from the billing page: {{billingUrl}}
+Receipts and invoices come from Creem, our merchant of record. You can manage your card and cancel any time from the billing page: {{billingUrl}}
 
 If anything looks wrong, reply to this email and I'll sort it out.`,
   },

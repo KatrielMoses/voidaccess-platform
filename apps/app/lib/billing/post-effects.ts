@@ -62,7 +62,7 @@ export async function runPostEffects(effects: PostEffect[]): Promise<void> {
   }
 }
 
-/** Dodo customer-portal link for the user (card, invoices, receipts). */
+/** Creem customer-portal link for the user (card, invoices, receipts). */
 export async function portalLinkFor(userId: string): Promise<string> {
   const { ensureCustomer } = await import("./customers");
   const provider = getBillingProvider();

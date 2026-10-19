@@ -1,6 +1,6 @@
 /** Server-side assembly of everything the /billing page shows. All numbers come from @voidaccess/config. */
 import { and, desc, eq, gt, inArray } from "drizzle-orm";
-import { FOUNDING, PLANS, TOPUPS, topupCredits, type PlanId } from "@voidaccess/config";
+import { FOUNDING, PLANS, type PlanId } from "@voidaccess/config";
 import { availableSeats, foundingNotices, getDatabase, type Database } from "@voidaccess/db";
 import { desiredCatalog, FOUNDING_KEY, type Interval } from "./catalog";
 import { currentSubscription, foundingState } from "./plan-ops";
@@ -38,7 +38,6 @@ export interface BillingView {
   seats: { available: number; total: number };
   canClaimFounding: boolean;
   plans: PlanView[];
-  topups: { usd: number; baseCredits: number; credits: number; bonusPct: number }[];
 }
 
 export async function loadBillingView(
@@ -116,15 +115,6 @@ export async function loadBillingView(
         historyDays: p.historyDays,
         features: [...p.features],
         requiresCard: p.requiresCard,
-      };
-    }),
-    topups: TOPUPS.map((t) => {
-      const credits = topupCredits(t.usd, plan);
-      return {
-        usd: t.usd,
-        baseCredits: t.credits,
-        credits,
-        bonusPct: Math.round((credits / t.credits - 1) * 100),
       };
     }),
   };

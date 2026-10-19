@@ -5,7 +5,7 @@ import { previewPlanChange } from "@/lib/billing/plan-ops";
 
 export const dynamic = "force-dynamic";
 
-/** POST { plan, interval } -> what the change would do, with Dodo's prorated amount for upgrades. */
+/** POST { plan, interval } -> what the change would do, with the estimated prorated charge for upgrades. */
 export function POST(req: Request) {
   const blocked = assertSameOrigin(req);
   if (blocked) return blocked;

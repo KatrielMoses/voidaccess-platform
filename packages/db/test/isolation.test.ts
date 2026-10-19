@@ -136,6 +136,7 @@ describe("tenant isolation (RLS)", () => {
       "billing_customers", // P5: system-only
       "billing_events",
       "billing_alerts",
+      "billing_checkouts", // P7: system-only
       "lifecycle_emails", // P6: system-only
       "rate_limit_events", // H1: system-only
     ]);
@@ -153,6 +154,7 @@ describe("tenant isolation (RLS)", () => {
           "billing_customers",
           "billing_events",
           "billing_alerts",
+          "billing_checkouts",
           "lifecycle_emails",
           "rate_limit_events", // H1: system-only
         ].includes(t),
@@ -242,6 +244,7 @@ describe("tenant isolation (RLS)", () => {
       "billing_customers",
       "billing_events",
       "billing_alerts",
+      "billing_checkouts", // P7
       "lifecycle_emails", // P6
       "rate_limit_events", // H1: system-only
       "archive_jobs", // P4: the archive work queue

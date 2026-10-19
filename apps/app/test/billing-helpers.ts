@@ -1,17 +1,24 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
-import { creditLedger, billingCustomers, getDatabase, subscriptions, users } from "@voidaccess/db";
+import { and, desc, eq } from "drizzle-orm";
+import {
+  billingCatalog,
+  billingCheckouts,
+  billingCustomers,
+  creditLedger,
+  getDatabase,
+  subscriptions,
+  users,
+} from "@voidaccess/db";
 import { setTransport, LogTransport } from "@voidaccess/emails";
-import { FakeProvider, setBillingProvider } from "@/lib/billing/provider";
-import { handleDodoWebhook, type DodoEvent } from "@/lib/billing/webhook";
-import { signWebhook } from "@/lib/billing/webhook-verify";
+import { FakeProvider, setBillingProvider, type Mode } from "@/lib/billing/provider";
+import { handleCreemWebhook, type CreemEvent } from "@/lib/billing/webhook";
+import { SIGNATURE_HEADER, signWebhook } from "@/lib/billing/webhook-verify";
 import { syncCatalog } from "@/lib/billing/sync";
-import { billingCatalog } from "@voidaccess/db";
-import { and } from "drizzle-orm";
+import { createTopupCheckout } from "@/lib/billing/checkout";
 import { makeUser } from "./helpers";
 import type { TestSessionUser } from "./session-state";
 
-export const SECRET = process.env.DODO_WEBHOOK_SECRET!;
+export const SECRET = process.env.CREEM_WEBHOOK_SECRET!;
 export const provider = new FakeProvider();
 export const outbox = new LogTransport(undefined);
 
@@ -21,7 +28,7 @@ export async function setupBilling() {
   await syncCatalog(provider);
 }
 
-export const productId = async (key: string): Promise<string> => {
+export async function catalogRow(key: string, mode: Mode = "test") {
   const [r] = await getDatabase().withSystem(
     "test.catalog",
     (tx) =>
@@ -29,12 +36,13 @@ export const productId = async (key: string): Promise<string> => {
         .select()
         .from(billingCatalog)
         .where(
-          and(eq(billingCatalog.key, key), eq(billingCatalog.active, true), eq(billingCatalog.mode, "test")),
+          and(eq(billingCatalog.key, key), eq(billingCatalog.active, true), eq(billingCatalog.mode, mode)),
         ),
     { audit: false },
   );
-  return r!.dodoProductId;
-};
+  return r!;
+}
+export const productId = async (key: string): Promise<string> => (await catalogRow(key)).providerProductId;
 
 export interface BUser {
   id: string;
@@ -44,13 +52,13 @@ export interface BUser {
   session: TestSessionUser;
 }
 
-/** A free user with no credits and a Dodo customer mapping (what checkout creates before redirecting). */
+/** A user with no credits and a Creem customer mapping (what checkout creates before redirecting). */
 export async function makeBillingUser(plan: "free" | "pro" | "pro_plus" = "free"): Promise<BUser> {
   const u = await makeUser({ plan, credits: 0 });
-  const customer = `cus_${randomUUID().slice(0, 12)}`;
+  const customer = `cust_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   await getDatabase().withSystem(
     "test.customer",
-    (tx) => tx.insert(billingCustomers).values({ userId: u.id, mode: "test", dodoCustomerId: customer }),
+    (tx) => tx.insert(billingCustomers).values({ userId: u.id, mode: "test", providerCustomerId: customer }),
     { audit: false },
   );
   return { id: u.id, customer, email: u.email, session: u };
@@ -64,67 +72,140 @@ export interface SubData {
   user: BUser;
   subId: string;
   key: string;
+  /** Creem's subscription status: active | scheduled_cancel | past_due | unpaid | paused | canceled | ... */
   status?: string;
   periodStart: Date;
   periodEnd: Date;
-  cancelFlag?: boolean;
   metadataUser?: string | null;
+  /** subscription.paid carries the paid transaction */
+  transactionId?: string;
+  mode?: string;
 }
 
+/** A Creem subscription object as webhooks carry it (product and customer expanded). */
 export async function subSnapshot(o: SubData) {
+  const cat = await catalogRow(o.key);
   return {
-    payload_type: "Subscription",
-    subscription_id: o.subId,
-    product_id: await productId(o.key),
+    id: o.subId,
+    object: "subscription",
+    product: {
+      id: cat.providerProductId,
+      name: cat.name,
+      price: cat.amountCents,
+      currency: "USD",
+      billing_type: "recurring",
+      billing_period: cat.interval === "year" ? "every-year" : "every-month",
+      status: "active",
+      mode: "test",
+    },
+    customer: { id: o.user.customer, object: "customer", email: o.user.email, name: "T", mode: "test" },
+    collection_method: "charge_automatically",
     status: o.status ?? "active",
-    previous_billing_date: iso(o.periodStart),
-    next_billing_date: iso(o.periodEnd),
-    cancel_at_next_billing_date: o.cancelFlag ?? false,
-    customer: { customer_id: o.user.customer, email: o.user.email, name: "T" },
+    ...(o.transactionId
+      ? {
+          last_transaction_id: o.transactionId,
+          last_transaction: { id: o.transactionId, amount: cat.amountCents, currency: "USD" },
+          last_transaction_date: iso(o.periodStart),
+        }
+      : {}),
+    current_period_start_date: iso(o.periodStart),
+    current_period_end_date: iso(o.periodEnd),
+    canceled_at: o.status === "canceled" ? iso(o.periodStart) : null,
     metadata: o.metadataUser === null ? {} : { user_id: o.metadataUser ?? o.user.id },
+    mode: o.mode ?? "test",
   };
 }
 
-export function paymentData(o: {
-  user: BUser;
-  paymentId: string;
-  productId?: string;
-  subId?: string;
-  cents: number;
-  at: Date;
-}) {
+/** Start a real top-up checkout through the app code (fake provider) and return what it recorded. */
+export async function startTopup(user: BUser, usd: number) {
+  const r = await createTopupCheckout(user.id, usd, { provider });
+  if (!r.ok) throw new Error(`checkout failed: ${r.error}`);
+  const [row] = await getDatabase().withSystem(
+    "test.checkout",
+    (tx) =>
+      tx
+        .select()
+        .from(billingCheckouts)
+        .where(eq(billingCheckouts.userId, user.id))
+        .orderBy(desc(billingCheckouts.createdAt))
+        .limit(1),
+    { audit: false },
+  );
+  return row!;
+}
+
+/** checkout.completed for a one-time (top-up) checkout, as Creem sends it. */
+export async function topupCompleted(
+  user: BUser,
+  checkout: { id: string; providerCheckoutId: string | null; amountCents: number },
+  o: {
+    orderId?: string;
+    paidCents?: number;
+    customPrice?: number | null;
+    discountCents?: number;
+    currency?: string;
+    metadataUser?: string;
+    customer?: string;
+    at?: Date;
+  } = {},
+) {
+  const product = await catalogRow("topup_credits");
+  const paid = o.paidCents ?? checkout.amountCents;
+  const orderId = o.orderId ?? `ord_${checkout.id.slice(0, 8)}`;
+  const customer = o.customer ?? user.customer;
   return {
-    payload_type: "Payment",
-    payment_id: o.paymentId,
-    total_amount: o.cents,
-    created_at: iso(o.at),
-    subscription_id: o.subId ?? null,
-    product_cart: o.productId ? [{ product_id: o.productId, quantity: 1 }] : null,
-    customer: { customer_id: o.user.customer, email: o.user.email, name: "T" },
-    metadata: { user_id: o.user.id },
+    id: checkout.providerCheckoutId,
+    object: "checkout",
+    request_id: checkout.id,
+    order: {
+      id: orderId,
+      object: "order",
+      customer,
+      product: product.providerProductId,
+      amount: paid,
+      sub_total: paid,
+      tax_amount: 0,
+      discount_amount: o.discountCents ?? 0,
+      amount_due: paid,
+      amount_paid: paid,
+      currency: o.currency ?? "USD",
+      status: "paid",
+      type: "onetime",
+      transaction: `tran_${orderId}`,
+      created_at: iso(o.at ?? new Date()),
+      mode: "test",
+    },
+    product: {
+      id: product.providerProductId,
+      name: product.name,
+      price: product.amountCents,
+      currency: "USD",
+      billing_type: "onetime",
+      billing_period: "once",
+      mode: "test",
+    },
+    customer: { id: customer, object: "customer", email: user.email, mode: "test" },
+    units: 1,
+    ...(o.customPrice === null ? {} : { custom_price: o.customPrice ?? checkout.amountCents }),
+    status: "completed",
+    metadata: { user_id: o.metadataUser ?? user.id, key: "topup_credits", checkout_ref: checkout.id },
+    mode: "test",
   };
 }
 
-/** Deliver a signed event exactly as Dodo would (Standard Webhooks headers over the raw body). */
+/** Deliver a signed event exactly as Creem would (creem-signature = hex HMAC-SHA256 of the raw body). */
 export async function deliver(
   type: string,
-  data: Record<string, unknown>,
-  opts: { id?: string; at?: Date; now?: Date; secret?: string; tamper?: boolean; skewSeconds?: number } = {},
+  object: Record<string, unknown>,
+  opts: { id?: string; at?: Date; now?: Date; secret?: string; tamper?: boolean; mode?: Mode } = {},
 ) {
   const at = opts.at ?? new Date();
-  const now = opts.now ?? at;
-  const ev: DodoEvent = { business_id: "bus_test", type, timestamp: iso(at), data };
+  const ev: CreemEvent = { id: opts.id ?? eventId(), eventType: type, created_at: at.getTime(), object };
   const body = JSON.stringify(ev);
-  const id = opts.id ?? eventId();
-  const ts = Math.floor(now.getTime() / 1000) + (opts.skewSeconds ?? 0);
-  const sig = signWebhook(opts.secret ?? SECRET, id, ts, body);
-  const headers = new Headers({
-    "webhook-id": id,
-    "webhook-timestamp": String(ts),
-    "webhook-signature": sig,
-  });
-  return handleDodoWebhook(opts.tamper ? body.replace('"type"', '"type" ') : body, headers, {
-    now: () => now,
+  const headers = new Headers({ [SIGNATURE_HEADER]: signWebhook(opts.secret ?? SECRET, body) });
+  return handleCreemWebhook(opts.tamper ? body.replace('"eventType"', '"eventType" ') : body, headers, {
+    now: () => opts.now ?? at,
+    ...(opts.mode ? { mode: opts.mode } : {}),
   });
 }
 
