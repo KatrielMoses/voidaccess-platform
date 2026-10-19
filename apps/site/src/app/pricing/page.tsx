@@ -2,7 +2,7 @@ import { FOUNDING, PLANS, type Feature, type PlanId } from "@voidaccess/config";
 import { SUPPORT_EMAIL } from "@content/legal-common";
 import * as pricing from "@content/pricing";
 import { APP_URL } from "@/lib/auth/config";
-import { money, resolve, topupRows } from "@/lib/facts";
+import { money, resolve, topupRows, topupTiers } from "@/lib/facts";
 import { pageMetadata } from "@/lib/metadata";
 import { Reveal } from "@/components/motion";
 
@@ -79,14 +79,14 @@ function FoundingPrice() {
   );
 }
 
-function Head({ index, title, note }: { index: string; title: string; note?: string }) {
+function Head({ id, index, title, note }: { id?: string; index: string; title: string; note?: string }) {
   return (
     <div className="grid grid-cols-1 gap-y-4 min-[961px]:grid-cols-12">
       <p className="flex items-center gap-3 font-mono text-[13px] text-dim min-[961px]:col-span-2">
         <i aria-hidden className="inline-block h-px w-7 bg-line-3" />
         {index}
       </p>
-      <h2 className="text-[clamp(32px,3.6vw,52px)] leading-none tracking-[-0.04em] min-[961px]:col-span-7">{title}</h2>
+      <h2 id={id} className="text-[clamp(32px,3.6vw,52px)] leading-none tracking-[-0.04em] min-[961px]:col-span-7">{title}</h2>
       {note && <p className="text-[16px] leading-normal text-dim min-[961px]:col-span-3">{note}</p>}
     </div>
   );
@@ -94,6 +94,7 @@ function Head({ index, title, note }: { index: string; title: string; note?: str
 
 export default function PricingPage() {
   const rows = topupRows();
+  const tiers = topupTiers();
   const plans = [PLANS.free, PLANS.pro, PLANS.pro_plus];
 
   return (
@@ -205,7 +206,7 @@ export default function PricingPage() {
       </section>
 
       <section id="credits" aria-labelledby="credits-h" className="mt-24 min-[961px]:mt-[150px]">
-        <Head index="01 Usage" title={pricing.explainer.heading} note={pricing.explainer.body} />
+        <Head id="credits-h" index="01 Usage" title={pricing.explainer.heading} note={pricing.explainer.body} />
         <div className="mt-12 grid grid-cols-1 gap-px border border-line bg-line min-[961px]:grid-cols-2">
           {pricing.explainer.rows.map((x) => (
             <div key={x.name} className="bg-bg p-7 min-[961px]:p-8">
@@ -224,29 +225,75 @@ export default function PricingPage() {
       </section>
 
       <section id="topups" aria-labelledby="topups-h" className="mt-24 min-[961px]:mt-[150px]">
-        <Head index="02 Top-ups" title={pricing.topups.heading} note={`${pricing.topups.body} ${r(pricing.topups.minimum)}`} />
-        <div className="mt-12 overflow-x-auto">
-          <table className="w-full min-w-[560px] border-collapse text-left">
-            <caption className="sr-only">{pricing.topups.heading}</caption>
+        <Head id="topups-h" index="02 Top-ups" title={pricing.topups.heading} note={`${pricing.topups.body} ${r(pricing.topups.minimum)}`} />
+
+        {/* the rule: four figures, read straight from config */}
+        <dl className="mt-12 grid grid-cols-2 gap-px border border-line bg-line min-[961px]:grid-cols-4">
+          {pricing.topups.rule.map((x) => (
+            <div key={x.label} className="flex flex-col-reverse justify-end bg-bg p-6 min-[961px]:p-8">
+              <dt className="mt-3 text-[15px] leading-snug text-dim">{x.label}</dt>
+              <dd className="font-mono text-[32px] leading-none tracking-[-0.04em] tabular-nums min-[961px]:text-[40px]">{r(x.value)}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="mt-12 grid grid-cols-1 gap-12 min-[961px]:grid-cols-2 min-[961px]:gap-8">
+          <div>
+            <h3 className="text-[21px] leading-none tracking-[-0.02em]">{pricing.topups.volume.heading}</h3>
+            <p className="mt-2 text-[15px] text-dim">{pricing.topups.volume.note}</p>
+            <ul className="mt-5 flex flex-col border-t border-line font-mono text-[14px] tabular-nums">
+              {tiers.map((t) => (
+                <li key={t.from} className="flex justify-between gap-4 border-b border-line py-3">
+                  <span className="text-dim">
+                    {pricing.topups.volume.from} <span className="text-paper">{t.from}</span>
+                  </span>
+                  <span className="text-paper">{t.bonus}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-[21px] leading-none tracking-[-0.02em]">{pricing.topups.subscriber.heading}</h3>
+            <p className="mt-2 text-[15px] text-dim">{pricing.topups.subscriber.note}</p>
+            <ul className="mt-5 flex flex-col border-t border-line font-mono text-[14px] tabular-nums">
+              {pricing.topups.subscriber.rows.map((x) => (
+                <li key={x.plan} className="flex justify-between gap-4 border-b border-line py-3">
+                  <span className="text-dim">{x.plan}</span>
+                  <span className="text-paper">{r(x.bonus)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <h3 className="mt-16 text-[21px] leading-none tracking-[-0.02em]">{pricing.topups.example.heading}</h3>
+        <p className="mt-3 max-w-[72ch] text-[15px] leading-normal text-dim">{r(pricing.topups.example.body)}</p>
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full min-w-[340px] border-collapse text-left">
+            <caption className="sr-only">{pricing.topups.example.caption}</caption>
             <thead>
               <tr className="border-b border-line">
-                {Object.values(pricing.topups.columns).map((c) => (
-                  <th key={c} scope="col" className="py-3 pr-4 font-mono text-[12px] font-normal text-mute">
+                {Object.values(pricing.topups.example.columns).map((c, i) => (
+                  <th
+                    key={c}
+                    scope="col"
+                    className={`py-3 pr-3 font-mono text-[12px] font-normal text-mute last:pr-0 min-[961px]:pr-4 min-[961px]:last:pr-0 ${i > 0 ? "text-right" : ""}`}
+                  >
                     {c}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="font-mono text-[14px] tabular-nums">
+            <tbody className="font-mono text-[13px] tabular-nums min-[961px]:text-[14px]">
               {rows.map((t) => (
                 <tr key={t.usd} className="border-b border-line">
-                  <th scope="row" className="py-4 pr-4 font-normal text-paper">
+                  <th scope="row" className="py-4 pr-3 font-normal text-paper min-[961px]:pr-4">
                     {t.usd}
                   </th>
-                  <td className="py-4 pr-4">{t.credits}</td>
-                  <td className="py-4 pr-4 text-dim">{t.baseBonus}</td>
-                  <td className="py-4 pr-4">{t.proCredits}</td>
-                  <td className="py-4 pr-4">{t.plusCredits}</td>
+                  <td className="py-4 pr-3 text-right text-dim min-[961px]:pr-4">{t.volumeBonus}</td>
+                  <td className="py-4 pr-3 text-right min-[961px]:pr-4">{t.freeCredits}</td>
+                  <td className="py-4 pr-3 text-right min-[961px]:pr-4">{t.proCredits}</td>
+                  <td className="py-4 text-right">{t.plusCredits}</td>
                 </tr>
               ))}
             </tbody>
@@ -255,7 +302,7 @@ export default function PricingPage() {
       </section>
 
       <section id="faq" aria-labelledby="faq-h" className="mt-24 min-[961px]:mt-[150px]">
-        <Head index="03 Questions" title="Pricing questions" />
+        <Head id="faq-h" index="03 Questions" title="Pricing questions" />
         <dl className="mt-12 border-t border-line">
           {pricing.faq.map((f) => (
             <div key={f.q} className="grid grid-cols-1 gap-2 border-b border-line py-6 min-[961px]:grid-cols-12">

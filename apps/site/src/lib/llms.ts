@@ -27,7 +27,15 @@ function planLines(): string[] {
 }
 
 function topupLines(): string[] {
-  return topupRows().map((t) => `- ${t.usd}: ${t.credits} credits (${t.baseBonus} volume bonus); Pro subscribers get ${t.proCredits}, Pro+ subscribers get ${t.plusCredits}`);
+  return [
+    r("- Any whole-dollar amount from {{topup.min}} to {{topup.max}}, at {{topup.rate}} credits per dollar."),
+    r("- Volume bonus: {{topup.volume}} (the highest tier reached applies)."),
+    r("- Subscriber bonus on top of the volume bonus: +{{topup.proBonus}} on Pro, +{{topup.plusBonus}} on Pro+."),
+    "- Worked examples:",
+    ...topupRows().map(
+      (t) => `  - ${t.usd}: Free ${t.freeCredits} credits, Pro ${t.proCredits} credits, Pro+ ${t.plusCredits} credits (volume bonus ${t.volumeBonus})`,
+    ),
+  ];
 }
 
 function sections(list: Section[]): string[] {
@@ -91,7 +99,7 @@ export function buildLlmsFull(): string {
     "",
     ...planLines(),
     "",
-    `Top-ups (all plans, minimum ${r("{{topup.min}}")}; credits expire ${r("{{topup.expiryMonths}}")} months after purchase):`,
+    `Top-ups (all plans, including Free; credits expire ${r("{{topup.expiryMonths}}")} months after purchase):`,
     ...topupLines(),
     "",
     `Credits: ${r(pricing.explainer.example)} ${pricing.explainer.rules.map((x) => r(x)).join(" ")}`,

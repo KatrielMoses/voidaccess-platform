@@ -42,7 +42,11 @@ and the site fills in the current value:
 | `{{founding.termMonths}}`, `{{founding.renewalMonths}}`, `{{founding.inactivityMonths}}`, `{{founding.noticeDays}}` | the founding rule numbers |
 | `{{founding.proPrice}}` | the normal Pro price a released founder moves to |
 | `{{founding.copy}}` | the official founding line ("Founding price …/mo, kept every year you stay active.") |
-| `{{topup.min}}`, `{{topup.expiryMonths}}` | minimum top-up, months until top-up credits expire |
+| `{{topup.min}}`, `{{topup.max}}`, `{{topup.rate}}` | smallest and largest top-up, credits per dollar |
+| `{{topup.expiryMonths}}` | months until top-up credits expire |
+| `{{topup.volume}}`, `{{topup.tier1.from}}`, `{{topup.tier1.bonus}}` (tier2, …) | volume bonus tiers (all of them in one phrase, or one at a time) |
+| `{{topup.proBonus}}`, `{{topup.plusBonus}}` | subscriber bonus on top-ups for Pro / Pro+ |
+| `{{topup.example.usd}}`, `.base`, `.volumePct`, `.withVolume`, `.subscriberPct`, `.credits` | the worked example (top volume tier on Pro) |
 
 If you type a real `$` amount or "N credits", the automated test `no-hardcoded-prices` fails, on
 purpose. A misspelt placeholder fails the build instead of showing the wrong number.

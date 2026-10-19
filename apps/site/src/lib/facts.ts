@@ -4,7 +4,19 @@ import { SUPPORT_EMAIL } from "@content/legal-common";
  * @voidaccess/config at build time. Content files refer to these as {{token}}
  * placeholders (see resolve()); nothing here is typed in by hand.
  */
-import { DEPTHS, FOUNDING, PLANS, TOPUPS, TOPUP_EXPIRY_MONTHS, TOPUP_MIN_USD, topupCredits, type PlanId } from "@voidaccess/config";
+import {
+  DEPTHS,
+  FOUNDING,
+  PLANS,
+  TOPUP_CREDITS_PER_USD,
+  TOPUP_EXPIRY_MONTHS,
+  TOPUP_MAX_USD,
+  TOPUP_MIN_USD,
+  TOPUP_VOLUME_BONUSES,
+  topupBreakdown,
+  topupCredits,
+  type PlanId,
+} from "@voidaccess/config";
 
 const usd = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
 const num = (n: number) => n.toLocaleString("en-US");
@@ -12,6 +24,34 @@ const pct = (f: number) => `${Math.round(f * 100)}%`;
 
 const standard = DEPTHS.standard.credits;
 const quick = DEPTHS.quick.credits;
+
+/** The volume tiers, lowest first: "from $X, +Y%". */
+const volumeTiers = [...TOPUP_VOLUME_BONUSES].sort((a, b) => a.fromUsd - b.fromUsd);
+
+function topupFacts() {
+  // the worked example: the highest volume tier's amount on Pro, so both bonuses show
+  const ex = topupBreakdown(volumeTiers.at(-1)?.fromUsd ?? TOPUP_MIN_USD, "pro");
+  return {
+    min: usd(TOPUP_MIN_USD),
+    max: usd(TOPUP_MAX_USD),
+    rate: num(TOPUP_CREDITS_PER_USD),
+    expiryMonths: String(TOPUP_EXPIRY_MONTHS),
+    /** every tier in one phrase: "+N% from $X, …" */
+    volume: volumeTiers.map((t) => `+${pct(t.bonus)} from ${usd(t.fromUsd)}`).join(", "),
+    /** tier1, tier2, … as { from, bonus } */
+    ...Object.fromEntries(volumeTiers.map((t, i) => [`tier${i + 1}`, { from: usd(t.fromUsd), bonus: pct(t.bonus) }])),
+    proBonus: pct(PLANS.pro.topupBonus),
+    plusBonus: pct(PLANS.pro_plus.topupBonus),
+    example: {
+      usd: usd(ex.usd),
+      base: num(ex.base),
+      volumePct: `${ex.volumeBonusPct}%`,
+      withVolume: num(ex.withVolume),
+      subscriberPct: `${ex.subscriberBonusPct}%`,
+      credits: num(ex.credits),
+    },
+  };
+}
 
 function planFacts(id: PlanId) {
   const p = PLANS[id];
@@ -46,7 +86,7 @@ export const facts = {
     proPrice: usd(PLANS[FOUNDING.plan].monthlyUsd),
     copy: FOUNDING.copy,
   },
-  topup: { min: usd(TOPUP_MIN_USD), expiryMonths: String(TOPUP_EXPIRY_MONTHS) },
+  topup: topupFacts(),
   support: { email: SUPPORT_EMAIL },
 } as const;
 
@@ -68,26 +108,39 @@ export function resolve(text: string, f: Facts = facts): string {
 export const money = usd;
 export const number = num;
 
+export interface TopupTier {
+  from: string;
+  bonus: string;
+}
+
+/** Volume-bonus tiers for display, lowest first ({ from, bonus }), bonus with a leading "+". */
+export function topupTiers(): TopupTier[] {
+  return volumeTiers.map((t) => ({ from: usd(t.fromUsd), bonus: `+${pct(t.bonus)}` }));
+}
+
+/** Worked-example amounts, all from config: the minimum, each volume tier's threshold, the maximum. */
+export function topupExampleAmounts(): number[] {
+  return [...new Set([TOPUP_MIN_USD, ...volumeTiers.map((t) => t.fromUsd), TOPUP_MAX_USD])].sort((a, b) => a - b);
+}
+
 export interface TopupRow {
   usd: string;
-  credits: string;
-  baseBonus: string;
+  volumeBonus: string;
+  freeCredits: string;
   proCredits: string;
   plusCredits: string;
 }
 
-/** Top-up table rows; the base bonus is measured against the smallest tier's credits per dollar. */
+/** Worked-example rows: credits for each example amount on Free, Pro and Pro+ (topupCredits is the only calculator). */
 export function topupRows(): TopupRow[] {
-  const first = TOPUPS[0];
-  const baseRate = first.credits / first.usd;
-  return TOPUPS.map((t) => {
-    const bonus = Math.round((t.credits / t.usd / baseRate - 1) * 100);
+  return topupExampleAmounts().map((a) => {
+    const b = topupBreakdown(a, "free");
     return {
-      usd: usd(t.usd),
-      credits: num(t.credits),
-      baseBonus: bonus > 0 ? `+${bonus}%` : "-",
-      proCredits: num(topupCredits(t.usd, "pro")),
-      plusCredits: num(topupCredits(t.usd, "pro_plus")),
+      usd: usd(a),
+      volumeBonus: b.volumeBonusPct > 0 ? `+${b.volumeBonusPct}%` : "-",
+      freeCredits: num(topupCredits(a, "free")),
+      proCredits: num(topupCredits(a, "pro")),
+      plusCredits: num(topupCredits(a, "pro_plus")),
     };
   });
 }

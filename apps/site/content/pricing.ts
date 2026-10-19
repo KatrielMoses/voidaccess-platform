@@ -69,9 +69,34 @@ export const explainer = {
 
 export const topups = {
   heading: "Top-ups",
-  body: "Need more in a month? Buy credits any time, on any plan, including Free. Subscribers get a bonus on top.",
-  columns: { pay: "You pay", credits: "Credits", bonus: "Volume bonus", pro: "Pro subscribers get", plus: "Pro+ subscribers get" },
-  minimum: "Minimum top-up {{topup.min}}.",
+  body: "Need more in a month? Buy credits any time, on any plan, including Free. Bigger top-ups and subscribers get extra credits.",
+  /** The rule, one cell each: `value` is a token, `label` says what it is. */
+  rule: [
+    { value: "{{topup.min}}", label: "Minimum top-up" },
+    { value: "{{topup.max}}", label: "Maximum top-up" },
+    { value: "{{topup.rate}}", label: "Credits per dollar" },
+    { value: "{{topup.expiryMonths}}", label: "Months before they expire" },
+  ],
+  volume: {
+    heading: "Volume bonus",
+    note: "Bigger top-ups get extra credits. The highest tier you reach applies.",
+    from: "From",
+  },
+  subscriber: {
+    heading: "Subscriber bonus",
+    note: "Added on top of the volume bonus.",
+    rows: [
+      { plan: "Pro", bonus: "+{{topup.proBonus}}" },
+      { plan: "Pro+", bonus: "+{{topup.plusBonus}}" },
+    ],
+  },
+  example: {
+    heading: "Worked examples",
+    body: "{{topup.example.usd}} on Pro: {{topup.example.base}} credits, plus the {{topup.example.volumePct}} volume bonus makes {{topup.example.withVolume}}, plus the {{topup.example.subscriberPct}} Pro bonus makes {{topup.example.credits}}.",
+    columns: { pay: "You pay", bonus: "Volume bonus", free: "Free", pro: "Pro", plus: "Pro+" },
+    caption: "Credits you get for a top-up, by plan",
+  },
+  minimum: "Any whole-dollar amount from {{topup.min}} to {{topup.max}}.",
 };
 
 export const founding = {
@@ -98,7 +123,8 @@ export const founding = {
 export const faq: Faq[] = [
   { q: "What is a credit?", a: "A credit is what an investigation costs. A Quick investigation is {{depth.quick}} credits and a Standard one is {{depth.standard}}. Viewing results, the graph, and exports cost nothing." },
   { q: "Do unused credits roll over?", a: "No. Subscription credits reset every month. Top-up credits are different: they're spent after your monthly credits and last {{topup.expiryMonths}} months." },
-  { q: "Do top-up credits expire?", a: "Yes, {{topup.expiryMonths}} months after purchase." },
+  { q: "How much can I top up?", a: "Any whole-dollar amount from {{topup.min}} to {{topup.max}}, at {{topup.rate}} credits per dollar. Bigger top-ups get a volume bonus ({{topup.volume}}), and subscribers get a further bonus on top: +{{topup.proBonus}} on Pro, +{{topup.plusBonus}} on Pro+." },
+  { q: "Do top-up credits expire?", a: "Yes, {{topup.expiryMonths}} months after purchase. They're spent after your monthly credits." },
   { q: "Can I cancel any time?", a: "Yes. Cancel from your account; you keep your plan until the end of the period you've paid for." },
   { q: "What if a run fails?", a: "Failed and cancelled runs are refunded automatically in credits. You never pay for an investigation that didn't complete." },
   { q: "What does annual billing save?", a: "Annual billing gives {{pro.monthsFree}} months free: Pro is {{pro.annual}} a year and Pro+ is {{plus.annual}} a year. Founding seats are monthly only." },
