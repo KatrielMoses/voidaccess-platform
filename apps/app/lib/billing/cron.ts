@@ -2,7 +2,7 @@
  * Scheduled billing work. Every job is idempotent (ledger keys, unique notice rows, set-once timestamps), so a
  * re-run or an overlapping run changes nothing. Auth is the same as P2's watchdog (see lib/runs/cron-auth.ts).
  */
-import { and, eq, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
 import { FOUNDING, PLANS } from "@voidaccess/config";
 import {
   addMonths,
@@ -21,6 +21,7 @@ import { billingCopy as copy, fill } from "../../content/billing";
 import { sendDueAlerts } from "./alerts";
 import { grantPlanPeriod } from "./ledger-ext";
 import { activeCatalogEntry } from "./catalog";
+import { CARD_PROVIDERS, CRYPTO_PROVIDER_ID } from "./crypto/passes";
 import { dateFmt, usd } from "./format";
 import { billingUrl, userContact } from "./post-effects";
 import { getBillingProvider, type BillingProvider } from "./provider";
@@ -28,12 +29,13 @@ import { getBillingProvider, type BillingProvider } from "./provider";
 type Deps = { database?: Database; provider?: BillingProvider };
 const DAY = 86_400_000;
 
-/** Daily: Free and annual-plan monthly grants, ended subscriptions, top-up expiry. */
+/** Daily: Free, annual-plan and crypto-pass monthly grants, ended subscriptions and passes, top-up expiry. */
 export async function runGrants(now: Date, deps: Deps = {}) {
   const database = deps.database ?? getDatabase();
   const cutoff = addMonths(now, -1);
 
-  // Free users, and annual subscribers (their provider event only fires yearly), whose last monthly grant is a month old
+  // Free users, annual subscribers (their provider event only fires yearly) and crypto passes (no provider events
+  // at all), whose last monthly grant is a month old
   const due = await database.withSystem(
     "cron.grants.select",
     async (tx) => {
@@ -57,13 +59,29 @@ export async function runGrants(now: Date, deps: Deps = {}) {
           and(
             eq(subscriptions.status, "active"),
             eq(subscriptions.interval, "year"),
+            ne(subscriptions.provider, CRYPTO_PROVIDER_ID),
             sql`${subscriptions.currentPeriodEnd} > ${now.toISOString()}::timestamptz`,
             eq(users.status, "active"),
             sql`${lastGrant} <= ${cutoff.toISOString()}::timestamptz`,
           ),
         )
         .limit(1000);
-      return { free, annual };
+      // crypto passes, monthly and annual: credited at purchase, then monthly while the pass hasn't ended
+      const passes = await tx
+        .select({ id: subscriptions.userId, plan: subscriptions.plan, subId: subscriptions.id })
+        .from(subscriptions)
+        .innerJoin(users, eq(users.id, subscriptions.userId))
+        .where(
+          and(
+            eq(subscriptions.status, "active"),
+            eq(subscriptions.provider, CRYPTO_PROVIDER_ID),
+            sql`${subscriptions.currentPeriodEnd} > ${now.toISOString()}::timestamptz`,
+            eq(users.status, "active"),
+            sql`${lastGrant} <= ${cutoff.toISOString()}::timestamptz`,
+          ),
+        )
+        .limit(1000);
+      return { free, annual, passes };
     },
     { audit: false },
   );
@@ -87,9 +105,89 @@ export async function runGrants(now: Date, deps: Deps = {}) {
     )
       granted++;
 
+  for (const p of due.passes)
+    if (
+      (
+        await database.withSystem(
+          "cron.grants.pass",
+          async (tx) => {
+            const g = await grantPlanPeriod(tx, p.id, p.plan, now);
+            if (g.granted)
+              await tx
+                .update(subscriptions)
+                .set({ lastGrantPeriodStart: now })
+                .where(eq(subscriptions.id, p.subId));
+            return g;
+          },
+          { audit: false },
+        )
+      ).granted
+    )
+      granted++;
+
   const ended = await endCancelledSubscriptions(now, database);
+  const endedPasses = await endExpiredPasses(now, database);
   const expired = await expireLots(now, { database });
-  return { granted, endedSubscriptions: ended, expiredLots: expired.lots, expiredCredits: expired.credits };
+  return {
+    granted,
+    endedSubscriptions: ended,
+    endedPasses,
+    expiredLots: expired.lots,
+    expiredCredits: expired.credits,
+  };
+}
+
+/** Crypto passes whose end date has passed: expired, and the plan moves to Free unless another subscription is live. */
+export async function endExpiredPasses(now: Date, database: Database = getDatabase()): Promise<number> {
+  const rows = await database.withSystem(
+    "cron.passes.select",
+    (tx) =>
+      tx
+        .select({ id: subscriptions.id, userId: subscriptions.userId })
+        .from(subscriptions)
+        .where(
+          and(
+            eq(subscriptions.status, "active"),
+            eq(subscriptions.provider, CRYPTO_PROVIDER_ID),
+            isNotNull(subscriptions.currentPeriodEnd),
+            lte(subscriptions.currentPeriodEnd, now),
+          ),
+        ),
+    { audit: false },
+  );
+  let n = 0;
+  for (const r of rows) {
+    const ended = await database.withSystem("cron.passes.apply", async (tx) => {
+      const [u] = await tx
+        .select({ plan: users.plan })
+        .from(users)
+        .where(eq(users.id, r.userId))
+        .for("update");
+      const done = await tx
+        .update(subscriptions)
+        .set({ status: "expired" })
+        .where(
+          and(
+            eq(subscriptions.id, r.id),
+            eq(subscriptions.status, "active"),
+            lte(subscriptions.currentPeriodEnd, now),
+          ),
+        )
+        .returning({ id: subscriptions.id });
+      if (done.length === 0) return false; // extended or ended by a concurrent run
+      const live = await tx
+        .select({ id: subscriptions.id })
+        .from(subscriptions)
+        .where(and(eq(subscriptions.userId, r.userId), eq(subscriptions.status, "active")));
+      if (live.length === 0 && u && u.plan !== "free") {
+        await tx.update(users).set({ plan: "free" }).where(eq(users.id, r.userId));
+        await grantPlanPeriod(tx, r.userId, "free", now);
+      }
+      return true;
+    });
+    if (ended) n++;
+  }
+  return n;
 }
 
 /** Subscriptions cancelled "at period end" whose period is over: the plan follows to Free now. */
@@ -147,6 +245,7 @@ export async function applyPendingChanges(now: Date, deps: Deps = {}): Promise<n
         .where(
           and(
             eq(subscriptions.status, "active"),
+            inArray(subscriptions.provider, [...CARD_PROVIDERS]), // never ask the card provider about a crypto pass
             isNotNull(subscriptions.pendingProductKey),
             isNull(subscriptions.pendingRequestedAt),
             lte(subscriptions.pendingEffectiveAt, new Date(now.getTime() + DAY)),

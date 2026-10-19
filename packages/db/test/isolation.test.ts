@@ -139,6 +139,7 @@ describe("tenant isolation (RLS)", () => {
       "billing_checkouts", // P7: system-only
       "lifecycle_emails", // P6: system-only
       "rate_limit_events", // H1: system-only
+      "crypto_orders", // crypto payments: system-only
     ]);
     const missing = (await tenantTables()).filter((t) => !covered.has(t));
     expect(missing, "new tenant table: add it to the isolation seed + this list").toEqual([]);
@@ -157,6 +158,7 @@ describe("tenant isolation (RLS)", () => {
           "billing_checkouts",
           "lifecycle_emails",
           "rate_limit_events", // H1: system-only
+          "crypto_orders",
         ].includes(t),
     );
     for (const t of tables) {
@@ -247,6 +249,7 @@ describe("tenant isolation (RLS)", () => {
       "billing_checkouts", // P7
       "lifecycle_emails", // P6
       "rate_limit_events", // H1: system-only
+      "crypto_orders", // crypto payments
       "archive_jobs", // P4: the archive work queue
       "archive_removed_pages",
       "rate_limits", // H1

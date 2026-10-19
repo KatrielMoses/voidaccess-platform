@@ -163,6 +163,20 @@ export function topupAmountError(usd: number): TopupAmountError | null {
 
 export const isValidTopupUsd = (usd: number) => topupAmountError(usd) === null;
 
+/**
+ * Crypto top-ups (NOWPayments) follow the same rule and calculator as card top-ups, with a higher floor: NOWPayments
+ * enforces a per-currency minimum (dynamic, per coin and network; see docs/BILLING.md), and below about $10 most
+ * coins can't be offered on the invoice. Same maximum, same credits for the same dollars.
+ */
+export const CRYPTO_TOPUP_MIN_USD = 10;
+
+/** Why an amount can't be bought with crypto, or null if it can. */
+export function cryptoTopupAmountError(usd: number): TopupAmountError | null {
+  const err = topupAmountError(usd);
+  if (err) return err;
+  return usd < CRYPTO_TOPUP_MIN_USD ? "below_minimum" : null;
+}
+
 /** The volume-bonus fraction for an amount (0 below the first tier). */
 export function topupVolumeBonus(usd: number): number {
   let b = 0;

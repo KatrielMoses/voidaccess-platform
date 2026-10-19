@@ -52,6 +52,7 @@ Subscription credits reset monthly with no rollover. Spend order: monthly grant 
 - **Subscriber bonus** on top of that, unchanged: Pro +20%, Pro+ +30%.
 - Credits = floor(floor(usd × 100 × (1 + volume)) × (1 + subscriber)), computed in whole percents by `topupCredits()` in config. The plan is read at payment time.
 - Top-up credits expire 12 months after purchase and are spent after monthly credits.
+- **Paid with crypto** (NOWPayments): the same rule and the same credits, from **$10** (`CRYPTO_TOPUP_MIN_USD`), because NOWPayments enforces per-coin minimums (docs/BILLING.md).
 
 | Pay | Free | Pro | Pro+ |
 |---:|---:|---:|---:|

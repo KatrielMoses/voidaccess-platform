@@ -99,6 +99,13 @@
       "when": 1792407832410,
       "tag": "0013_billing_creem",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792420098081,
+      "tag": "0014_crypto_orders",
+      "breakpoints": true
     }
   ]
 }

@@ -135,6 +135,25 @@ export const billingCopy = {
     older: "Older",
     newer: "Newer",
   },
+  crypto: {
+    pay: "Pay with crypto",
+    passLine: "Or a {plan} pass for {term} at {price}, paid once in crypto. It doesn't renew.",
+    note: "Crypto payments are one-time: credit packs and plan passes that don't renew. Paid in USDT, USDC, BTC, ETH and more via NOWPayments.",
+    passPanel: "{plan} pass, paid with crypto. Ends on {date}.",
+    passHelp:
+      "A pass doesn't renew and there's nothing to cancel. Extend it any time; the extra time starts when this pass ends.",
+    extend: "Extend with crypto",
+    extendTerm: "Extend {term} ({price})",
+    term: { month: "1 month", year: "1 year" },
+    passActive:
+      "You have an active pass for another plan. Buy the other plan after the current pass ends, or top up credits.",
+    otherPlanDuringPass: "Available after your current pass ends.",
+    pending:
+      "Payment received by NOWPayments. We'll add it to your account once it confirms, usually within a few minutes.",
+    cancelled: "Crypto payment cancelled. You can start again any time.",
+    alreadySubscribed:
+      "You have a card subscription. Passes are for accounts without one; you can still buy credit packs with crypto.",
+  },
   notices: {
     renewalReason:
       "Your seat renews on {date} only if you've paid for at least {renewalMonths} of the last {termMonths} months. We count {paidMonths} so far.",

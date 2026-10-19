@@ -55,7 +55,8 @@ export type PostEffect =
   | { kind: "welcome"; userId: string; plan: PlanId }
   | { kind: "payment_failed"; userId: string }
   | { kind: "subscribed"; userId: string; plan: PlanId; interval: Interval; founding: boolean }
-  | { kind: "topup_purchased"; userId: string; usd: number };
+  | { kind: "topup_purchased"; userId: string; usd: number }
+  | { kind: "pass_purchased"; userId: string; plan: PlanId; interval: Interval; extended: boolean };
 
 export interface WebhookResult {
   status: number;

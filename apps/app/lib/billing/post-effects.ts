@@ -42,6 +42,19 @@ export async function runPostEffects(effects: PostEffect[]): Promise<void> {
             props: { plan: e.plan, interval: e.interval, founding: e.founding },
           });
           break;
+        case "pass_purchased":
+          await trackEvent("subscribed", {
+            userId: e.userId,
+            props: {
+              plan: e.plan,
+              interval: e.interval,
+              founding: false,
+              provider: "nowpayments",
+              pass: true,
+              extended: e.extended,
+            },
+          });
+          break;
         case "topup_purchased":
           await trackEvent("topup_purchased", { userId: e.userId, props: { usd: e.usd } });
           break;

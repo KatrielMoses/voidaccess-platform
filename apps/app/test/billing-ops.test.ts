@@ -362,7 +362,7 @@ describe("upgrade, downgrade, cancel", () => {
       { audit: false },
     );
     expect(ev[0]!.props).toMatchObject({ reason: "too expensive" });
-    expect(await resumeSubscription(u.id, { provider })).toBe(true);
+    expect(await resumeSubscription(u.id, { provider })).toEqual({ ok: true });
     expect((await currentSubscription(u.id))!.cancelAt).toBeNull();
     void sub;
   });
@@ -570,8 +570,8 @@ describe("usage ledger and isolation", () => {
     await backdatedGrant(B.id, 1, 7);
     expect((await getLedger(B.id)).rows.every((r) => r.amount === 7)).toBe(true);
     expect(await currentSubscription(B.id)).toBeNull();
-    expect(await cancelAtPeriodEnd(B.id, undefined, { provider })).toEqual({ ok: false, endsAt: null });
-    expect(await resumeSubscription(B.id, { provider })).toBe(false);
+    expect(await cancelAtPeriodEnd(B.id, undefined, { provider })).toMatchObject({ ok: false, endsAt: null });
+    expect((await resumeSubscription(B.id, { provider })).ok).toBe(false);
     expect((await currentSubscription(A.id))!.cancelAt).toBeNull(); // untouched
     asUser(B.session);
     const csv = await (await usageCsv(new Request("http://localhost/api/usage/export"))).text();
