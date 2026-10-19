@@ -6,7 +6,7 @@ locals {
   archive_bucket = "${var.project_id}-archive"
   app_url        = "https://${var.app_domain}"
   site_url       = "https://${var.site_domain}"
-  # Secrets the app reads. All exist already except dodo-webhook-secret (container managed below, version added by hand).
+  # Secrets the app reads. All exist already (Creem test or live names come from var.creem_*_secret).
   app_secrets = [
     "database-url",
     "database-url-system", # va_worker (H1): withSystem + Better Auth. Created by packages/db/scripts/neon-provision.ts
@@ -21,7 +21,8 @@ locals {
     "google-client-id",
     "google-client-secret",
     "turnstile-secret-key",
-    "dodo-api-key-test",
+    var.creem_api_key_secret,
+    var.creem_webhook_secret,
     "openrouter-api-key",
   ]
   runner_secrets = ["openrouter-api-key"] # not engine-callback-secret: see modules/runner
@@ -51,12 +52,12 @@ data "google_secret_manager_secret" "secrets" {
   secret_id = each.key
 }
 
-# The Dodo webhook signing secret does not exist until the webhook is registered. Terraform owns the empty
-# container (and its accessor binding); the version is added by hand, then `enable_dodo_webhook=true` wires it.
-resource "google_secret_manager_secret" "dodo_webhook" {
-  secret_id = "dodo-webhook-secret"
-  replication {
-    auto {}
+# P7: Dodo is replaced by Creem. Terraform stops managing the old dodo-webhook-secret container but leaves it in
+# place (delete it by hand once the Dodo account is closed).
+removed {
+  from = google_secret_manager_secret.dodo_webhook
+  lifecycle {
+    destroy = false
   }
 }
 
@@ -72,8 +73,9 @@ module "app" {
   email_from            = var.email_from
   kms_key_name          = local.kms_key
   cron_oidc_email       = data.google_service_account.app.email
-  dodo_env              = "test_mode"
-  enable_dodo_webhook   = var.enable_dodo_webhook
+  creem_env             = var.creem_env
+  creem_api_key_secret  = var.creem_api_key_secret
+  creem_webhook_secret  = var.creem_webhook_secret
   allow_unauthenticated = var.allow_unauthenticated && var.manage_iam
   runner_member         = var.manage_iam ? "serviceAccount:${data.google_service_account.runner.email}" : ""
 }
@@ -110,7 +112,7 @@ module "iam" {
   archive_bucket = data.google_storage_bucket.archive.name
   app_member     = "serviceAccount:${data.google_service_account.app.email}"
   run_member     = "serviceAccount:${data.google_service_account.runner.email}"
-  secret_ids     = merge({ for k, s in data.google_secret_manager_secret.secrets : k => s.secret_id }, { "dodo-webhook-secret" = google_secret_manager_secret.dodo_webhook.secret_id })
-  app_secrets    = concat(local.app_secrets, ["dodo-webhook-secret"])
+  secret_ids     = { for k, s in data.google_secret_manager_secret.secrets : k => s.secret_id }
+  app_secrets    = local.app_secrets
   runner_secrets = local.runner_secrets
 }

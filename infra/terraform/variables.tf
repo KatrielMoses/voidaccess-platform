@@ -19,10 +19,26 @@ variable "runner_image" {
   type        = string
 }
 
-variable "enable_dodo_webhook" {
-  description = "Wire DODO_WEBHOOK_SECRET from secret dodo-webhook-secret. Keep false until the secret has a version, otherwise the revision cannot start."
-  type        = bool
-  default     = false
+variable "creem_env" {
+  description = "Creem environment for va-app: test_mode (test-api.creem.io, test keys) or live_mode. Switch together with the two secrets below."
+  type        = string
+  default     = "test_mode"
+  validation {
+    condition     = contains(["test_mode", "live_mode"], var.creem_env)
+    error_message = "creem_env must be test_mode or live_mode."
+  }
+}
+
+variable "creem_api_key_secret" {
+  description = "Secret Manager id of the Creem API key: creem-api-key-test now; creem-api-key-live when going live."
+  type        = string
+  default     = "creem-api-key-test"
+}
+
+variable "creem_webhook_secret" {
+  description = "Secret Manager id of the Creem webhook signing secret: creem-webhook-secret-test now; creem-webhook-secret-live when going live."
+  type        = string
+  default     = "creem-webhook-secret-test"
 }
 
 variable "app_domain" {

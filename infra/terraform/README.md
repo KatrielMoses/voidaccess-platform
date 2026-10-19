@@ -59,7 +59,10 @@ terraform -chdir=infra/terraform apply -target=module.iam -target=module.app
   domain mapping needs va-agent to be a verified owner of `voidaccess.pro` (Search Console). After that: `terraform apply
 -var manage_domain_mapping=true`, add the DNS-only (grey cloud) CNAME `app` -> `ghs.googlehosted.com`, remove the Worker
   custom domain, re-point nothing else (APP_URL is already the final domain).
-- `enable_dodo_webhook` (default false): create a version of `dodo-webhook-secret` (the container is managed here), then apply
-  with `-var enable_dodo_webhook=true`.
+- Billing (Creem, P7): `creem_env` (default `test_mode`), `creem_api_key_secret` (default `creem-api-key-test`) and
+  `creem_webhook_secret` (default `creem-webhook-secret-test`). Going live: create `creem-api-key-live` and
+  `creem-webhook-secret-live`, then apply with `-var creem_env=live_mode -var creem_api_key_secret=creem-api-key-live
+-var creem_webhook_secret=creem-webhook-secret-live` (see docs/BILLING.md). The old `dodo-webhook-secret` is no longer
+  managed (a `removed` block keeps it); delete it by hand after closing the Dodo account.
 - Scheduler jobs are enabled (watchdog */5, credit-alerts hourly, founding and grants daily), OIDC as `va-app`.
 - The production proof lives in `apps/app/e2e-prod` (`playwright.prod.config.ts`); screenshots in `e2e-prod/evidence`.

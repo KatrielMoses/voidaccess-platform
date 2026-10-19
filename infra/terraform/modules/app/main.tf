@@ -23,11 +23,14 @@ variable "cookie_domain" {
 variable "email_from" { type = string }
 variable "kms_key_name" { type = string }
 variable "cron_oidc_email" { type = string }
-variable "dodo_env" { type = string }
-variable "enable_dodo_webhook" {
-  description = "Wire DODO_WEBHOOK_SECRET. Keep false until secret dodo-webhook-secret has a version, otherwise the revision cannot start."
-  type        = bool
-  default     = false
+variable "creem_env" { type = string }
+variable "creem_api_key_secret" {
+  description = "Secret id for CREEM_API_KEY (creem-api-key-test or creem-api-key-live)."
+  type        = string
+}
+variable "creem_webhook_secret" {
+  description = "Secret id for CREEM_WEBHOOK_SECRET (creem-webhook-secret-test or creem-webhook-secret-live)."
+  type        = string
 }
 
 locals {
@@ -42,7 +45,7 @@ locals {
     ENGINE_LAUNCHER      = "cloudrun"
     KMS_KEY_NAME         = var.kms_key_name
     CRON_OIDC_EMAIL      = var.cron_oidc_email
-    DODO_ENV             = var.dodo_env
+    CREEM_ENV            = var.creem_env
     NEXT_PUBLIC_SITE_URL = var.site_url
   }
 
@@ -62,10 +65,10 @@ locals {
       GOOGLE_CLIENT_ID       = "google-client-id" # Sign in with Google (Better Auth); redirect https://app.voidaccess.pro/api/auth/callback/google
       GOOGLE_CLIENT_SECRET   = "google-client-secret"
       TURNSTILE_SECRET_KEY   = "turnstile-secret-key"
-      DODO_PAYMENTS_API_KEY  = "dodo-api-key-test"
+      CREEM_API_KEY          = var.creem_api_key_secret
+      CREEM_WEBHOOK_SECRET   = var.creem_webhook_secret
       OPENROUTER_API_KEY     = "openrouter-api-key"
     },
-    var.enable_dodo_webhook ? { DODO_WEBHOOK_SECRET = "dodo-webhook-secret" } : {},
   )
 }
 

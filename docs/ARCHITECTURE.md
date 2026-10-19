@@ -83,16 +83,16 @@ Users never reach the engine. The platform launches **one short-lived engine con
 | Platform DB | **Neon Postgres** (serverless, scales to zero after 5 min idle; branch per preview env) | autoscaling compute | $0 on the free plan, then usage-based |
 | Artifacts | Cloudflare R2 (no egress fees) or a GCS bucket in the same region | — | ~$0 |
 | Schedules | Cloud Scheduler → app `/api/cron/*` (OIDC-authenticated) | — | ~$0 (3 free jobs) |
-| Secrets | Secret Manager (OpenRouter key, Dodo, Resend, HMAC secrets) | — | ~$0 |
+| Secrets | Secret Manager (OpenRouter key, Creem, Resend, HMAC secrets) | — | ~$0 |
 | Email | Resend | — | free tier |
-| Payments | Dodo Payments (merchant of record) | — | 4% + $0.50 per transaction |
+| Payments | Creem (merchant of record, P7; replaced Dodo) | — | 3.9% + $0.40 per transaction |
 | Analytics | Plausible (site) + first-party `events` table (funnel) | — | ~$9/mo or self-host |
 | Errors and logs | Cloud Logging + Sentry free tier | — | $0 |
 
 **Approximate run compute** *(to be confirmed against the live [Cloud Run pricing](https://cloud.google.com/run/pricing) page; third-party 2026 sources quote about $0.000018/vCPU-s and $0.000002/GiB-s, with an instance-billing free tier of about 240k vCPU-s and 450k GiB-s per month)*:
 - A 5-minute Standard run at 1 vCPU / 2 GiB is about 300 vCPU-s + 600 GiB-s, which comes to **~0.7¢**.
 - The free tier covers roughly **800 such runs a month**.
-- The **LLM cost is the bigger unknown**. Engine phase E3 meters it per call. PRD margin rule: at the $7 founding price after Dodo fees, we must stay at or below 0.078¢ per credit. That means a **Standard run must total ≤ 1.9¢ and a Deep run ≤ 4.7¢**. If compute plus LLM exceeds that, we change the credit price per depth (per the PRD), never the plan price.
+- The **LLM cost is the bigger unknown**. Engine phase E3 meters it per call. PRD margin rule: at the $7 founding price after payment fees (computed with Dodo's; Creem's are lower), we must stay at or below 0.078¢ per credit. That means a **Standard run must total ≤ 1.9¢ and a Deep run ≤ 4.7¢**. If compute plus LLM exceeds that, we change the credit price per depth (per the PRD), never the plan price.
 
 **Expected idle total:** about $0–10/mo, mostly Plausible and the min-1 instance during launch week.
 
@@ -144,7 +144,7 @@ Users never reach the engine. The platform launches **one short-lived engine con
 - Drizzle ORM
 - Better Auth, passwordless: Google, Microsoft or GitHub OAuth, or a 6-digit email code (10 min, 5 attempts). No separate sign-up: the first sign-in creates the account. httpOnly cookie sessions; AUP accepted once on `/accept-terms` and enforced server-side at run start; 2FA is P1
 - Resend + React Email
-- Dodo SDK + webhooks
+- Creem REST API (plain fetch) + webhooks (P7; was the Dodo SDK)
 - Vitest + Playwright (with a dedicated cross-tenant isolation suite)
 
 **Repo layout**
