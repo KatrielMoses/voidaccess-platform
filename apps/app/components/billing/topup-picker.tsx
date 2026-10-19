@@ -44,7 +44,6 @@ export function TopupPicker({
   // switching to crypto lifts an amount below the crypto minimum to that minimum
   useEffect(() => {
     if (byCrypto && !(Number(raw) >= minUsd)) setRaw(String(minUsd));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on a method change
   }, [byCrypto]);
   const id = useId();
   const amount = raw.trim() === "" ? NaN : Number(raw);
