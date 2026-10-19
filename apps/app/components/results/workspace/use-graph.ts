@@ -30,6 +30,7 @@ import { NodeGlyphProgram } from "@/lib/results/node-glyph-program";
 import type { LayoutRequest, LayoutResponse } from "@/lib/results/layout-params";
 import { middleTruncate } from "@/lib/results/search";
 import type { GraphData } from "@/lib/results/types";
+import { LABEL_W_PX, SMALL_GRAPH_LABEL_ALL, labelClearance, minFitRatio } from "@/lib/results/small-results";
 
 export const LABEL_FONT = '"Geist Mono", ui-monospace, SFMono-Regular, monospace';
 
@@ -156,6 +157,8 @@ export function useGraph(opts: {
     const maxDegree = data.nodes.reduce((m, n) => Math.max(m, n[4]), 1);
     // big graphs get smaller glyphs so clusters read as clusters, not as one solid mass
     const sizeScale = data.nodes.length > 1000 ? 0.55 : data.nodes.length > 300 ? 0.75 : 1;
+    // a small result names every value: there's room, and bare dots read as a broken graph
+    const labelAll = data.nodes.length <= SMALL_GRAPH_LABEL_ALL;
 
     const graph = new Graph({ multi: true, type: "undirected" });
     for (const [id, type, label, confidence, degree, community, sensitive] of data.nodes) {
@@ -260,6 +263,7 @@ export function useGraph(opts: {
             out.label = null;
           }
         }
+        if (labelAll) out.forceLabel = true;
         return out;
       },
       edgeReducer: (edge, attrs) => {
@@ -448,11 +452,13 @@ export function useGraph(opts: {
         maxX = -Infinity,
         minY = Infinity,
         maxY = -Infinity;
+      const pts: { x: number; y: number }[] = [];
       graph.forEachNode((id, a) => {
         if (a.hidden) return;
         const d = sigma.getNodeDisplayData(id);
         if (!d) return;
         const p = sigma.framedGraphToViewport({ x: d.x, y: d.y }, at1);
+        pts.push(p);
         minX = Math.min(minX, p.x);
         maxX = Math.max(maxX, p.x);
         minY = Math.min(minY, p.y);
@@ -461,7 +467,15 @@ export function useGraph(opts: {
       const pad = 56;
       const free = Math.max(160, width - insets.left - insets.right - pad * 2);
       const freeH = Math.max(120, height - (insets.bottom ?? 0) - pad * 2);
-      const ratio = Math.max(0.15, (maxX - minX) / free, (maxY - minY) / freeH);
+      // small results label every value to the right of its glyph: keep room for the right-most labels
+      const freeW = pts.length <= SMALL_GRAPH_LABEL_ALL ? Math.max(120, free - LABEL_W_PX) : free;
+      const fitRatio = Math.max(0.15, (maxX - minX) / freeW, (maxY - minY) / freeH);
+      // A small result stays a compact cluster in the middle instead of being stretched to the canvas corners, but
+      // never so compact that two labels overlap (every value is labelled there).
+      const ratio =
+        pts.length <= SMALL_GRAPH_LABEL_ALL
+          ? Math.max(fitRatio, Math.min(minFitRatio(pts.length), labelClearance(pts)))
+          : fitRatio;
       const centre = sigma.viewportToFramedGraph({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 }, at1);
       const target = { ...centred(centre, ratio, insets), ratio, angle: 0 };
       if (reducedMotion()) sigma.getCamera().setState(target);
