@@ -184,6 +184,9 @@ describe("no secret slug and no hardcoded /admin links in the source", () => {
     "test-results",
     "playwright-report",
     "screenshots",
+    // other checkouts of the repo (git worktrees, agent worktrees) aren't this source tree
+    ".worktrees",
+    ".claude",
   ]);
   const files: string[] = [];
   const walk = (dir: string) => {
