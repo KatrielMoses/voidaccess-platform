@@ -58,6 +58,16 @@ def _peak_rss_mb() -> float:
     return round((own + child) / scale, 1)
 
 
+def safety_dropped_summary(cli_payload: dict[str, Any] | None) -> str:
+    """The engine's content-safety drop counts for the run log (counts only), e.g. `entity:0,page:2,title:0,url:1`.
+    `n/a` for an engine that does not report them."""
+    counts = (cli_payload or {}).get("content_safety")
+    if not isinstance(counts, dict):
+        return "n/a"
+    parts = [f"{k}:{v}" for k, v in sorted(counts.items()) if isinstance(k, str) and type(v) is int]
+    return ",".join(parts) or "n/a"
+
+
 @dataclass
 class RunState:
     t0: float
@@ -484,7 +494,8 @@ class Run:
             f"peak_rss_mb={_peak_rss_mb()} events_sent={self.sender.sent if self.sender else 0} "
             f"counts_dropped={self.sender.dropped_counts if self.sender else 0} "
             f"traces_sent={self.sender.traces_sent if self.sender else 0} "
-            f"traces_lost={self._traces_lost()}",
+            f"traces_lost={self._traces_lost()} "
+            f"safety_dropped={safety_dropped_summary(self.state.cli_payload)}",
             flush=True,
         )
         return self.exit_code

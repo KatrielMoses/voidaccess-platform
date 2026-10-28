@@ -8,9 +8,9 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PLATFORM_REPO="${PLATFORM_REPO:-$(cd "$HERE/../../.." && pwd)}"
 ENGINE_REPO="${ENGINE_REPO:-$(cd "$PLATFORM_REPO/../../.." 2>/dev/null && cd voidaccess 2>/dev/null && pwd || echo "")}"
-ENGINE_REF="${ENGINE_REF:-v2.1.0}"
+ENGINE_REF="${ENGINE_REF:-v2.1.1}"
 # The commit a tag ref must resolve to (a moved or re-created tag stops the build). A commit ref is checked against itself.
-ENGINE_EXPECT="${ENGINE_EXPECT:-c66b9a0}"
+ENGINE_EXPECT="${ENGINE_EXPECT:-1d85bb1}"
 OUT="${1:-$(mktemp -d)}"
 
 if [[ -z "$ENGINE_REPO" || ! -d "$ENGINE_REPO/.git" ]]; then

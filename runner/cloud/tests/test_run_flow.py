@@ -504,3 +504,14 @@ def test_a_runner_failure_logs_its_class_stage_and_a_safe_message(monkeypatch, w
         assert leak not in line, leak
     (t,) = world.terminals()
     assert t["reason"] == "error" and t["message"] == "runner error: RuntimeError at finalize:validate"
+
+
+def test_safety_dropped_summary_reports_counts_only():
+    from cloud.run import safety_dropped_summary
+
+    assert safety_dropped_summary({"content_safety": {"page": 2, "url": 1, "title": 0, "entity": 0}}) == (
+        "entity:0,page:2,title:0,url:1"
+    )
+    assert safety_dropped_summary({}) == "n/a"  # an engine before 2.1.1
+    assert safety_dropped_summary(None) == "n/a"
+    assert safety_dropped_summary({"content_safety": {"page": "x", "url": True}}) == "n/a"
