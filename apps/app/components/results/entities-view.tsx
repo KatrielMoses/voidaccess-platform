@@ -79,7 +79,10 @@ export function EntitiesView({
     };
   }, [investigationId]);
   const [search, setSearch] = useState(filters.q);
-  const [showBackground, setShowBackground] = useState(false);
+  // When nothing is Direct or Related, Background is all there is: open it rather than show an empty page.
+  const [showBackground, setShowBackground] = useState(
+    () => !!tierCounts && tierCounts.direct === 0 && tierCounts.related === 0 && tierCounts.background > 0,
+  );
 
   const setFilters = useCallback(
     (next: EntityFilters) => {

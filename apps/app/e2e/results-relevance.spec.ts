@@ -73,6 +73,8 @@ test("empty Direct: an honest notice on every tab instead of noise as findings",
   // next dev can briefly hold a streamed copy of the Suspense content next to the revealed one
   await expect(page.getByTestId("entities-tier-direct")).toHaveCount(1);
   await expect(page.getByTestId("entities-tier-direct")).toContainText("Nothing collected names");
+  // nothing Direct or Related: Background opens by itself instead of an empty page
+  await expect(page.getByTestId("entities-tier-background").getByTestId("entity-row").first()).toBeVisible();
   await page.screenshot({ path: `${SHOTS}empty-direct-entities-1440.png`, fullPage: true });
   await page.goto(`${base(S.noDirect!)}/summary`);
   await expect(page.getByTestId("no-direct-notice")).toBeVisible();

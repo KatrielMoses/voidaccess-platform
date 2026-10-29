@@ -41,7 +41,10 @@ export function SourcesList({
   query?: string;
 }) {
   const [kind, setKind] = useState<string>("all");
-  const [showBackground, setShowBackground] = useState(false);
+  // When nothing is Direct or Related, Background is all there is: open it rather than show an empty page.
+  const [showBackground, setShowBackground] = useState(
+    () => tiered && sources.length > 0 && sources.every((x) => x.relevance === "background"),
+  );
   const [q, setQ] = useState("");
   const kinds = useMemo(() => {
     const c = new Map<string, number>();
