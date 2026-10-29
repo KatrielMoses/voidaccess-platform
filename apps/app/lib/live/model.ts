@@ -273,7 +273,7 @@ export class LiveModel {
         return {
           ...base,
           verb: "search",
-          detail: `${str(d.engine) ?? ""} · ${str(d.status) === "ok" ? `${num(d.results) ?? 0} results` : outcomeLabel(str(d.status) ?? "")}`,
+          detail: `${str(d.engine) ?? ""} · ${searchDetail(d)}`,
         };
       case "url.found":
         return f
@@ -519,6 +519,15 @@ export function formatBytes(n: number | undefined): string | null {
 }
 
 /** Plain words for a fetch outcome ("404", "timeout", "Tor error", "read"). */
+/** engine 2.2.1 adds `outcome`: tell "answered, nothing found" apart from "unreachable". */
+function searchDetail(d: Record<string, unknown>): string {
+  const outcome = str(d.outcome);
+  if (outcome === "unreachable") return "unreachable";
+  if (outcome === "empty") return "no results";
+  if (str(d.status) === "ok") return `${num(d.results) ?? 0} results`;
+  return outcomeLabel(str(d.status) ?? "");
+}
+
 export function outcomeLabel(outcome: string): string {
   if (outcome === "ok") return "read";
   if (outcome === "no_key") return "no key";

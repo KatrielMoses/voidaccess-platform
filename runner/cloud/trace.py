@@ -45,6 +45,8 @@ MS_MAX = 3_600_000
 BYTES_MAX = 1_000_000_000
 
 SEARCH_STATUS = ("ok", "error", "timeout", "disabled", "no_key", "rate_limited")
+# engine 2.2.1: what the attempt came to (answered with results, answered empty, unreachable, ...)
+SEARCH_OUTCOME = ("ok", "empty", "unreachable", "rate_limited", "error")
 DROP_REASONS = ("duplicate", "irrelevant", "cap", "invalid", "ssrf", "safety", "disabled_source")
 FETCH_OUTCOMES = (
     "ok", "http_404", "http_4xx", "http_5xx", "timeout", "tor_error", "too_large", "safety_dropped", "empty", "error",
@@ -176,6 +178,7 @@ _FIELDS: dict[str, dict[str, tuple[bool, Callable[[Any], Any]]]] = {
         "status": (True, _enum(SEARCH_STATUS)),
         "results": (True, _count()),
         "ms": (False, _count(MS_MAX)),
+        "outcome": (False, _enum(SEARCH_OUTCOME)),
     },
     "url.found": {
         "url_id": (True, _url_id),

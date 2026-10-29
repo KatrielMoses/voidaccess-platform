@@ -368,3 +368,11 @@ def test_filter_fallback_keeps_counts_only_and_rejects_bad_scopes():
     assert ok["data"] == {"scope": "onion", "candidates": 40, "kept": 40}
     assert sanitize_trace(trace("filter_fallback", "filter", scope="web", candidates=1, kept=1)) is None
     assert sanitize_trace(trace("filter_fallback", "filter", scope="onion", candidates=-1, kept=1)) is None
+
+
+def test_search_result_outcome_from_engine_2_2_1_is_kept_and_validated():
+    base = dict(engine="ahmia", query_index=0, status="timeout", results=0)
+    ev = sanitize_trace(trace("search.result", "collect", outcome="unreachable", **base))
+    assert ev["data"]["outcome"] == "unreachable"
+    assert "outcome" not in sanitize_trace(trace("search.result", "collect", **base))["data"]
+    assert "outcome" not in sanitize_trace(trace("search.result", "collect", outcome="weird", **base))["data"]

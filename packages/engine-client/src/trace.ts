@@ -105,6 +105,7 @@ export const TraceData = {
     status: z.enum(["ok", "error", "timeout", "disabled", "no_key", "rate_limited"]),
     results: Count,
     ms: Ms.optional(),
+    outcome: z.enum(["ok", "empty", "unreachable", "rate_limited", "error"]).optional(),
   }),
   "url.found": z.object({
     url_id: Id("u"),

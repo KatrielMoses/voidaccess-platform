@@ -8,10 +8,10 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PLATFORM_REPO="${PLATFORM_REPO:-$(cd "$HERE/../../.." && pwd)}"
 ENGINE_REPO="${ENGINE_REPO:-$(cd "$PLATFORM_REPO/../../.." 2>/dev/null && cd voidaccess 2>/dev/null && pwd || echo "")}"
-# 2.2.0: tag v2.2.0 = engine c934b59 (22R relevance tiers, 22S search precision and RansomLook).
-ENGINE_REF="${ENGINE_REF:-v2.2.0}"
+# 2.2.1: tag v2.2.1 = engine e53b1cf (2.2.0 plus prompt-injection fencing, engine cull, per-engine outcomes, result paging, text onion sweep, mirror merge).
+ENGINE_REF="${ENGINE_REF:-v2.2.1}"
 # The commit a tag ref must resolve to (a moved or re-created tag stops the build). A commit ref is checked against itself.
-ENGINE_EXPECT="${ENGINE_EXPECT:-c934b59}"
+ENGINE_EXPECT="${ENGINE_EXPECT:-e53b1cf}"
 OUT="${1:-$(mktemp -d)}"
 
 if [[ -z "$ENGINE_REPO" || ! -d "$ENGINE_REPO/.git" ]]; then

@@ -1,7 +1,7 @@
 # runner/cloud: the production runner (lane R0)
 
 One Cloud Run Job execution (`va-runner`) = one investigation. `python -m cloud.run` fetches the single-use RunSpec,
-runs the engine pipeline (VoidAccess 2.2.0, tag `v2.2.0` = public engine commit `c934b59`: everything in 2.1.1 (`1d85bb1`: E1B cloud profile, E1C clean-ups and deny-list, RSS snippet-only, E3 trace events, E4 enrichment deadline, E5 quality fixes, content-safety fixes) plus 22R relevance tiers and 22S search precision, GitHub rate-limit handling and RansomLook) with Tor as a client only, streams
+runs the engine pipeline (VoidAccess 2.2.1, tag `v2.2.1` = public engine commit `e53b1cf`: everything in 2.1.1 (`1d85bb1`: E1B cloud profile, E1C clean-ups and deny-list, RSS snippet-only, E3 trace events, E4 enrichment deadline, E5 quality fixes, content-safety fixes) plus 22R relevance tiers and 22S search precision, GitHub rate-limit handling and RansomLook, and 2.2.1 prompt-injection fencing, engine cull, per-engine search outcomes, result paging, text onion sweep and mirror merge) with Tor as a client only, streams
 signed progress events to the app, builds a contract-valid `ResultBundle`, uploads the artifacts and only then sends
 `completed`. Contract: `docs/ENGINE-CONTRACT.md` v0.4 (relevance tiers carried through `bundle.py`; a pre-2.2 engine yields a bundle without them, which stays valid).
 
@@ -29,8 +29,8 @@ signed progress events to the app, builds a contract-valid `ResultBundle`, uploa
 ## Tests
 
 ```bash
-# Python 3.11, the engine at v2.2.0 (c934b59) importable, pytest, jsonschema, pyyaml:
-mkdir -p /tmp/engine && git -C ../voidaccess archive v2.2.0 | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
+# Python 3.11, the engine at v2.2.1 (e53b1cf) importable, pytest, jsonschema, pyyaml:
+mkdir -p /tmp/engine && git -C ../voidaccess archive v2.2.1 | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
 pip install /tmp/engine pytest jsonschema==4.23.0 && python -m spacy download en_core_web_sm
 cd runner && PYTHONPATH=/tmp/engine python -m pytest        # 0 skipped expected
 ```
@@ -45,8 +45,8 @@ The signing and masking tests are cross-checked against `tests/vectors/engine-cl
 ## Image
 
 ```bash
-bash runner/cloud/scripts/prepare_build_context.sh /tmp/ctx          # engine from `git archive` of ENGINE_REF (default v2.2.0,
-                                                                     # ENGINE_EXPECT c934b59), secret scan, prints TAG
+bash runner/cloud/scripts/prepare_build_context.sh /tmp/ctx          # engine from `git archive` of ENGINE_REF (default v2.2.1,
+                                                                     # ENGINE_EXPECT e53b1cf), secret scan, prints TAG
 (cd /tmp/ctx && gcloud builds submit . --config runner/cloud/cloudbuild.yaml \
    --substitutions _ENGINE_GIT_SHA=<engine>,_RUNNER_GIT_SHA=<runner>,_TAG=<engine>-<runner>)
 terraform -chdir=infra/terraform apply -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:<tag> -target=module.runner
