@@ -120,6 +120,19 @@ def clean_url(url: str) -> str | None:
     return redact_credentials(cleaned)
 
 
+# Data under CC BY 4.0 must carry its credit wherever it is shown (docs/baseline/E0-LICENCE-TABLE.md row 16).
+_CREDITS = (("ransomlook", "RansomLook (ransomlook.io, CC BY 4.0)"),)
+
+
+def _source_name(url: str, label: str) -> str:
+    name = urlsplit(url).hostname or label or "page"
+    lab = (label or "").lower()
+    for needle, credit in _CREDITS:
+        if needle in lab:
+            name = f"{credit} \u00b7 {name}"
+    return name[:200]
+
+
 def source_kind(url: str, label: str) -> str:
     host = (urlsplit(url).hostname or "").lower()
     lab = (label or "").lower()
@@ -512,7 +525,7 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
         src = {
             "id": pid,
             "kind": source_kind(info["url"], label),
-            "name": (urlsplit(info["url"]).hostname or label or "page")[:200],
+            "name": _source_name(info["url"], label),
             "url": info["url"],
             "fetched_at": info["fetched_at"],
             "excerpt": _excerpt(sanitized[pid]),

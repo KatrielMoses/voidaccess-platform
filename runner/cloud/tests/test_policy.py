@@ -38,7 +38,7 @@ def test_depth_presets_and_cloud_profile():
     assert policy.apply_depth_preset("standard") == "normal" and policy.apply_depth_preset("deep") == "deep"
     env = policy.apply_cloud_profile()
     assert os.environ["VOIDACCESS_LLM_CHUNK_TIMEOUT"] == "60" and os.environ["VOIDACCESS_SEARCH_WORKERS"] == "16"
-    assert os.environ["VOIDACCESS_ENRICHMENT_SOURCES"] == "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack"
+    assert os.environ["VOIDACCESS_ENRICHMENT_SOURCES"] == "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack,ransomlook"
     assert "VOIDACCESS_PACE" not in env and "VOIDACCESS_PACE" not in os.environ
     with pytest.raises(policy.PolicyError):
         policy.apply_depth_preset("enormous")

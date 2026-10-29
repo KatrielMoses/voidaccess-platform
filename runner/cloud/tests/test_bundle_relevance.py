@@ -231,3 +231,11 @@ def test_an_unknown_tier_value_is_left_out_rather_than_failing_the_run(run):
     assert schema_errors("ResultBundle", b) == []
     assert all("relevance" not in e for e in b["entities"])
     assert b["relevance"]["entities"] == {"direct": 0, "related": 0, "background": 0}
+
+
+def test_ransomlook_pages_carry_the_cc_by_credit():
+    from cloud.bundle import _source_name
+
+    name = _source_name("http://" + "a" * 56 + ".onion/", "ransomlook")
+    assert name.startswith("RansomLook (ransomlook.io, CC BY 4.0)")
+    assert _source_name("https://example.com/x", "tor_search") == "example.com"

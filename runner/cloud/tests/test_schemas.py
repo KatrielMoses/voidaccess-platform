@@ -20,4 +20,8 @@ def test_presets_are_the_baseline_presets(repo_root):
     # E1C: the cloud deny-list is a runner-only addition (the baseline harness predates it)
     assert ours["cloud_profile"]["env"].pop("VOIDACCESS_DISABLED_SOURCES")
     assert ours["cloud_profile"]["env"].pop("VOIDACCESS_RSS_SNIPPET_ONLY") == "1"
+    # 2.2.0: RansomLook (CC BY 4.0) joins the cloud allowlist; the baseline harness keeps the E1B value
+    allow = ours["cloud_profile"]["env"]["VOIDACCESS_ENRICHMENT_SOURCES"]
+    assert allow == baseline["cloud_profile"]["env"]["VOIDACCESS_ENRICHMENT_SOURCES"] + ",ransomlook"
+    ours["cloud_profile"]["env"]["VOIDACCESS_ENRICHMENT_SOURCES"] = baseline["cloud_profile"]["env"]["VOIDACCESS_ENRICHMENT_SOURCES"]
     assert ours == baseline

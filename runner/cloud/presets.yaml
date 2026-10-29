@@ -44,7 +44,7 @@ cloud_profile:
     VOIDACCESS_CONCURRENT_COLLECT: "1"       # side sources overlap the Tor fan-out
     VOIDACCESS_LLM_CHUNK_TIMEOUT: "60"       # a stalled extraction call cannot hold a run
     VOIDACCESS_ENRICHMENT_TIMEOUT: "40"      # cap the enrichment cluster, keep partial results
-    VOIDACCESS_ENRICHMENT_SOURCES: "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack"
+    VOIDACCESS_ENRICHMENT_SOURCES: "rdap,crtsh,wayback,cisa_kev,nvd,mitre_attack,ransomlook"  # 22S: RansomLook data is CC BY 4.0
     # E1C: sources whose commercial terms are unverified or non-commercial, off in every stage (engine CLOUD_DISABLED_SOURCES)
     VOIDACCESS_DISABLED_SOURCES: "openphish,sslbl,phishtank,ransomwhere,hibp_pwned_passwords,fbi_doj_press,pastebin,paste_ee,dpaste,rentry,gitlab,telegram"
     # E2: RSS feeds keep headline, link, date and the feed's own snippet only (licence: no full article bodies)

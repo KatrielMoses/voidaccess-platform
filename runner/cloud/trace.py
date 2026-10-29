@@ -44,12 +44,12 @@ COUNT_MAX = 1_000_000
 MS_MAX = 3_600_000
 BYTES_MAX = 1_000_000_000
 
-SEARCH_STATUS = ("ok", "error", "timeout", "disabled", "no_key")
+SEARCH_STATUS = ("ok", "error", "timeout", "disabled", "no_key", "rate_limited")
 DROP_REASONS = ("duplicate", "irrelevant", "cap", "invalid", "ssrf", "safety", "disabled_source")
 FETCH_OUTCOMES = (
     "ok", "http_404", "http_4xx", "http_5xx", "timeout", "tor_error", "too_large", "safety_dropped", "empty", "error",
 )
-ENRICH_STATUS = ("ok", "error", "timeout", "disabled", "no_key", "skipped")
+ENRICH_STATUS = ("ok", "error", "timeout", "disabled", "no_key", "skipped", "rate_limited")
 SUMMARY_KINDS = ("llm", "fallback", "none")
 FILTER_SCOPES = ("onion", "clearnet")
 

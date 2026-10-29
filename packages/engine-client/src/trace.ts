@@ -102,7 +102,7 @@ export const TraceData = {
   "search.result": z.object({
     engine: SourceName,
     query_index: Count.max(50),
-    status: z.enum(["ok", "error", "timeout", "disabled", "no_key"]),
+    status: z.enum(["ok", "error", "timeout", "disabled", "no_key", "rate_limited"]),
     results: Count,
     ms: Ms.optional(),
   }),
@@ -148,7 +148,7 @@ export const TraceData = {
   }),
   "enrich.source": z.object({
     source: SourceName,
-    status: z.enum(["ok", "error", "timeout", "disabled", "no_key", "skipped"]),
+    status: z.enum(["ok", "error", "timeout", "disabled", "no_key", "skipped", "rate_limited"]),
     hits: Count.optional(),
   }),
   "graph.progress": z.object({ nodes: Count, edges: Count, communities: Count.optional() }),

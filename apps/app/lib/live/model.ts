@@ -522,6 +522,7 @@ export function formatBytes(n: number | undefined): string | null {
 export function outcomeLabel(outcome: string): string {
   if (outcome === "ok") return "read";
   if (outcome === "no_key") return "no key";
+  if (outcome === "rate_limited") return "rate limited";
   if (outcome === "disabled") return "off";
   if (outcome === "error") return "error";
   if (outcome === "skipped") return "skipped";
