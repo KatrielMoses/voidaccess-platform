@@ -1,9 +1,9 @@
 # runner/cloud: the production runner (lane R0)
 
 One Cloud Run Job execution (`va-runner`) = one investigation. `python -m cloud.run` fetches the single-use RunSpec,
-runs the engine pipeline (VoidAccess 2.1.1, tag `v2.1.1` = public engine commit `1d85bb1`, identical to PyPI `voidaccess==2.1.1`: E1B cloud profile, E1C clean-ups and deny-list, RSS snippet-only, E3 trace events, E4 enrichment deadline, E5 quality fixes, 2.1.1 content-safety fixes) with Tor as a client only, streams
+runs the engine pipeline (VoidAccess 2.2 remaster, public engine commit `964100a` on main, untagged, pyproject still `2.1.1`: everything in 2.1.1 (`1d85bb1`: E1B cloud profile, E1C clean-ups and deny-list, RSS snippet-only, E3 trace events, E4 enrichment deadline, E5 quality fixes, content-safety fixes) plus 22R relevance tiers) with Tor as a client only, streams
 signed progress events to the app, builds a contract-valid `ResultBundle`, uploads the artifacts and only then sends
-`completed`. Contract: `docs/ENGINE-CONTRACT.md` v0.3.
+`completed`. Contract: `docs/ENGINE-CONTRACT.md` v0.4 (relevance tiers carried through `bundle.py`; a pre-2.2 engine yields a bundle without them, which stays valid).
 
 ## Modules
 
@@ -29,8 +29,8 @@ signed progress events to the app, builds a contract-valid `ResultBundle`, uploa
 ## Tests
 
 ```bash
-# Python 3.11, the engine at v2.1.1 (1d85bb1) importable, pytest, jsonschema, pyyaml:
-mkdir -p /tmp/engine && git -C ../voidaccess archive v2.1.1 | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
+# Python 3.11, the engine at 964100a importable, pytest, jsonschema, pyyaml:
+mkdir -p /tmp/engine && git -C ../voidaccess archive 964100a | tar -x -C /tmp/engine && rm -rf /tmp/engine/tests
 pip install /tmp/engine pytest jsonschema==4.23.0 && python -m spacy download en_core_web_sm
 cd runner && PYTHONPATH=/tmp/engine python -m pytest        # 0 skipped expected
 ```
@@ -45,8 +45,8 @@ The signing and masking tests are cross-checked against `tests/vectors/engine-cl
 ## Image
 
 ```bash
-bash runner/cloud/scripts/prepare_build_context.sh /tmp/ctx          # engine from `git archive` of ENGINE_REF (default v2.1.1,
-                                                                     # must resolve to 1d85bb1), secret scan, prints TAG
+bash runner/cloud/scripts/prepare_build_context.sh /tmp/ctx          # engine from `git archive` of ENGINE_REF (default 964100a,
+                                                                     # ENGINE_EXPECT 964100a), secret scan, prints TAG
 (cd /tmp/ctx && gcloud builds submit . --config runner/cloud/cloudbuild.yaml \
    --substitutions _ENGINE_GIT_SHA=<engine>,_RUNNER_GIT_SHA=<runner>,_TAG=<engine>-<runner>)
 terraform -chdir=infra/terraform apply -var runner_image=us-central1-docker.pkg.dev/voidaccess-cloud/voidaccess/runner:<tag> -target=module.runner

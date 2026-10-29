@@ -376,6 +376,119 @@ def _actor_profiles_from_db(db_path: Path) -> dict[str, dict[str, Any]]:
     return out
 
 
+# ---- relevance tiers (contract v0.4, engine 2.2 / 22R) --------------------------------------------------------------
+TIERS = ("direct", "related", "background")
+_TIER_RANK = {t: i for i, t in enumerate(TIERS)}
+PAGE_KINDS = (
+    "directory", "search_portal", "market_listing", "forum_thread", "leak_post", "paste", "news_article", "feed_item",
+    "other",
+)  # fmt: skip
+REASON_MAX = 120
+_REASON_OK = re.compile(r"[^\x00-\x1f<>]+")
+
+
+def tier_of(value: Any) -> str | None:
+    """The contract tier, or None (an engine before 2.2, or a value this runner does not know)."""
+    return value if isinstance(value, str) and value in _TIER_RANK else None
+
+
+def stronger_tier(a: str | None, b: str | None) -> str | None:
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return a if _TIER_RANK[a] <= _TIER_RANK[b] else b
+
+
+def weaker_tier(a: str | None, b: str | None) -> str | None:
+    if a is None or b is None:
+        return None
+    return a if _TIER_RANK[a] >= _TIER_RANK[b] else b
+
+
+def reason_of(value: Any) -> str | None:
+    """A bounded machine reason (`term_match:lockbit`, `near_direct_match`); anything else is left out."""
+    if not isinstance(value, str):
+        return None
+    v = value.strip()[:REASON_MAX]
+    return v if v and _REASON_OK.fullmatch(v) else None
+
+
+def page_kind_of(value: Any) -> str | None:
+    if value is None or value == "":
+        return None
+    return value if value in PAGE_KINDS else "other"
+
+
+def _tier_fields(tier: str | None, reason: Any) -> dict[str, str]:
+    out: dict[str, str] = {}
+    if tier is not None:
+        out["relevance"] = tier
+        r = reason_of(reason)
+        if r is not None:
+            out["relevance_reason"] = r
+    return out
+
+
+def _count_tiers(items: list[dict[str, Any]]) -> dict[str, int]:
+    c = Counter(x.get("relevance") for x in items)
+    return {t: int(c.get(t, 0)) for t in TIERS}
+
+
+def _int0(v: Any) -> int:
+    try:
+        return max(0, int(v))
+    except (TypeError, ValueError):
+        return 0
+
+
+def build_relevance(cli: dict[str, Any], sources: list[dict[str, Any]], entities: list[dict[str, Any]],
+                    relationships: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The bundle's run-level relevance summary, or None when the engine sent no tiers (before 2.2).
+    The per-tier counts describe what the BUNDLE holds (after the safety gate, merging and caps), so they always match
+    the rows the app shows; the removals, the feed cap and the two flags are the engine's own."""
+    rel = cli.get("relevance")
+    if not isinstance(rel, dict):
+        return None
+    removed = rel.get("removed") if isinstance(rel.get("removed"), dict) else {}
+    intent = rel.get("query_intent")
+    return {
+        "query_intent": intent[:40] if isinstance(intent, str) and intent.strip() else "topic",
+        "pages": _count_tiers(sources),
+        "entities": _count_tiers(entities),
+        "relationships": _count_tiers(relationships),
+        "removed": {
+            "gazetteer_context": _int0(removed.get("gazetteer_context")),
+            "org_boilerplate": _int0(removed.get("org_boilerplate")),
+        },
+        "feed_items_capped": _int0(rel.get("feed_items_capped")),
+        "filter_fallback": bool(rel.get("filter_fallback")),
+        "refined_query_restored": bool(rel.get("refined_query_restored")),
+    }
+
+
+def _page_tiers(cli: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """(by dashed page id, by url) -> {tier, reason, page_kind} from `pages_scraped[]`. 22R leaves `page_id` null, so
+    the URL is the usual key; when one page is listed twice the stronger tier wins."""
+    by_id: dict[str, dict[str, Any]] = {}
+    by_url: dict[str, dict[str, Any]] = {}
+    for p in cli.get("pages_scraped") or []:
+        if not isinstance(p, dict):
+            continue
+        tier = tier_of(p.get("relevance"))
+        if tier is None:
+            continue
+        info = {"tier": tier, "reason": p.get("relevance_reason"), "page_kind": page_kind_of(p.get("page_kind"))}
+        for key, table in ((p.get("page_id"), by_id), (p.get("url"), by_url)):
+            if not key:
+                continue
+            key = dash_uuid(key) if table is by_id else str(key)
+            prev = table.get(key)
+            if prev is None or _TIER_RANK[tier] < _TIER_RANK[prev["tier"]]:
+                table[key] = info
+    return by_id, by_url
+
+
 def _norm_key(etype: str, value: str) -> tuple[str, str]:
     v = " ".join(value.split())
     return etype, v if etype in {"API_KEY", "JWT_TOKEN"} else v.lower()
@@ -389,22 +502,27 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
     page_label = {
         p.get("url"): str(p.get("source") or "") for p in (cli.get("pages_scraped") or []) if p.get("url")
     }
+    tier_by_id, tier_by_url = _page_tiers(cli)
 
     # ---- sources -------------------------------------------------------------------------------------
     sources: list[dict[str, Any]] = []
     for pid, info in page_info.items():
         orig_url = next((p["url"] for p in pages if dash_uuid(p["id"]) == pid), info["url"])
         label = page_label.get(orig_url, "")
-        sources.append(
-            {
-                "id": pid,
-                "kind": source_kind(info["url"], label),
-                "name": (urlsplit(info["url"]).hostname or label or "page")[:200],
-                "url": info["url"],
-                "fetched_at": info["fetched_at"],
-                "excerpt": _excerpt(sanitized[pid]),
-            }
-        )
+        src = {
+            "id": pid,
+            "kind": source_kind(info["url"], label),
+            "name": (urlsplit(info["url"]).hostname or label or "page")[:200],
+            "url": info["url"],
+            "fetched_at": info["fetched_at"],
+            "excerpt": _excerpt(sanitized[pid]),
+        }
+        pt = tier_by_id.get(pid) or tier_by_url.get(orig_url)
+        if pt is not None:
+            src.update(_tier_fields(pt["tier"], pt["reason"]))
+            if pt["page_kind"]:
+                src["page_kind"] = pt["page_kind"]
+        sources.append(src)
     kept_sources = set(page_info)
     dropped_pages = {dash_uuid(p["id"]) for p in pages} - kept_sources
 
@@ -429,11 +547,16 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
         if page_id and page_id in dropped_pages:
             continue  # extracted from a page the gate dropped: it must not leave the container
         key = _norm_key(etype, value)
+        tier = tier_of(e.get("relevance"))
         existing = by_key.get(key)
         if existing is not None:
             canonical[eid] = existing["id"]
             existing["source_ids"] = sorted(set(existing["source_ids"]) | set(src_ids))
             existing["confidence"] = max(existing["confidence"], clamp01(e.get("confidence")))
+            # a merged value keeps its strongest tier (and that tier's reason)
+            if tier is not None and stronger_tier(existing.get("relevance"), tier) != existing.get("relevance"):
+                existing.pop("relevance_reason", None)
+                existing.update(_tier_fields(tier, e.get("relevance_reason")))
             continue
         tags: list[str] = []
         for t in (row.get("extraction_method"), e.get("extraction_method"), e.get("freshness_tag")):
@@ -466,6 +589,7 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
             "confidence": clamp01(e.get("confidence")),
             "source_ids": src_ids,
             "tags": tags,
+            **_tier_fields(tier, e.get("relevance_reason")),
         }
         first_seen = iso_utc(e.get("first_seen") or row.get("first_seen"))
         if first_seen:
@@ -473,13 +597,15 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
         canonical[eid] = eid
         by_key[key] = item
         order.append(item)
-    order.sort(key=lambda x: -x["confidence"])
+    # Tiered runs keep Direct, then Related, then Background under the entity cap; untiered runs sort as before.
+    order.sort(key=lambda x: (_TIER_RANK.get(x.get("relevance"), 0), -x["confidence"]))
     if len(order) > C.MAX_BUNDLE_ENTITIES:
         for gone in order[C.MAX_BUNDLE_ENTITIES :]:
             canonical = {k: v for k, v in canonical.items() if v != gone["id"]}
         order = order[: C.MAX_BUNDLE_ENTITIES]
     entity_ids = {e["id"] for e in order}
     src_of = {e["id"]: set(e["source_ids"]) for e in order}
+    tier_by_entity = {e["id"]: e.get("relevance") for e in order}
 
     # ---- relationships ---------------------------------------------------------------------------------
     rel_pages = _relationship_pages_from_db(inp.db_path)
@@ -497,15 +623,20 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
         seen_rel.add(key)
         evidence = rel_pages.get(dash_uuid(r.get("id")))
         ev = [evidence] if evidence and evidence in kept_sources else sorted(src_of[a] & src_of[b])
-        relationships.append(
-            {
-                "source": a,
-                "target": b,
-                "type": rtype,
-                "weight": clamp01(r.get("confidence"), 1.0),
-                "evidence_source_ids": ev,
-            }
-        )
+        rel_item = {
+            "source": a,
+            "target": b,
+            "type": rtype,
+            "weight": clamp01(r.get("confidence"), 1.0),
+            "evidence_source_ids": ev,
+        }
+        # the engine's tier; when an end was merged it may name a value that now has a stronger tier, so the edge
+        # is never stronger than the weaker of its two (final) ends
+        rtier = tier_of(r.get("relevance"))
+        ends = weaker_tier(tier_by_entity.get(a), tier_by_entity.get(b))
+        if rtier is not None or ends is not None:
+            rel_item["relevance"] = rtier if ends is None else (ends if rtier is None else weaker_tier(rtier, ends))
+        relationships.append(rel_item)
 
     # ---- actors ----------------------------------------------------------------------------------------
     profiles = _actor_profiles_from_db(inp.db_path)
@@ -567,6 +698,9 @@ def build_bundle(inp: BundleInputs) -> BuiltBundle:
         "sources": sources,
         "metrics": inp.metrics,
     }
+    relevance = build_relevance(cli, sources, order, relationships)
+    if relevance is not None:
+        bundle["relevance"] = relevance
     if dropped:
         bundle["metrics"]["dropped_entities"] = dict(dropped)
     return BuiltBundle(bundle, raw, sanitized, page_info, dict(dropped))
@@ -580,6 +714,9 @@ def scrub_bundle(bundle: dict[str, Any], raw: RawSecrets) -> dict[str, Any]:
     for src in out.get("sources") or []:
         if isinstance(src.get("excerpt"), str):
             src["excerpt"] = src["excerpt"][: C.EXCERPT_MAX_CHARS]
+    for item in (out.get("sources") or []) + (out.get("entities") or []):
+        if isinstance(item.get("relevance_reason"), str):
+            item["relevance_reason"] = item["relevance_reason"][:REASON_MAX]
     return out
 
 

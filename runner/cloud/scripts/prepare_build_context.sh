@@ -8,9 +8,10 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PLATFORM_REPO="${PLATFORM_REPO:-$(cd "$HERE/../../.." && pwd)}"
 ENGINE_REPO="${ENGINE_REPO:-$(cd "$PLATFORM_REPO/../../.." 2>/dev/null && cd voidaccess 2>/dev/null && pwd || echo "")}"
-ENGINE_REF="${ENGINE_REF:-v2.1.1}"
+# 2.2 remaster: engine main 964100a (22R relevance tiers; pyproject still says 2.1.1, there is no tag yet).
+ENGINE_REF="${ENGINE_REF:-964100a}"
 # The commit a tag ref must resolve to (a moved or re-created tag stops the build). A commit ref is checked against itself.
-ENGINE_EXPECT="${ENGINE_EXPECT:-1d85bb1}"
+ENGINE_EXPECT="${ENGINE_EXPECT:-964100a}"
 OUT="${1:-$(mktemp -d)}"
 
 if [[ -z "$ENGINE_REPO" || ! -d "$ENGINE_REPO/.git" ]]; then
