@@ -3,6 +3,7 @@ import { getSessionUserId } from "@/lib/dev-session";
 import { getInvestigation } from "@/lib/results/queries";
 import { ResultsHeader } from "@/components/results/results-header";
 import { ResultsNav } from "@/components/results/results-nav";
+import { NoDirectNotice, directIsEmpty } from "@/components/results/relevance";
 
 export default async function ResultsLayout({
   children,
@@ -18,6 +19,9 @@ export default async function ResultsLayout({
   return (
     <div className="flex flex-col gap-5">
       <ResultsHeader inv={inv} />
+      {inv.relevance && directIsEmpty(inv.relevance) ? (
+        <NoDirectNotice query={inv.query} relevance={inv.relevance} />
+      ) : null}
       <ResultsNav
         id={id}
         counts={{

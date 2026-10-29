@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/dev-session";
-import type { EntityQuery, EntitySort } from "./types";
+import { TIERS, type EntityQuery, type EntitySort, type Tier } from "./types";
 
 export const json404 = () =>
   NextResponse.json(
@@ -28,12 +28,14 @@ export function parseEntityQuery(sp: URLSearchParams): EntityQuery {
   const sort = sp.get("sort");
   const dir = sp.get("dir");
   const types = sp.get("types")?.split(",").filter(Boolean);
+  const tier = sp.get("tier");
   return {
     q: sp.get("q")?.slice(0, 200) || undefined,
     types: types?.length ? types.slice(0, 100) : undefined,
     minConfidence: num(sp.get("min")),
     maxConfidence: num(sp.get("max")),
     sensitiveOnly: sp.get("sensitive") === "1",
+    tier: TIERS.includes(tier as Tier) ? (tier as Tier) : undefined,
     sort: SORTS.includes(sort as EntitySort) ? (sort as EntitySort) : undefined,
     dir: dir === "asc" || dir === "desc" ? dir : undefined,
     offset: num(sp.get("offset")),

@@ -13,7 +13,12 @@ export default async function EntitiesPage({ params }: { params: Promise<{ id: s
   if (!inv) notFound();
   return (
     <Suspense fallback={<p className="font-mono text-[13px] text-mute">Loading entities…</p>}>
-      <EntitiesView investigationId={id} typeCounts={inv.summary.entityCounts} />
+      <EntitiesView
+        investigationId={id}
+        typeCounts={inv.summary.entityCounts}
+        tierCounts={inv.relevance?.entities ?? null}
+        query={inv.query}
+      />
     </Suspense>
   );
 }

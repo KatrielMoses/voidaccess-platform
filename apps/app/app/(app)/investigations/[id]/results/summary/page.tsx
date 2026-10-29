@@ -8,6 +8,7 @@ import { TypeBadge } from "@/components/results/type-badge";
 import { ArchivePanel } from "@/components/results/archive-panel";
 import { MaskedMark } from "@/components/results/ui";
 import { StarPrompt } from "@/components/results/star-prompt";
+import { RelevancePanel } from "@/components/results/relevance";
 import { starPromptVisible } from "@/lib/ops/star-prompt";
 import { GITHUB_URL } from "@/lib/site";
 
@@ -94,6 +95,8 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
         <Stat label="Duration" value={stats ? formatDuration(stats.durationMs) : "n/a"} />
         <Stat label="Confidence" value={summary.confidence} hint={`from ${summary.sourceCount} sources`} />
       </dl>
+
+      {inv.relevance ? <RelevancePanel id={id} relevance={inv.relevance} /> : null}
 
       <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-16">
         <div className="flex min-w-0 flex-col gap-12">

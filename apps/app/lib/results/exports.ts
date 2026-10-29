@@ -29,6 +29,8 @@ export function entitiesCsv(s: SnapshotForExport): string {
       "tags",
       "degree",
       "community",
+      "relevance",
+      "relevance_reason",
     ],
     s.entities.map((e) => [
       e.bundleId,
@@ -41,6 +43,8 @@ export function entitiesCsv(s: SnapshotForExport): string {
       e.tags.join("; "),
       e.degree,
       e.community,
+      e.relevance,
+      e.relevanceReason,
     ]),
   );
 }
@@ -58,6 +62,7 @@ export function relationshipsCsv(s: SnapshotForExport): string {
       "kind",
       "weight",
       "evidence_source_ids",
+      "relevance",
     ],
     s.relationships.map((r) => {
       const a = by.get(r.sourceBundleId);
@@ -72,6 +77,7 @@ export function relationshipsCsv(s: SnapshotForExport): string {
         r.type === "CO_APPEARED_ON" ? "co-occurrence" : `typed (lead): ${r.type}`,
         r.weight,
         r.evidenceSourceIds.join("; "),
+        r.relevance,
       ];
     }),
   );
@@ -79,8 +85,18 @@ export function relationshipsCsv(s: SnapshotForExport): string {
 
 export function sourcesCsv(s: SnapshotForExport): string {
   return toCsv(
-    ["id", "kind", "name", "url", "fetched_at", "excerpt"],
-    s.sources.map((x) => [x.bundleId, x.kind, x.name, x.url, x.fetchedAt, x.excerpt]),
+    ["id", "kind", "name", "url", "fetched_at", "excerpt", "relevance", "relevance_reason", "page_kind"],
+    s.sources.map((x) => [
+      x.bundleId,
+      x.kind,
+      x.name,
+      x.url,
+      x.fetchedAt,
+      x.excerpt,
+      x.relevance,
+      x.relevanceReason,
+      x.pageKind,
+    ]),
   );
 }
 
@@ -94,6 +110,11 @@ function readme(s: SnapshotForExport, now: Date, what: string, extra: string[] =
     "Credentials and personal data (emails, phone numbers, names) are masked. Raw values are never included.",
     "Relationship edges are leads extracted from co-mentions, not verified facts.",
     "Source URLs, including .onion addresses, are plain text. Do not open them unless you know what you are doing.",
+    ...(s.investigation.relevance
+      ? [
+          "relevance: direct = mentions the query; related = linked to it but does not name it; background = collected, not about the query.",
+        ]
+      : []),
     ...extra,
     "",
   ].join("\n");
@@ -140,6 +161,8 @@ export function buildJson(s: SnapshotForExport, now = new Date()): string {
       credits_charged: inv.creditsCharged,
       completed_at: inv.completedAt,
       summary: inv.summary,
+      // contract v0.4 tiers; null for investigations from engines before 2.2
+      relevance: inv.relevance,
       entities: s.entities.map((e) => ({
         id: e.bundleId,
         type: e.type,
@@ -152,6 +175,8 @@ export function buildJson(s: SnapshotForExport, now = new Date()): string {
         tags: e.tags,
         degree: e.degree,
         community: e.community,
+        relevance: e.relevance,
+        relevance_reason: e.relevanceReason,
       })),
       relationships: s.relationships.map((r) => ({
         source: r.sourceBundleId,
@@ -160,6 +185,7 @@ export function buildJson(s: SnapshotForExport, now = new Date()): string {
         type: r.type,
         weight: r.weight,
         evidence_source_ids: r.evidenceSourceIds,
+        relevance: r.relevance,
       })),
       actors: s.actors.map((a) => ({
         id: a.bundleId,
@@ -177,6 +203,9 @@ export function buildJson(s: SnapshotForExport, now = new Date()): string {
         url: x.url,
         fetched_at: x.fetchedAt,
         excerpt: x.excerpt,
+        relevance: x.relevance,
+        relevance_reason: x.relevanceReason,
+        page_kind: x.pageKind,
       })),
     },
     null,
@@ -222,7 +251,7 @@ export function buildMarkdown(s: SnapshotForExport, now = new Date()): string {
     lines.push(`### ${type} (${list.length})`, "");
     for (const e of list.slice(0, 200))
       lines.push(
-        `- \`${e.displayValue.replaceAll("`", "'")}\`${e.sensitive ? " (masked)" : ""}, confidence ${e.confidence.toFixed(2)}`,
+        `- \`${e.displayValue.replaceAll("`", "'")}\`${e.sensitive ? " (masked)" : ""}, confidence ${e.confidence.toFixed(2)}${e.relevance ? `, ${e.relevance}` : ""}`,
       );
     if (list.length > 200) lines.push(`- … and ${list.length - 200} more (see the CSV export)`);
     lines.push("");

@@ -1,5 +1,22 @@
 /** JSON-serialisable shapes shared by server queries, API routes and client components. */
 
+/** Contract v0.4 relevance tier (engine 2.2). Null on investigations ingested from older bundles. */
+export type Tier = "direct" | "related" | "background";
+export const TIERS: readonly Tier[] = ["direct", "related", "background"];
+export type TierCounts = Record<Tier, number>;
+
+/** Run-level relevance summary (inv_summary.relevance). */
+export interface RelevanceView {
+  queryIntent: string;
+  pages: TierCounts;
+  entities: TierCounts;
+  relationships: TierCounts;
+  removed: { gazetteerContext: number; orgBoilerplate: number };
+  feedItemsCapped: number;
+  filterFallback: boolean;
+  refinedQueryRestored: boolean;
+}
+
 export interface SummaryStats {
   entities: number;
   relationships: number;
@@ -33,6 +50,8 @@ export interface InvestigationView {
     entityCounts: Record<string, number>;
     stats: SummaryStats | null;
   };
+  /** null for investigations without tiers: every view then renders exactly as before */
+  relevance: RelevanceView | null;
 }
 
 export interface EntityRowView {
@@ -45,6 +64,8 @@ export interface EntityRowView {
   sourceCount: number;
   tags: string[];
   degree: number;
+  relevance: Tier | null;
+  relevanceReason: string | null;
 }
 
 export type EntitySort = "value" | "type" | "confidence" | "firstSeen" | "sources" | "degree";
@@ -55,6 +76,8 @@ export interface EntityQuery {
   minConfidence?: number;
   maxConfidence?: number;
   sensitiveOnly?: boolean;
+  /** restrict to one relevance tier */
+  tier?: Tier;
   /** restrict by bundle id (the archive "seen before" filter); an empty include list matches nothing */
   bundleIds?: { include?: string[]; exclude?: string[] };
   sort?: EntitySort;
@@ -75,6 +98,9 @@ export interface SourceView {
   url: string | null;
   fetchedAt: string;
   excerpt: string;
+  relevance: Tier | null;
+  relevanceReason: string | null;
+  pageKind: string | null;
 }
 
 export interface RelationshipView {
@@ -95,6 +121,8 @@ export interface EntityDetail {
   tags: string[];
   degree: number;
   community: number | null;
+  relevance: Tier | null;
+  relevanceReason: string | null;
   sources: SourceView[];
   relationships: RelationshipView[];
   actors: { bundleId: string; handle: string }[];
@@ -140,6 +168,7 @@ export interface SnapshotForExport {
     type: string;
     weight: number;
     evidenceSourceIds: string[];
+    relevance: Tier | null;
   }[];
   actors: ActorView[];
   sources: SourceView[];

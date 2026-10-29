@@ -16,13 +16,23 @@ import { typeLabel } from "@/lib/results/entity-style";
 import { glyphFor } from "@/lib/results/glyphs";
 import { TierBadge } from "./tier-badge";
 import { formatDate } from "@/lib/results/format";
-import type { EntityPage, EntityRowView, EntitySort } from "@/lib/results/types";
+import {
+  TIERS,
+  type EntityPage,
+  type EntityRowView,
+  type EntitySort,
+  type Tier,
+  type TierCounts,
+} from "@/lib/results/types";
 import { CopyButton } from "./copy-text";
 import { EntityDetailView } from "./entity-detail";
 import { SideDrawer } from "./side-drawer";
 import { TypeBadge } from "./type-badge";
 import { ShapeGlyph } from "./type-glyph";
 import { MaskedMark, UL } from "./ui";
+import { TierHeading, tierHelp } from "./relevance";
+
+type SeenMap = Record<string, { firstSeen: string; tier: "unconfirmed" | "corroborated" | "feed_validated" }>;
 
 const PAGE = 100;
 const ROW_H = 44;
@@ -42,49 +52,34 @@ const COLS: { key: EntitySort | null; label: string }[] = [
 export function EntitiesView({
   investigationId,
   typeCounts,
+  tierCounts = null,
+  query = "",
 }: {
   investigationId: string;
   typeCounts: Record<string, number>;
+  /** entity counts per relevance tier; null for investigations without tiers (one table, exactly as before) */
+  tierCounts?: TierCounts | null;
+  /** the investigation's query, for the tier explanations */
+  query?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
   const filters = useMemo(() => parseFilters(new URLSearchParams(sp.toString())), [sp]);
-  const queryKey = filtersToParams(filters, false).toString();
 
-  const [rows, setRows] = useState<EntityRowView[]>([]);
-  const [total, setTotal] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [seenMap, setSeenMap] = useState<Record<
-    string,
-    { firstSeen: string; tier: "unconfirmed" | "corroborated" | "feed_validated" }
-  > | null>(null);
+  const [seenMap, setSeenMap] = useState<SeenMap | null>(null);
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/investigations/${investigationId}/archive?lite=1`)
       .then((r) => (r.ok ? r.json() : null))
-      .then(
-        (
-          c: {
-            seen: Record<
-              string,
-              { firstSeen: string; tier: "unconfirmed" | "corroborated" | "feed_validated" }
-            >;
-          } | null,
-        ) => !cancelled && setSeenMap(c?.seen ?? {}),
-      )
+      .then((c: { seen: SeenMap } | null) => !cancelled && setSeenMap(c?.seen ?? {}))
       .catch(() => !cancelled && setSeenMap({}));
     return () => {
       cancelled = true;
     };
   }, [investigationId]);
-  const [active, setActive] = useState(0);
   const [search, setSearch] = useState(filters.q);
-  const inFlight = useRef(false);
-  const scroller = useRef<HTMLDivElement>(null);
-  const rowEls = useRef(new Map<number, HTMLDivElement>());
+  const [showBackground, setShowBackground] = useState(false);
 
   const setFilters = useCallback(
     (next: EntityFilters) => {
@@ -101,106 +96,7 @@ export function EntitiesView({
     return () => clearTimeout(t);
   }, [search, filters, setFilters]);
 
-  const fetchPage = useCallback(
-    async (offset: number, signal?: AbortSignal): Promise<EntityPage | null> => {
-      const p = filtersToParams(filters, false);
-      p.set("offset", String(offset));
-      p.set("limit", String(PAGE));
-      const res = await fetch(`/api/investigations/${investigationId}/entities?${p}`, { signal });
-      return res.ok ? ((await res.json()) as EntityPage) : null;
-    },
-    [filters, investigationId],
-  );
-
-  // first page whenever the filters change
-  useEffect(() => {
-    const ctl = new AbortController();
-    inFlight.current = true;
-    setLoading(true);
-    setFailed(false);
-    fetchPage(0, ctl.signal)
-      .then((page) => {
-        if (!page) return setFailed(true);
-        setRows(page.rows);
-        setTotal(page.total);
-        setActive(0);
-        scroller.current?.scrollTo({ top: 0 });
-      })
-      .catch((e) => e?.name !== "AbortError" && setFailed(true))
-      .finally(() => {
-        inFlight.current = false;
-        if (!ctl.signal.aborted) setLoading(false);
-      });
-    return () => ctl.abort();
-  }, [queryKey]);
-
-  const hasMore = total !== null && rows.length < total;
-  const loadMore = useCallback(async () => {
-    if (inFlight.current || !hasMore) return;
-    inFlight.current = true;
-    setLoading(true);
-    try {
-      const page = await fetchPage(rows.length);
-      if (page) setRows((r) => [...r, ...page.rows]);
-    } finally {
-      inFlight.current = false;
-      setLoading(false);
-    }
-  }, [fetchPage, hasMore, rows.length]);
-
-  const virtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => scroller.current,
-    estimateSize: () => ROW_H,
-    overscan: 12,
-    initialRect: { width: 1000, height: 640 },
-  });
-  const items = virtualizer.getVirtualItems();
-  const lastIndex = items.at(-1)?.index ?? 0;
-  useEffect(() => {
-    if (rows.length > 0 && lastIndex >= rows.length - 20) void loadMore();
-  }, [lastIndex, rows.length, loadMore]);
-
-  const move = (to: number) => {
-    const i = Math.max(0, Math.min(rows.length - 1, to));
-    setActive(i);
-    virtualizer.scrollToIndex(i);
-    requestAnimationFrame(() => rowEls.current.get(i)?.focus());
-  };
-  const onKeyDown = (e: React.KeyboardEvent, i: number) => {
-    const row = rows[i];
-    if (!row) return;
-    const go = (to: number) => {
-      e.preventDefault();
-      move(to);
-    };
-    if (e.key === "ArrowDown") go(i + 1);
-    else if (e.key === "ArrowUp") go(i - 1);
-    else if (e.key === "Home") go(0);
-    else if (e.key === "End") go(rows.length - 1);
-    else if (e.key === "PageDown") go(i + 10);
-    else if (e.key === "PageUp") go(i - 10);
-    else if (e.key === "Enter") {
-      e.preventDefault();
-      setFilters({ ...filters, focus: row.bundleId });
-    } else if (e.key === " ") {
-      e.preventDefault();
-      toggleSelect(row.bundleId);
-    }
-  };
-  const toggleSelect = (id: string) =>
-    setSelected((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-
   const types = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
-  const selectedRows = rows.filter((r) => selected.has(r.bundleId));
-  const allSelected = rows.length > 0 && selectedRows.length === rows.length;
-  const arrow = (k: EntitySort | null) =>
-    k && filters.sort === k ? (filters.dir === "asc" ? " ↑" : " ↓") : "";
   const anyFilter =
     filters.q ||
     filters.types.length ||
@@ -208,7 +104,16 @@ export function EntitiesView({
     filters.max !== null ||
     filters.sensitive ||
     filters.archive !== "all";
-
+  const table = (tier?: Tier) => (
+    <EntityTable
+      key={tier ?? "all"}
+      investigationId={investigationId}
+      filters={filters}
+      setFilters={setFilters}
+      seenMap={seenMap}
+      tier={tier}
+    />
+  );
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-4">
@@ -318,6 +223,209 @@ export function EntitiesView({
         })}
       </div>
 
+      {tierCounts
+        ? TIERS.map((tier) => {
+            const n = tierCounts[tier];
+            const bg = tier === "background";
+            const open = !bg || showBackground;
+            return (
+              <section
+                key={tier}
+                aria-labelledby={`entities-tier-${tier}`}
+                data-testid={`entities-tier-${tier}`}
+                className={`flex flex-col gap-4 ${bg ? "border-t border-line pt-6" : ""}`}
+              >
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <TierHeading
+                    tier={tier}
+                    count={n}
+                    help={tierHelp(tier, query, "entities")}
+                    id={`entities-tier-${tier}`}
+                  />
+                  {bg && n > 0 ? (
+                    <button
+                      type="button"
+                      aria-expanded={showBackground}
+                      aria-controls="entities-background-table"
+                      onClick={() => setShowBackground((v) => !v)}
+                      className={`${UL} text-[14px] text-dim`}
+                      data-testid="toggle-background"
+                    >
+                      {showBackground
+                        ? "Hide background"
+                        : `Show ${n} background ${n === 1 ? "entity" : "entities"}`}
+                    </button>
+                  ) : null}
+                </div>
+                {n === 0 ? (
+                  <p className="font-mono text-[13px] text-mute">
+                    {tier === "direct"
+                      ? `Nothing collected names “${query}” directly.`
+                      : `No ${tier} entities.`}
+                  </p>
+                ) : open ? (
+                  <div
+                    id={bg ? "entities-background-table" : undefined}
+                    className={bg ? "opacity-75" : undefined}
+                  >
+                    {table(tier)}
+                  </div>
+                ) : null}
+              </section>
+            );
+          })
+        : table()}
+      <p className="font-mono text-[12px] text-mute">
+        Keyboard: ↑ ↓ move between rows, Enter opens details, Space selects.
+      </p>
+
+      <SideDrawer
+        open={filters.focus !== null}
+        onClose={() => setFilters({ ...filters, focus: null })}
+        title="Entity details"
+      >
+        {filters.focus ? (
+          <EntityDetailView
+            key={filters.focus}
+            invId={investigationId}
+            bundleId={filters.focus}
+            onOpenEntity={(id) => setFilters({ ...filters, focus: id })}
+          />
+        ) : null}
+      </SideDrawer>
+    </div>
+  );
+}
+
+/** One entity grid: its own paging, selection and keyboard handling. `tier` limits it to one relevance tier. */
+function EntityTable({
+  investigationId,
+  filters,
+  setFilters,
+  seenMap,
+  tier,
+}: {
+  investigationId: string;
+  filters: EntityFilters;
+  setFilters: (f: EntityFilters) => void;
+  seenMap: SeenMap | null;
+  tier?: Tier;
+}) {
+  const queryKey = filtersToParams(filters, false).toString();
+  const [rows, setRows] = useState<EntityRowView[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [active, setActive] = useState(0);
+  const inFlight = useRef(false);
+  const scroller = useRef<HTMLDivElement>(null);
+  const rowEls = useRef(new Map<number, HTMLDivElement>());
+
+  const fetchPage = useCallback(
+    async (offset: number, signal?: AbortSignal): Promise<EntityPage | null> => {
+      const p = filtersToParams(filters, false);
+      if (tier) p.set("tier", tier);
+      p.set("offset", String(offset));
+      p.set("limit", String(PAGE));
+      const res = await fetch(`/api/investigations/${investigationId}/entities?${p}`, { signal });
+      return res.ok ? ((await res.json()) as EntityPage) : null;
+    },
+    [filters, investigationId, tier],
+  );
+  // first page whenever the filters change
+  useEffect(() => {
+    const ctl = new AbortController();
+    inFlight.current = true;
+    setLoading(true);
+    setFailed(false);
+    fetchPage(0, ctl.signal)
+      .then((page) => {
+        if (!page) return setFailed(true);
+        setRows(page.rows);
+        setTotal(page.total);
+        setActive(0);
+        scroller.current?.scrollTo({ top: 0 });
+      })
+      .catch((e) => e?.name !== "AbortError" && setFailed(true))
+      .finally(() => {
+        inFlight.current = false;
+        if (!ctl.signal.aborted) setLoading(false);
+      });
+    return () => ctl.abort();
+  }, [queryKey]);
+
+  const hasMore = total !== null && rows.length < total;
+  const loadMore = useCallback(async () => {
+    if (inFlight.current || !hasMore) return;
+    inFlight.current = true;
+    setLoading(true);
+    try {
+      const page = await fetchPage(rows.length);
+      if (page) setRows((r) => [...r, ...page.rows]);
+    } finally {
+      inFlight.current = false;
+      setLoading(false);
+    }
+  }, [fetchPage, hasMore, rows.length]);
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scroller.current,
+    estimateSize: () => ROW_H,
+    overscan: 12,
+    initialRect: { width: 1000, height: 640 },
+  });
+  const items = virtualizer.getVirtualItems();
+  const lastIndex = items.at(-1)?.index ?? 0;
+  useEffect(() => {
+    if (rows.length > 0 && lastIndex >= rows.length - 20) void loadMore();
+  }, [lastIndex, rows.length, loadMore]);
+
+  const move = (to: number) => {
+    const i = Math.max(0, Math.min(rows.length - 1, to));
+    setActive(i);
+    virtualizer.scrollToIndex(i);
+    requestAnimationFrame(() => rowEls.current.get(i)?.focus());
+  };
+  const onKeyDown = (e: React.KeyboardEvent, i: number) => {
+    const row = rows[i];
+    if (!row) return;
+    const go = (to: number) => {
+      e.preventDefault();
+      move(to);
+    };
+    if (e.key === "ArrowDown") go(i + 1);
+    else if (e.key === "ArrowUp") go(i - 1);
+    else if (e.key === "Home") go(0);
+    else if (e.key === "End") go(rows.length - 1);
+    else if (e.key === "PageDown") go(i + 10);
+    else if (e.key === "PageUp") go(i - 10);
+    else if (e.key === "Enter") {
+      e.preventDefault();
+      setFilters({ ...filters, focus: row.bundleId });
+    } else if (e.key === " ") {
+      e.preventDefault();
+      toggleSelect(row.bundleId);
+    }
+  };
+  const toggleSelect = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  const selectedRows = rows.filter((r) => selected.has(r.bundleId));
+  const allSelected = rows.length > 0 && selectedRows.length === rows.length;
+  const arrow = (k: EntitySort | null) =>
+    k && filters.sort === k ? (filters.dir === "asc" ? " ↑" : " ↓") : "";
+  // a tier section is only as tall as its rows (up to the usual height); the untiered table keeps its fixed height
+  const height = tier ? Math.min(Math.max(total ?? 2, 2) * ROW_H + 8, 640) : undefined;
+
+  return (
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2 text-[14px] text-dim">
         <p aria-live="polite" data-testid="entity-count" className="tabular-nums">
           {total === null
@@ -385,7 +493,8 @@ export function EntitiesView({
           </div>
           <div
             ref={scroller}
-            className="relative h-[min(65vh,40rem)] overflow-y-auto"
+            className={`relative overflow-y-auto ${tier ? "max-h-[min(65vh,40rem)]" : "h-[min(65vh,40rem)]"}`}
+            style={height ? { height } : undefined}
             data-testid="entity-scroller"
           >
             {failed ? (
@@ -492,24 +601,6 @@ export function EntitiesView({
           </div>
         </div>
       </div>
-      <p className="font-mono text-[12px] text-mute">
-        Keyboard: ↑ ↓ move between rows, Enter opens details, Space selects.
-      </p>
-
-      <SideDrawer
-        open={filters.focus !== null}
-        onClose={() => setFilters({ ...filters, focus: null })}
-        title="Entity details"
-      >
-        {filters.focus ? (
-          <EntityDetailView
-            key={filters.focus}
-            invId={investigationId}
-            bundleId={filters.focus}
-            onOpenEntity={(id) => setFilters({ ...filters, focus: id })}
-          />
-        ) : null}
-      </SideDrawer>
     </div>
   );
 }

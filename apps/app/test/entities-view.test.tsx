@@ -28,6 +28,8 @@ const page: EntityPage = {
       sourceCount: 2,
       tags: ["t1"],
       degree: 1,
+      relevance: null,
+      relevanceReason: null,
     },
     {
       bundleId: "2",
@@ -39,6 +41,8 @@ const page: EntityPage = {
       sourceCount: 1,
       tags: [],
       degree: 0,
+      relevance: null,
+      relevanceReason: null,
     },
   ],
 };

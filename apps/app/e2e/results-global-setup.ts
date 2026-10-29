@@ -5,7 +5,7 @@ import { runMigrations } from "@voidaccess/db/migrate";
 import { investigations, users } from "@voidaccess/db";
 import { createLocalDatabase, prepareLocalRolesAt } from "@voidaccess/db/local";
 import { ingestBundle } from "@voidaccess/ingest";
-import { bundleDeps, fixtureBundle, generateBundle } from "@voidaccess/ingest/test-support";
+import { bundleDeps, fixtureBundle, generateBundle, withTiers } from "@voidaccess/ingest/test-support";
 import { ENTITY_TYPES, isSecretType, isSensitiveType, type ResultBundle } from "@voidaccess/engine-client";
 
 /**
@@ -112,6 +112,9 @@ export default async function setup() {
     freeInv: await seed(free, fixtureBundle("dprk-deep-typed")),
     huge: await seed(pro, generateBundle()),
     allCats: await seed(pro, allCategoriesBundle()),
+    // 2.2 relevance tiers (22R-shaped): a tiered run, and one where nothing collected mentions the query
+    tiered: await seed(pro, withTiers(fixtureBundle("lockbit-deep"))),
+    noDirect: await seed(pro, withTiers(fixtureBundle("dprk-deep-typed"), { direct: false })),
     appUrl: appUrl(),
   };
   await db.close();

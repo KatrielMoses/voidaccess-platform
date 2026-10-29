@@ -27,6 +27,7 @@ import type {
   InvestigationView,
   SnapshotForExport,
   SourceView,
+  Tier,
 } from "./types";
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -80,6 +81,7 @@ export async function getInvestigation(
         entityCounts: sum.entityCounts,
         stats: sum.stats,
       },
+      relevance: sum.relevance ?? null,
     };
   });
 }
@@ -94,7 +96,13 @@ const entityCols = {
   sourceIds: invEntities.sourceIds,
   tags: invEntities.tags,
   degree: invEntities.degree,
+  relevance: invEntities.relevance,
+  relevanceReason: invEntities.relevanceReason,
 };
+
+/** The column is CHECK-constrained to the three tiers; anything else reads as no tier. */
+const asTier = (v: string | null): Tier | null =>
+  v === "direct" || v === "related" || v === "background" ? v : null;
 
 function toRow(r: {
   bundleId: string;
@@ -106,6 +114,8 @@ function toRow(r: {
   sourceIds: string[];
   tags: string[];
   degree: number;
+  relevance: string | null;
+  relevanceReason: string | null;
 }): EntityRowView {
   return {
     bundleId: r.bundleId,
@@ -117,6 +127,8 @@ function toRow(r: {
     sourceCount: r.sourceIds.length,
     tags: r.tags,
     degree: r.degree,
+    relevance: asTier(r.relevance),
+    relevanceReason: r.relevanceReason,
   };
 }
 
@@ -156,6 +168,7 @@ export async function searchEntities(
     if (q.minConfidence !== undefined) where.push(gte(invEntities.confidence, q.minConfidence));
     if (q.maxConfidence !== undefined) where.push(lte(invEntities.confidence, q.maxConfidence));
     if (q.sensitiveOnly) where.push(eq(invEntities.sensitive, true));
+    if (q.tier) where.push(eq(invEntities.relevance, q.tier));
     if (q.bundleIds?.include) {
       if (q.bundleIds.include.length === 0) return { rows: [], total: 0 };
       where.push(inArray(invEntities.bundleId, q.bundleIds.include));
@@ -194,6 +207,9 @@ function toSource(s: {
   url: string | null;
   fetchedAt: Date;
   excerpt: string;
+  relevance: string | null;
+  relevanceReason: string | null;
+  pageKind: string | null;
 }): SourceView {
   return {
     bundleId: s.bundleId,
@@ -202,6 +218,9 @@ function toSource(s: {
     url: s.url,
     fetchedAt: s.fetchedAt.toISOString(),
     excerpt: s.excerpt,
+    relevance: asTier(s.relevance),
+    relevanceReason: s.relevanceReason,
+    pageKind: s.pageKind,
   };
 }
 
@@ -212,6 +231,9 @@ const sourceCols = {
   url: invSources.url,
   fetchedAt: invSources.fetchedAt,
   excerpt: invSources.excerpt,
+  relevance: invSources.relevance,
+  relevanceReason: invSources.relevanceReason,
+  pageKind: invSources.pageKind,
 };
 
 export async function getSources(userId: string, id: string, ctx?: QueryCtx): Promise<SourceView[] | null> {
@@ -486,6 +508,7 @@ export async function loadSnapshot(
           type: invRelationships.type,
           weight: invRelationships.weight,
           evidenceSourceIds: invRelationships.evidenceSourceIds,
+          relevance: invRelationships.relevance,
         })
         .from(invRelationships)
         .where(eq(invRelationships.investigationId, id)),
@@ -496,7 +519,7 @@ export async function loadSnapshot(
   return {
     investigation,
     entities: entities.map((e) => ({ ...toRow(e), value: e.value, community: e.community })),
-    relationships,
+    relationships: relationships.map((r) => ({ ...r, relevance: asTier(r.relevance) })),
     actors: actors ?? [],
     sources: sources ?? [],
   };

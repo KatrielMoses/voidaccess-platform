@@ -10,6 +10,7 @@ import { CopyButton, CopyOnlyUrl } from "./copy-text";
 import { TypeBadge } from "./type-badge";
 import { TypeGlyph } from "./type-glyph";
 import { Field, H, InfoTip, MaskedMark, RULED, VALUE_LINK } from "./ui";
+import { TierWord } from "./relevance";
 
 export function useEntityDetail(invId: string, bundleId: string | null) {
   const [state, setState] = useState<{ key: string; data: EntityDetail | null; error: boolean } | null>(null);
@@ -90,6 +91,15 @@ export function EntityDetailView({
           </Field>
           <Field label="First seen">{formatDate(detail.firstSeen, true)}</Field>
         </dl>
+        {detail.relevance ? (
+          <p className="flex items-baseline gap-2 text-[13px] text-dim" data-testid="entity-relevance">
+            <span className="font-mono text-[12px] text-mute">Relevance</span>
+            <TierWord tier={detail.relevance} reason={detail.relevanceReason} />
+            {detail.relevanceReason && detail.relevanceReason !== "none" ? (
+              <span className="font-mono text-[12px] text-mute">{detail.relevanceReason}</span>
+            ) : null}
+          </p>
+        ) : null}
         {detail.tags.length > 0 ? (
           <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
             {detail.tags.map((t) => (
