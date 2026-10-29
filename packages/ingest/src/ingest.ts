@@ -146,6 +146,7 @@ export async function ingestBundle(runId: string, deps: IngestDeps, opts: Ingest
           communities: t.summary.communities,
           entityCounts: t.summary.entityCounts,
           stats: t.summary.stats,
+          relevance: t.summary.relevance,
         })
         .onConflictDoNothing()
         .returning({ id: invSummary.id });

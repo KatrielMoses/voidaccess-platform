@@ -79,3 +79,48 @@ describe("H1-4: run_events status data migration", () => {
     ).rejects.toThrow(/run_events_status_check/);
   });
 });
+
+describe("22T: relevance tier columns (0015)", () => {
+  it("applies over existing snapshot rows without rewriting them (immutability triggers never fire)", async () => {
+    const u = await makeUser("pro");
+    const inv = randomUUID();
+    const client = await ownerPool().connect();
+    try {
+      await client.query("begin");
+      // back to the 0014 shape, with a snapshot row ingested before the migration
+      await client.query(`alter table inv_entities drop column relevance, drop column relevance_reason`);
+      await client.query(`alter table inv_relationships drop column relevance`);
+      await client.query(
+        `alter table inv_sources drop column relevance, drop column relevance_reason, drop column page_kind`,
+      );
+      await client.query(`alter table inv_summary drop column relevance`);
+      await client.query(
+        `insert into investigations (id, user_id, query, depth) values ($1, $2, 'q', 'quick')`,
+        [inv, u],
+      );
+      await client.query(
+        `insert into inv_entities (user_id, investigation_id, bundle_id, type, display_value, confidence)
+         values ($1, $2, 'e1', 'CVE', 'CVE-2024-3400', 0.9)`,
+        [u, inv],
+      );
+      await client.query(
+        `insert into inv_sources (user_id, investigation_id, bundle_id, kind, name, fetched_at)
+         values ($1, $2, 's1', 'feed', 'kev', now())`,
+        [u, inv],
+      );
+      for (const s of statements("0015_v22_relevance_tiers.sql")) await client.query(s);
+      const r = await client.query(
+        `select e.relevance e, e.relevance_reason er, s.relevance s, s.page_kind pk
+           from inv_entities e join inv_sources s using (investigation_id) where e.investigation_id = $1`,
+        [inv],
+      );
+      expect(r.rows).toEqual([{ e: null, er: null, s: null, pk: null }]);
+      await expect(
+        client.query(`update inv_entities set relevance = 'direct' where investigation_id = $1`, [inv]),
+      ).rejects.toThrow(/immutable/);
+    } finally {
+      await client.query("rollback");
+      client.release();
+    }
+  });
+});

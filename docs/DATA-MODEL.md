@@ -152,3 +152,12 @@ Raw sensitive values exist only in `credential_vault.ciphertext` (AES-256-GCM, r
 - **`run_events.status`** (nullable; `start`, `end`, `skipped`, `failed`): stage events are stored as `type = 'stage'` with the lifecycle in `status`; every other event type has a null status. Migration `0008` rewrites the legacy `stage_end` / `stage_skipped` / `stage_failed` rows (and gives old `stage` rows `start`); it is idempotent. Completed stages are the `stage` events with status `end`.
 - **`investigations.last_viewed_at`**: written by the SSE stream (when it opens, then at most every 30 s, on the database clock). The results-ready email is sent only when no instance has viewed the run in the last 60 s. **`investigations.summary_kind`** is set by ingest from the bundle (`llm`, `fallback`, `none`; `none` when absent).
 - **Refunds:** credits taken from a top-up or admin lot that has expired by the time of the refund go to the user's current grant bucket (key `refund:<inv>:expired-lot:<lot>`), never into the expired lot.
+
+## 10. Relevance tiers (2.2, migration 0015)
+
+Contract v0.4 tiers are stored once, at ingest, on the immutable snapshots: `inv_entities.relevance` +
+`relevance_reason`, `inv_sources.relevance` + `relevance_reason` + `page_kind`, `inv_relationships.relevance`, and the
+run-level summary in `inv_summary.relevance` (jsonb: query intent, per-tier counts of the stored rows, the engine's
+removals, `feedItemsCapped`, `filterFallback`, `refinedQueryRestored`). All nullable with no default: rows ingested from
+a pre-2.2 bundle keep NULL, and the app renders those investigations exactly as before. A CHECK limits each tier to
+`direct`, `related`, `background`; `(investigation_id, relevance)` is indexed for the tiered entity table.

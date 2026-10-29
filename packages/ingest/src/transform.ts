@@ -11,8 +11,11 @@ import {
   maskPartial,
   normalizeValue,
   type BundleEntity,
+  type BundleRelevance,
+  type Relevance,
   type ResultBundle,
 } from "@voidaccess/engine-client";
+import type { RelevanceSummary } from "@voidaccess/db";
 
 const SECRET_TOKEN = /^len:(\d+) sha256:[0-9a-f]{8}$/;
 
@@ -30,6 +33,9 @@ export interface EntityRow {
   degree: number;
   community: number | null;
   searchText: string;
+  /** v0.4 tier (null for older bundles) */
+  relevance: Relevance | null;
+  relevanceReason: string | null;
 }
 
 export interface VaultItem {
@@ -44,6 +50,7 @@ export interface RelationshipRow {
   type: string;
   weight: number;
   evidenceSourceIds: string[];
+  relevance: Relevance | null;
 }
 
 export interface ActorRow {
@@ -63,6 +70,9 @@ export interface SourceRow {
   url: string | null;
   fetchedAt: Date;
   excerpt: string;
+  relevance: Relevance | null;
+  relevanceReason: string | null;
+  pageKind: string | null;
 }
 
 export interface Transformed {
@@ -92,6 +102,8 @@ export interface Transformed {
       startedAt: string;
       completedAt: string;
     };
+    /** v0.4 run-level relevance summary; null for older bundles */
+    relevance: RelevanceSummary | null;
   };
   /** Replaces any raw sensitive value in free text (used for export artifacts too). */
   scrub: (text: string) => string;
@@ -147,6 +159,45 @@ function maskEntity(e: BundleEntity, key: string): Masked {
   };
 }
 
+const TIER_RANK: Record<Relevance, number> = { direct: 0, related: 1, background: 2 };
+/** The stronger of two tiers (null = no tier). */
+export function strongerTier(a: Relevance | null, b: Relevance | null): Relevance | null {
+  if (!a) return b;
+  if (!b) return a;
+  return TIER_RANK[a] <= TIER_RANK[b] ? a : b;
+}
+/** The weaker of two tiers; null when either is unknown. */
+export function weakerTier(a: Relevance | null, b: Relevance | null): Relevance | null {
+  if (!a || !b) return null;
+  return TIER_RANK[a] >= TIER_RANK[b] ? a : b;
+}
+
+function countTiers(xs: { relevance: Relevance | null }[]): Record<Relevance, number> {
+  const out = { direct: 0, related: 0, background: 0 };
+  for (const x of xs) if (x.relevance) out[x.relevance] += 1;
+  return out;
+}
+
+function relevanceSummary(
+  r: BundleRelevance | undefined,
+  entities: EntityRow[],
+  relationships: RelationshipRow[],
+  sources: SourceRow[],
+): RelevanceSummary | null {
+  if (!r) return null;
+  // counts are recomputed after the within-run dedupe so they always equal the stored rows
+  return {
+    queryIntent: r.query_intent,
+    pages: countTiers(sources),
+    entities: countTiers(entities),
+    relationships: countTiers(relationships),
+    removed: { gazetteerContext: r.removed.gazetteer_context, orgBoilerplate: r.removed.org_boilerplate },
+    feedItemsCapped: r.feed_items_capped,
+    filterFallback: r.filter_fallback,
+    refinedQueryRestored: r.refined_query_restored,
+  };
+}
+
 function escapeRe(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -174,6 +225,12 @@ export function transformBundle(b: ResultBundle, opts: { fingerprintKey: string 
       existing.tags = uniq([...existing.tags, ...e.tags]);
       const fs = date(e.first_seen);
       if (fs && (!existing.firstSeen || fs < existing.firstSeen)) existing.firstSeen = fs;
+      // a merged value keeps its strongest tier, with that tier's reason
+      const tier = strongerTier(existing.relevance, e.relevance ?? null);
+      if (tier !== existing.relevance) {
+        existing.relevance = tier;
+        existing.relevanceReason = e.relevance_reason ?? null;
+      }
       continue;
     }
     canonical.set(e.id, e.id);
@@ -193,6 +250,8 @@ export function transformBundle(b: ResultBundle, opts: { fingerprintKey: string 
       degree: 0,
       community: null,
       searchText: "",
+      relevance: e.relevance ?? null,
+      relevanceReason: e.relevance ? (e.relevance_reason ?? null) : null,
     };
     byKey.set(dedupeKey, row);
     order.push(row);
@@ -217,6 +276,7 @@ export function transformBundle(b: ResultBundle, opts: { fingerprintKey: string 
     if (ex) {
       ex.weight = Math.max(ex.weight, r.weight);
       ex.evidenceSourceIds = uniq([...ex.evidenceSourceIds, ...r.evidence_source_ids]);
+      ex.relevance = strongerTier(ex.relevance, r.relevance ?? null);
     } else
       relMap.set(k, {
         sourceBundleId: s,
@@ -224,9 +284,17 @@ export function transformBundle(b: ResultBundle, opts: { fingerprintKey: string 
         type: r.type,
         weight: r.weight,
         evidenceSourceIds: uniq(r.evidence_source_ids),
+        relevance: r.relevance ?? null,
       });
   }
   const relationships = [...relMap.values()];
+  // an edge is never stronger than the weaker of its (merged) ends
+  const tierOf = new Map(order.map((e) => [e.bundleId, e.relevance]));
+  for (const r of relationships) {
+    if (!r.relevance) continue;
+    const ends = weakerTier(tierOf.get(r.sourceBundleId) ?? null, tierOf.get(r.targetBundleId) ?? null);
+    if (ends) r.relevance = weakerTier(r.relevance, ends);
+  }
 
   // 3. degree, community, search text
   const degree = new Map<string, number>();
@@ -267,6 +335,9 @@ export function transformBundle(b: ResultBundle, opts: { fingerprintKey: string 
     url: s.url,
     fetchedAt: new Date(s.fetched_at),
     excerpt: scrub(s.excerpt).slice(0, 500),
+    relevance: s.relevance ?? null,
+    relevanceReason: s.relevance ? (s.relevance_reason ?? null) : null,
+    pageKind: s.page_kind ?? null,
   }));
   const typed = relationships.filter((r) => r.type !== "CO_APPEARED_ON").length;
   return {
@@ -296,6 +367,7 @@ export function transformBundle(b: ResultBundle, opts: { fingerprintKey: string 
         startedAt: b.started_at,
         completedAt: b.completed_at,
       },
+      relevance: relevanceSummary(b.relevance, order, relationships, sources),
     },
     scrub,
   };

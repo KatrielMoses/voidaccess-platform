@@ -69,6 +69,70 @@ export function withSensitive(bundle: ResultBundle): ResultBundle {
   return b;
 }
 
+type Tier = "direct" | "related" | "background";
+const RANK: Record<Tier, number> = { direct: 0, related: 1, background: 2 };
+const weaker = (a: Tier, b: Tier): Tier => (RANK[a] >= RANK[b] ? a : b);
+const PAGE_KIND_CYCLE = ["leak_post", "forum_thread", "market_listing", "news_article", "directory"] as const;
+
+/**
+ * Gives a fixture the contract v0.4 relevance tiers, shaped like a real 22R run (engine 964100a): a few Direct values
+ * (the ones that name the query), some Related, a long Background tail (agencies, unrelated organisations, feed
+ * items), sources with a page kind, edges at the weaker tier of their ends, and the run-level summary.
+ * `direct: false` makes a run where nothing collected mentions the query (every item Background, filter fallback).
+ */
+export function withTiers(bundle: ResultBundle, opts: { direct?: boolean } = {}): ResultBundle {
+  const b: ResultBundle = structuredClone(bundle);
+  const hasDirect = opts.direct ?? true;
+  const words = b.query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length >= 4);
+  const nDirectSources = hasDirect ? Math.max(1, Math.round(b.sources.length * 0.25)) : 0;
+  const nRelatedSources = hasDirect ? Math.max(1, Math.round(b.sources.length * 0.2)) : 0;
+  b.sources.forEach((s, i) => {
+    const tier: Tier =
+      i < nDirectSources ? "direct" : i < nDirectSources + nRelatedSources ? "related" : "background";
+    s.relevance = tier;
+    s.relevance_reason =
+      tier === "direct" ? `term_match:${words[0] ?? "query"}` : tier === "related" ? "refined_term" : "none";
+    s.page_kind =
+      tier === "background" && i % 3 === 0 ? "feed_item" : PAGE_KIND_CYCLE[i % PAGE_KIND_CYCLE.length];
+  });
+  b.entities.forEach((e, i) => {
+    const names = words.some((w) => e.value.toLowerCase().includes(w));
+    let tier: Tier;
+    let reason: string;
+    if (!hasDirect) [tier, reason] = ["background", "none"];
+    else if (names) [tier, reason] = ["direct", "query_entity"];
+    else if (e.type === "ORGANIZATION_NAME" || e.type === "LOCATION")
+      [tier, reason] = ["background", "agency_not_near_match"];
+    else if (i % 7 === 0) [tier, reason] = ["direct", "near_direct_match"];
+    else if (i % 4 === 0) [tier, reason] = ["related", "related_page"];
+    else [tier, reason] = ["background", "none"];
+    e.relevance = tier;
+    e.relevance_reason = reason;
+  });
+  const tierOf = new Map(b.entities.map((e) => [e.id, e.relevance as Tier]));
+  for (const r of b.relationships)
+    r.relevance = weaker(tierOf.get(r.source) ?? "background", tierOf.get(r.target) ?? "background");
+  const count = (xs: { relevance?: Tier }[]) => ({
+    direct: xs.filter((x) => x.relevance === "direct").length,
+    related: xs.filter((x) => x.relevance === "related").length,
+    background: xs.filter((x) => x.relevance === "background").length,
+  });
+  b.relevance = {
+    query_intent: "named_threat",
+    pages: count(b.sources),
+    entities: count(b.entities),
+    relationships: count(b.relationships),
+    removed: { gazetteer_context: hasDirect ? 2 : 4, org_boilerplate: 1 },
+    feed_items_capped: 169,
+    filter_fallback: !hasDirect,
+    refined_query_restored: false,
+  };
+  return b;
+}
+
 export function fixtureBundle(name: FixtureName, sensitive = true): ResultBundle {
   const { bundle } = loadFixture(name);
   return sensitive ? withSensitive(bundle) : bundle;

@@ -118,6 +118,23 @@ export const runEvents = pgTable(
 
 // ---- snapshot tables: immutable after ingest (UPDATE blocked by trigger) ----
 
+/** Contract v0.4 relevance tiers (engine 2.2). Null on snapshots ingested from older bundles. */
+export const RELEVANCE_TIERS = ["direct", "related", "background"] as const;
+export type RelevanceTier = (typeof RELEVANCE_TIERS)[number];
+const tierCheck = (col: unknown) => sql`${col} IS NULL OR ${col} IN ('direct', 'related', 'background')`;
+
+/** Run-level relevance summary as ingested (bundle `relevance`); null for older bundles. */
+export interface RelevanceSummary {
+  queryIntent: string;
+  pages: Record<RelevanceTier, number>;
+  entities: Record<RelevanceTier, number>;
+  relationships: Record<RelevanceTier, number>;
+  removed: { gazetteerContext: number; orgBoilerplate: number };
+  feedItemsCapped: number;
+  filterFallback: boolean;
+  refinedQueryRestored: boolean;
+}
+
 const snapshotBase = {
   id: pk(),
   userId: uuid("user_id")
@@ -155,8 +172,13 @@ export const invEntities = pgTable(
     community: integer("community"),
     /** Lower-cased display value + tags, for trigram search. Never contains a raw sensitive value. */
     searchText: text("search_text").notNull().default(""),
+    /** v0.4 relevance tier and its machine reason; null for bundles from engines before 2.2 */
+    relevance: text("relevance"),
+    relevanceReason: text("relevance_reason"),
   },
   (t) => [
+    check("inv_entities_relevance_check", tierCheck(t.relevance)),
+    index("inv_entities_inv_relevance_idx").on(t.investigationId, t.relevance),
     index("inv_entities_search_trgm_idx").using("gin", t.searchText.op("gin_trgm_ops")),
     uniqueIndex("inv_entities_inv_bundle_uq").on(t.investigationId, t.bundleId),
     index("inv_entities_user_idx").on(t.userId),
@@ -177,8 +199,11 @@ export const invRelationships = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    /** v0.4 relevance tier; null for older bundles */
+    relevance: text("relevance"),
   },
   (t) => [
+    check("inv_relationships_relevance_check", tierCheck(t.relevance)),
     index("inv_relationships_inv_idx").on(t.investigationId),
     index("inv_relationships_user_idx").on(t.userId),
   ],
@@ -219,8 +244,13 @@ export const invSources = pgTable(
     fetchedAt: tstz("fetched_at").notNull(),
     /** sanitized excerpt, at most 500 chars (enforced by CHECK) */
     excerpt: text("excerpt").notNull().default(""),
+    /** v0.4 relevance tier, its machine reason and the engine's page kind; null for older bundles */
+    relevance: text("relevance"),
+    relevanceReason: text("relevance_reason"),
+    pageKind: text("page_kind"),
   },
   (t) => [
+    check("inv_sources_relevance_check", tierCheck(t.relevance)),
     uniqueIndex("inv_sources_inv_bundle_uq").on(t.investigationId, t.bundleId),
     index("inv_sources_user_idx").on(t.userId),
     check("inv_sources_excerpt_len", sql`char_length(${t.excerpt}) <= 500`),
@@ -264,6 +294,8 @@ export const invSummary = pgTable(
       startedAt: string;
       completedAt: string;
     } | null>(),
+    /** v0.4 run-level relevance summary; null for older bundles (the UI then renders exactly as before) */
+    relevance: jsonb("relevance").$type<RelevanceSummary | null>(),
   },
   (t) => [
     uniqueIndex("inv_summary_inv_uq").on(t.investigationId),
