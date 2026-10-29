@@ -33,6 +33,8 @@ TRACE_KINDS = (
     "graph.progress",
     "summary.status",
     "trace.truncated",
+    # contract v0.4 (engine 2.2): the LLM relevance filter returned nothing usable, every candidate was kept
+    "filter_fallback",
 )
 TEXT_MAX = 200
 DISPLAY_MAX = 80
@@ -49,6 +51,7 @@ FETCH_OUTCOMES = (
 )
 ENRICH_STATUS = ("ok", "error", "timeout", "disabled", "no_key", "skipped")
 SUMMARY_KINDS = ("llm", "fallback", "none")
+FILTER_SCOPES = ("onion", "clearnet")
 
 _URL_ID = re.compile(r"^u[0-9]{1,6}$")
 _ENTITY_ID = re.compile(r"^e[0-9]{1,6}$")
@@ -205,6 +208,11 @@ _FIELDS: dict[str, dict[str, tuple[bool, Callable[[Any], Any]]]] = {
     "graph.progress": {"nodes": (True, _count()), "edges": (True, _count()), "communities": (False, _count())},
     "summary.status": {"kind": (True, _enum(SUMMARY_KINDS)), "attempt": (False, _count(20))},
     "trace.truncated": {"kind": (True, _enum(TRACE_KINDS)), "dropped": (True, _count())},
+    "filter_fallback": {
+        "scope": (True, _enum(FILTER_SCOPES)),
+        "candidates": (True, _count()),
+        "kept": (True, _count()),
+    },
 }
 assert set(_FIELDS) == set(TRACE_KINDS)
 

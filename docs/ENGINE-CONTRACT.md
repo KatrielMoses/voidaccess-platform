@@ -1,6 +1,6 @@
 # Engine contract: `voidaccess job run` (cloud job mode)
 
-**Status:** v0.3, 2026-10-12 (§2–3 reconciled with P0's engine-client). Draft v0.2 was 2026-10-11. Implemented by engine phase E4 (see ROADMAP.md) and mirrored by `packages/engine-mock` so the platform can be built in parallel. The canonical TypeScript types will live in `packages/engine-client/src/types.ts`.
+**Status:** v0.4, 2026-10-29 (§3.1 relevance tiers, engine 2.2 / 22R; all additions optional). v0.3 was 2026-10-12 (§2–3 reconciled with P0's engine-client). Draft v0.2 was 2026-10-11. Implemented by engine phase E4 (see ROADMAP.md) and mirrored by `packages/engine-mock` so the platform can be built in parallel. The canonical TypeScript types will live in `packages/engine-client/src/types.ts`.
 
 ## 1. Invocation
 
@@ -86,6 +86,9 @@ page.fetched 400, entity.found 300, others 200; total 3000) are defined once in
   - successful fetches arrive in a burst after the scrape batch's safety scan, failures arrive as they happen;
   - `trace.truncated` is sent once per kind just before the terminal event, with the final dropped count;
   - `query.refined` can also arrive in `collect`, and entities found by enrichment have no `url_id`.
+- **v0.4 kind `filter_fallback`** (stage `filter`, cap 200): `{ scope: "onion" | "clearnet", candidates, kept }`, counts
+  only. The LLM relevance filter returned nothing usable, so every candidate was kept. An app or runner older than v0.4
+  ignores it as an unknown kind.
 
 ## 3. Result bundle (`bundle.json`, uploaded before the `completed` event)
 
@@ -112,6 +115,40 @@ type RunMetrics = {
   pages_fetched: number; bytes_fetched: number; enrichment_calls: Record<string, number>;
 };
 ```
+
+### 3.1 Relevance tiers (v0.4, engine 2.2 / 22R)
+
+Every field below is **optional**: a bundle from an engine before 2.2 has none of them, stays valid (`schema_version`
+is still 1) and renders exactly as before. The engine defines the tiers (engine repo `docs/architecture.md` §13.20);
+nothing collected is hidden, an off-topic item is kept and labelled `background`.
+
+```ts
+type Relevance = "direct" | "related" | "background";
+type PageKind = "directory" | "search_portal" | "market_listing" | "forum_thread" | "leak_post" | "paste"
+              | "news_article" | "feed_item" | "other";
+type TierCounts = { direct: number; related: number; background: number };
+
+// added to ResultBundle
+relevance?: {
+  query_intent: string;              // selector | named_threat | person_or_org | topic (≤ 40 chars)
+  pages: TierCounts; entities: TierCounts; relationships: TierCounts;   // what the BUNDLE holds
+  removed: { gazetteer_context: number; org_boilerplate: number };      // the engine's only removals
+  feed_items_capped: number;         // off-query RSS items left out beyond the engine's cap
+  filter_fallback: boolean;          // the LLM relevance filter returned nothing usable; all candidates kept
+  refined_query_restored: boolean;   // the LLM rewrite lost the selector/name; the original query was searched
+};
+// added to entities[]:      relevance?: Relevance; relevance_reason?: string /* ≤ 120, e.g. near_direct_match */
+// added to relationships[]: relevance?: Relevance   /* never stronger than the weaker of its two ends */
+// added to sources[]:       relevance?: Relevance; relevance_reason?: string /* e.g. term_match:lockbit */; page_kind?: PageKind
+```
+
+Runner mapping (`runner/cloud/bundle.py`): page tiers come from the engine's `pages_scraped[]`, matched by `page_id`
+or, since 22R leaves `page_id` null, by URL; an unknown `page_kind` becomes `other`; an unknown tier is left out; a
+reason with control characters or markup is left out, a long one is cut to 120. When duplicates merge, the value keeps
+its strongest tier. Entities are ordered Direct, Related, Background (confidence inside a tier) before the entity
+cap, so the cap never drops a Direct value for a Background one. The per-tier counts are recomputed from the bundle (the
+safety gate, merging and caps can remove items), so they always match what the app shows; the removals, the feed cap
+and the two flags are copied from the engine.
 
 `EntityType` uses the engine's own UPPER_SNAKE names (e.g. `RANSOMWARE_GROUP`, `ONION_URL`, `THREAT_ACTOR_HANDLE`, `ORGANIZATION_NAME`, `CVE`), not lowercase categories. The canonical schema is in `packages/engine-client` (zod + `schemas/*.json`). `at` may be a Python `isoformat()` string with an offset.
 

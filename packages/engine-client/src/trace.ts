@@ -32,6 +32,8 @@ export const TRACE_KINDS = [
   "graph.progress",
   "summary.status",
   "trace.truncated",
+  // contract v0.4 (engine 2.2): the LLM relevance filter returned nothing usable, every candidate was kept
+  "filter_fallback",
 ] as const;
 export type TraceKind = (typeof TRACE_KINDS)[number];
 
@@ -50,6 +52,7 @@ export const TRACE_CAPS: Record<TraceKind, number> = {
   "graph.progress": 200,
   "summary.status": 200,
   "trace.truncated": 200,
+  filter_fallback: 200,
 };
 export const TRACE_TOTAL_CAP = 3000;
 
@@ -154,6 +157,8 @@ export const TraceData = {
     attempt: Count.max(20).optional(),
   }),
   "trace.truncated": z.object({ kind: z.enum(TRACE_KINDS), dropped: Count }),
+  /** counts only: which filter fell back (onion or clearnet search results), how many candidates, how many kept */
+  filter_fallback: z.object({ scope: z.enum(["onion", "clearnet"]), candidates: Count, kept: Count }),
 } as const satisfies Record<TraceKind, z.ZodType>;
 
 export type TraceDataOf<K extends TraceKind> = z.infer<(typeof TraceData)[K]>;

@@ -335,6 +335,7 @@ def test_every_known_kind_has_a_minimal_valid_example():
         "graph.progress": {"nodes": 1, "edges": 0},
         "summary.status": {"kind": "fallback"},
         "trace.truncated": {"kind": "url.found", "dropped": 12},
+        "filter_fallback": {"scope": "clearnet", "candidates": 12, "kept": 12},
     }
     assert set(examples) == set(TRACE_KINDS)
     for kind, data in examples.items():
@@ -360,3 +361,10 @@ def test_an_enum_stage_from_the_engine_is_accepted():
 
     out = sanitize_trace({"type": "trace", "stage": Stage(), "kind": "url.kept", "data": {"url_id": "u3"}})
     assert out["stage"] == "fetch"
+
+
+def test_filter_fallback_keeps_counts_only_and_rejects_bad_scopes():
+    ok = sanitize_trace(trace("filter_fallback", "filter", scope="onion", candidates=40, kept=40, host="x[.]onion"))
+    assert ok["data"] == {"scope": "onion", "candidates": 40, "kept": 40}
+    assert sanitize_trace(trace("filter_fallback", "filter", scope="web", candidates=1, kept=1)) is None
+    assert sanitize_trace(trace("filter_fallback", "filter", scope="onion", candidates=-1, kept=1)) is None

@@ -12,4 +12,8 @@ export type {
   BundleSource,
   BundleSummary,
   SourceKind,
+  Relevance,
+  PageKind,
+  TierCounts,
+  BundleRelevance,
 } from "./bundle";

@@ -60,6 +60,8 @@ def _engine_trace_events() -> list[dict]:
             tr.enrich_source(source, status, hits)
         tr.graph_progress(42, 57, communities=3)
         tr.summary_status("fallback", attempt=2)
+        if hasattr(tr, "filter_fallback"):  # engine 2.2 (22R) and later
+            tr.filter_fallback("clearnet", 12, 12)
         em.completed({})
     finally:
         tr.bind(None)
@@ -70,8 +72,11 @@ def _engine_trace_events() -> list[dict]:
 def test_every_trace_the_2_1_0_engine_emits_passes_the_runner_sanitizer():
     events = _engine_trace_events()
     kinds = {e["kind"] for e in events}
-    # every contract kind is exercised, including the cap overflow report
-    assert kinds == set(TRACE_KINDS), sorted(set(TRACE_KINDS) - kinds)
+    # every contract kind is exercised, including the cap overflow report (filter_fallback needs engine 2.2+)
+    from progress import trace as tr
+
+    expected = set(TRACE_KINDS) if hasattr(tr, "filter_fallback") else set(TRACE_KINDS) - {"filter_fallback"}
+    assert kinds == expected, sorted(expected - kinds)
     for e in events:
         assert e["schema"] == 2
         out = sanitize_trace(e)
