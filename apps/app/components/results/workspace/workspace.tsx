@@ -185,7 +185,7 @@ export function Workspace({ investigationId }: { investigationId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [investigationId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [investigationId]); // the preview flag is read once, with the data
 
   // the workspace fills the viewport below the results header; the page itself does not scroll
   useEffect(() => {

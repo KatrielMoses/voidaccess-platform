@@ -287,7 +287,7 @@ describe("preview rendering", () => {
         {wrap(
           <ExportsView
             investigationId={INV}
-            states={exportStates({ exportAll: false, artifacts: ["stix"], preview: true })}
+            states={exportStates({ exportAll: false, artifacts: ["stix"], previewLocked: true })}
             preview
           />,
         )}

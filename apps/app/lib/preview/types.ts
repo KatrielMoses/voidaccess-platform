@@ -2,17 +2,11 @@
  * The preview marker every results payload carries (contract: PREVIEW-COMMON.md). The server decides and redacts;
  * the UI only reads these fields. Pure types and helpers: safe to import from client components.
  */
-export interface PreviewTotals {
-  sources: number;
-  entities: number;
-  byType: Record<string, number>;
-  actors: number;
-  onions: number;
-  iocs: number;
-  relationships: number;
-}
+import type { AccessMarker, PreviewTotals } from "@/lib/access/shared";
+import { LOCKED_ERROR } from "@/lib/access/shared";
 
-export type AccessView = { level: "full" } | { level: "preview"; totals: PreviewTotals };
+export type { PreviewTotals };
+export type AccessView = AccessMarker;
 
 /** A payload that may carry the marker (payloads from before the preview change carry none: full). */
 export interface WithAccess {
@@ -32,7 +26,7 @@ export const isLockedRow = (r: unknown): boolean =>
   typeof r === "object" && r !== null && (r as LockedFlag).locked === true;
 
 /** The API error code for a locked read (HTTP 402). */
-export const PREVIEW_LOCKED = "preview_locked";
+export const PREVIEW_LOCKED = LOCKED_ERROR;
 
 /** True when a fetch answered 402 { error: "preview_locked" }. Reads a clone, so the caller can still read the body. */
 export async function isPreviewLockedResponse(res: Response): Promise<boolean> {
