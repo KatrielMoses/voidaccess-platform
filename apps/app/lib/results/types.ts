@@ -56,6 +56,8 @@ export interface InvestigationView {
 
 export interface EntityRowView {
   bundleId: string;
+  /** preview placeholder (lib/access): every other field is a placeholder, bundleId is "locked-<n>" */
+  locked?: true;
   type: string;
   displayValue: string;
   sensitive: boolean;
@@ -93,6 +95,8 @@ export interface EntityPage {
 
 export interface SourceView {
   bundleId: string;
+  /** preview placeholder (lib/access) */
+  locked?: true;
   kind: string;
   name: string;
   url: string | null;
@@ -149,6 +153,8 @@ export interface GraphData {
 
 export interface ActorView {
   bundleId: string;
+  /** preview placeholder (lib/access) */
+  locked?: true;
   handle: string;
   aliases: string[];
   firstSeen: string | null;

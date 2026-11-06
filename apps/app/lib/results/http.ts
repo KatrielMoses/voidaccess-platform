@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/dev-session";
+import { LOCKED_ERROR, LOCKED_STATUS } from "@/lib/access/shared";
 import { TIERS, type EntityQuery, type EntitySort, type Tier } from "./types";
 
 export const json404 = () =>
@@ -11,6 +12,12 @@ export const json401 = () =>
   NextResponse.json(
     { error: "unauthorized" },
     { status: 401, headers: { "Cache-Control": "private, no-store" } },
+  );
+/** A preview account asked for a locked resource (exports, entity detail): HTTP 402 {error:"preview_locked"}. */
+export const json402 = () =>
+  NextResponse.json(
+    { error: LOCKED_ERROR },
+    { status: LOCKED_STATUS, headers: { "Cache-Control": "private, no-store" } },
   );
 export const jsonOk = (body: unknown) =>
   NextResponse.json(body, { headers: { "Cache-Control": "private, no-store" } });
