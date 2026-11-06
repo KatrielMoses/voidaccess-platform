@@ -36,7 +36,7 @@
     "fflate": "^0.8.3",
     "graphology": "^0.26.0",
     "graphology-layout-forceatlas2": "^0.10.1",
-    "next": "^16.4.0",
+    "next": "^16.4.1",
     "pg": "^8.23.1",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
