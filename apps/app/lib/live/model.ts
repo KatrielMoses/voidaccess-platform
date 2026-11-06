@@ -133,6 +133,15 @@ export const LOG_MAX = 200;
 const STAGE_SET = new Set<string>(STAGES);
 const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.length > 0 ? v : undefined);
+/** A preview account's stream carries placeholders ("█" runs) for hosts and query text: never shown as text. */
+const isFiller = (v: string | undefined) => v !== undefined && /^█+$/.test(v);
+/** Text the reader may see: undefined for a placeholder. */
+const shown = (v: unknown): string | undefined => {
+  const s = str(v);
+  return isFiller(s) ? undefined : s;
+};
+/** The host of a page a preview hides (its host arrived as a placeholder). */
+export const LOCKED_HOST = "\u0000locked";
 
 /** Edges per entity from page co-occurrence: enough to read as a graph, bounded so the view stays light. */
 const MAX_EDGES_PER_ENTITY = 3;
@@ -268,7 +277,7 @@ export class LiveModel {
     const f = fx[0];
     switch (ev.kind) {
       case "query.refined":
-        return str(d.text) ? { ...base, verb: "query", detail: str(d.text) } : null;
+        return shown(d.text) ? { ...base, verb: "query", detail: shown(d.text) } : null;
       case "search.result":
         return {
           ...base,
@@ -312,7 +321,7 @@ export class LiveModel {
     switch (ev.kind) {
       case "query.refined": {
         const i = num(d.index) ?? this.queries.length;
-        const t = str(d.text);
+        const t = shown(d.text);
         if (t && i < 50) this.queries[i] = t;
         return [];
       }
@@ -335,7 +344,7 @@ export class LiveModel {
         if (!id || this.urls.has(id)) return [];
         this.urls.set(id, {
           id,
-          host: str(d.host) ?? null,
+          host: isFiller(str(d.host)) ? LOCKED_HOST : (str(d.host) ?? null),
           engine: str(d.engine) ?? null,
           depth: num(d.depth) ?? null,
           state: "found",

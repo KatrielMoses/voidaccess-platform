@@ -73,7 +73,8 @@ function init(s: RunSnapshot): State {
   return {
     status: s.status,
     failureReason: s.failureReason,
-    refined: s.refinedQueries,
+    // a preview's refined queries arrive as placeholders: they are not shown
+    refined: s.refinedQueries.filter((q) => !/^█+$/.test(q)),
     stages,
     counts: s.counts ?? {},
     cancelRequested: s.cancelRequested,
@@ -104,7 +105,9 @@ function reduce(state: State, a: Action): State {
       return {
         ...state,
         status: d.status,
-        refined: d.refinedQueries?.length ? d.refinedQueries : state.refined,
+        refined: d.refinedQueries?.filter((q) => !/^█+$/.test(q)).length
+          ? d.refinedQueries.filter((q) => !/^█+$/.test(q))
+          : state.refined,
         failureReason: d.failureReason ?? state.failureReason,
         cancelRequested: d.cancelRequested ?? state.cancelRequested,
         refunded: d.creditsRefunded ?? state.refunded,

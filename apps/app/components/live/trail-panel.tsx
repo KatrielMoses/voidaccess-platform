@@ -3,6 +3,7 @@ import { cn } from "@voidaccess/ui";
 import { TypeGlyph } from "@/components/results/type-glyph";
 import { typeLabel as entityTypeLabel } from "@/lib/results/entity-style";
 import {
+  LOCKED_HOST,
   TRAY_LABEL,
   formatBytes,
   outcomeLabel,
@@ -17,6 +18,7 @@ export type Selection = { kind: "url" | "entity"; id: string } | { kind: "bucket
 export function hostText(u: UrlTrail | undefined): string {
   if (!u) return "unknown page";
   if (u.safety || !u.host) return "removed by the safety filter";
+  if (u.host === LOCKED_HOST) return "a page in the full report";
   return u.host;
 }
 
@@ -69,7 +71,7 @@ function UrlTrailView({
   return (
     <ol className="flex flex-col border-t border-line">
       <Row index="01" label="Found">
-        {u.host}
+        {hostText(u)}
         <span className="text-dim">
           {u.engine ? ` · by ${u.engine}` : ""}
           {u.depth ? ` · crawled, depth ${u.depth}` : ""}

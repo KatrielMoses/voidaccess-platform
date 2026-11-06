@@ -15,7 +15,7 @@
 import { STAGES, type Stage } from "@voidaccess/config";
 import { glyphFor, type ShapeName } from "@/lib/results/glyphs";
 import { layout, type Geometry } from "./geometry";
-import type { Effect, LiveModel, TrayBucket } from "./model";
+import { LOCKED_HOST, type Effect, type LiveModel, type TrayBucket } from "./model";
 
 export const MAX_LABELS = 80;
 const HOST_LABEL_MS = 2400;
@@ -261,7 +261,12 @@ export class LiveScene {
           p.targetAlpha = 0.55;
           this.urls.push(p);
           // one in three hosts is named while it arrives: enough to read the stream, never a wall of text
-          if (u.host && hash(f.id, 3) < 0.34 && this.hostShown < this.opts.hostLabels)
+          if (
+            u.host &&
+            u.host !== LOCKED_HOST &&
+            hash(f.id, 3) < 0.34 &&
+            this.hostShown < this.opts.hostLabels
+          )
             this.attachLabel(p, u.host, HOST_LABEL_MS);
           break;
         }

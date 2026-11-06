@@ -4,8 +4,9 @@ import { HeaderActions } from "./header-actions";
 
 /** Compact results header: the title, one mono status line, actions on the right (the graph gets the height). */
 export function ResultsHeader({ inv }: { inv: InvestigationView }) {
+  // a preview's refined queries arrive as placeholders ("█" runs): never shown
   const extra = inv.refinedQueries.filter(
-    (q) => q.trim() && q.trim().toLowerCase() !== inv.query.trim().toLowerCase(),
+    (q) => q.trim() && !/^█+$/.test(q) && q.trim().toLowerCase() !== inv.query.trim().toLowerCase(),
   );
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
