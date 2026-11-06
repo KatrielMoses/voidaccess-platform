@@ -33,6 +33,7 @@ import {
   type Tx,
 } from "@voidaccess/db";
 import { getEnv } from "../../env";
+import { asCheckoutSource, type CheckoutSource } from "./checkout";
 import { catalogByProductId, FOUNDING_KEY, productRank, planRank, type Interval } from "./catalog";
 import { grantPlanDifference, grantPlanPeriod } from "./ledger-ext";
 import { billingMode, type Mode } from "./provider";
@@ -53,8 +54,16 @@ export interface CreemEvent {
 /** Work to do after the transaction commits (emails, analytics): never inside it. */
 export type PostEffect =
   | { kind: "welcome"; userId: string; plan: PlanId }
-  | { kind: "payment_failed"; userId: string }
-  | { kind: "subscribed"; userId: string; plan: PlanId; interval: Interval; founding: boolean }
+  | { kind: "payment_failed"; userId: string; status?: string; source?: CheckoutSource | null }
+  | {
+      kind: "subscribed";
+      userId: string;
+      plan: PlanId;
+      interval: Interval;
+      founding: boolean;
+      /** where the checkout started (Creem copies checkout metadata onto the subscription); null from Billing */
+      source?: CheckoutSource | null;
+    }
   | { kind: "topup_purchased"; userId: string; usd: number }
   | { kind: "pass_purchased"; userId: string; plan: PlanId; interval: Interval; extended: boolean };
 
@@ -384,7 +393,9 @@ async function applySubscription(tx: Tx, ev: CreemEvent, mode: string, post: Pos
   const periodStart = d(data.current_period_start_date);
   const periodEnd = d(data.current_period_end_date);
   const cancelFlag = rawStatus === "scheduled_cancel";
-  if (status === "past_due") post.push({ kind: "payment_failed", userId });
+  // where the checkout started, carried in Creem's metadata (only known values)
+  const source = asCheckoutSource(data.metadata?.source);
+  if (status === "past_due") post.push({ kind: "payment_failed", userId, status: rawStatus, source });
 
   const [existing] = await tx
     .select()
@@ -579,7 +590,14 @@ async function applySubscription(tx: Tx, ev: CreemEvent, mode: string, post: Pos
     !existing || (existing.status !== "active" && status === "active" && !existing.lastGrantPeriodStart);
   if (status === "active" && first) {
     post.push({ kind: "welcome", userId, plan: effPlan });
-    post.push({ kind: "subscribed", userId, plan: effPlan, interval: effInterval, founding: isFounding });
+    post.push({
+      kind: "subscribed",
+      userId,
+      plan: effPlan,
+      interval: effInterval,
+      founding: isFounding,
+      source,
+    });
   }
   return { outcome: "applied", userId, detail };
 }

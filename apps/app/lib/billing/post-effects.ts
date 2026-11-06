@@ -39,7 +39,12 @@ export async function runPostEffects(effects: PostEffect[]): Promise<void> {
         case "subscribed":
           await trackEvent("subscribed", {
             userId: e.userId,
-            props: { plan: e.plan, interval: e.interval, founding: e.founding },
+            props: {
+              plan: e.plan,
+              interval: e.interval,
+              founding: e.founding,
+              ...(e.source ? { source: e.source } : {}),
+            },
           });
           break;
         case "pass_purchased":
@@ -59,6 +64,12 @@ export async function runPostEffects(effects: PostEffect[]): Promise<void> {
           await trackEvent("topup_purchased", { userId: e.userId, props: { usd: e.usd } });
           break;
         case "payment_failed": {
+          // a subscription that started from the unlock panel: Creem's status is the only reason it gives
+          if (e.source === "preview_unlock")
+            await trackEvent("checkout_failed", {
+              userId: e.userId,
+              props: { source: e.source, reason: e.status ?? "past_due", via: "webhook" },
+            });
           let portalUrl = billingUrl();
           try {
             portalUrl = await portalLinkFor(e.userId);

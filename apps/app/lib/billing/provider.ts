@@ -37,6 +37,12 @@ export interface BillingProvider {
     customPriceCents?: number;
   }): Promise<{ url: string; checkoutId: string }>;
   /**
+   * A checkout's status at the provider (Creem GET /v1/checkouts: pending | processing | completed | expired).
+   * Creem gives no failure reason and sends no webhook for a declined or abandoned checkout, so this status is all
+   * there is to tell a paid checkout from one the customer left.
+   */
+  checkoutStatus(checkoutId: string): Promise<CheckoutStatus>;
+  /**
    * What changing to this product would charge right now (cents). Creem has no preview endpoint, so this is an
    * estimate from the two prices and the time left in the period; Creem computes the exact prorated charge.
    */
@@ -56,6 +62,11 @@ export interface BillingProvider {
   /** Catalogue sync: create one product from a config-derived entry. */
   createProduct(entry: CatalogEntry): Promise<{ id: string }>;
 }
+
+export type CheckoutStatus = "pending" | "processing" | "completed" | "expired" | "unknown";
+const CHECKOUT_STATUSES: readonly CheckoutStatus[] = ["pending", "processing", "completed", "expired"];
+export const asCheckoutStatus = (v: unknown): CheckoutStatus =>
+  CHECKOUT_STATUSES.includes(v as CheckoutStatus) ? (v as CheckoutStatus) : "unknown";
 
 export const CREEM_API_BASE: Record<Mode, string> = {
   test: "https://test-api.creem.io",
@@ -151,6 +162,11 @@ export class CreemProvider implements BillingProvider {
     if (typeof c.checkout_url !== "string" || typeof c.id !== "string")
       throw new Error("Creem returned no checkout url");
     return { url: c.checkout_url, checkoutId: c.id };
+  }
+
+  async checkoutStatus(checkoutId: string) {
+    const c = await this.call("GET", `/v1/checkouts?checkout_id=${encodeURIComponent(checkoutId)}`);
+    return asCheckoutStatus(c.status);
   }
 
   async previewChange(i: { subscriptionId: string; productId: string }) {
@@ -269,6 +285,8 @@ export class FakeProvider implements BillingProvider {
   /** the provider-side catalogue: createProduct adds here, tests may seed it to exercise adoption */
   products: ProviderProduct[] = [];
   previewCents = 500;
+  /** what checkoutStatus answers (tests set it) */
+  checkoutStatusValue: CheckoutStatus = "pending";
   private n = 0;
   constructor(readonly mode: Mode = "test") {}
   private rec<T>(op: string, args: unknown, out: T): T {
@@ -284,6 +302,9 @@ export class FakeProvider implements BillingProvider {
       checkoutId,
       url: `https://creem.io/test/checkout/${i.productId}/${checkoutId}`,
     });
+  }
+  async checkoutStatus(checkoutId: string) {
+    return this.rec("checkoutStatus", { checkoutId }, this.checkoutStatusValue);
   }
   async previewChange(i: { subscriptionId: string; productId: string }) {
     return this.rec("previewChange", i, { amountCents: this.previewCents, currency: "USD", estimated: true });

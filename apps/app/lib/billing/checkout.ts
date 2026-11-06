@@ -23,18 +23,32 @@ export type CheckoutError =
   "plan_invalid" | "already_subscribed" | "founding_unavailable" | "not_in_catalog" | "topup_invalid";
 
 export type CheckoutResult =
-  { ok: true; url: string; key: string } | { ok: false; error: CheckoutError; reason?: TopupAmountError };
+  | { ok: true; url: string; key: string; ref: string }
+  | { ok: false; error: CheckoutError; reason?: TopupAmountError };
 
 export interface CheckoutDeps {
   provider?: BillingProvider;
   database?: Database;
 }
 
-const successUrl = () => `${getEnv().APP_URL.replace(/\/$/, "")}/billing?checkout=success`;
+const appBase = () => getEnv().APP_URL.replace(/\/$/, "");
+const billingSuccessUrl = () => `${appBase()}/billing?checkout=success`;
+
+/** Where a checkout started from somewhere other than Billing came from. Only known values are recorded. */
+export type CheckoutSource = "preview_unlock";
+export const CHECKOUT_SOURCES: readonly CheckoutSource[] = ["preview_unlock"];
+export const asCheckoutSource = (v: unknown): CheckoutSource | null =>
+  CHECKOUT_SOURCES.includes(v as CheckoutSource) ? (v as CheckoutSource) : null;
+
+export interface CheckoutReturn {
+  /** an already validated same-origin path (lib/preview/offer.ts safeReturnPath); the checkout comes back there */
+  path: string;
+  source: CheckoutSource;
+}
 
 export async function createSubscriptionCheckout(
   userId: string,
-  input: { plan: PlanId; interval: Interval; founding?: boolean },
+  input: { plan: PlanId; interval: Interval; founding?: boolean; ret?: CheckoutReturn },
   deps: CheckoutDeps = {},
 ): Promise<CheckoutResult> {
   const provider = deps.provider ?? getBillingProvider();
@@ -73,7 +87,7 @@ export async function createSubscriptionCheckout(
       return { ok: false, error: "founding_unavailable" };
     key = FOUNDING_KEY;
   }
-  return startCheckout(userId, key, provider, database);
+  return startCheckout(userId, key, provider, database, undefined, input.ret);
 }
 
 /** `usd` is whatever the client sent: only a whole-dollar amount inside the config range gets a checkout. */
@@ -100,6 +114,7 @@ async function startCheckout(
   provider: BillingProvider,
   database: Database,
   topupUsd?: number,
+  ret?: CheckoutReturn,
 ): Promise<CheckoutResult> {
   const entry = await database.withSystem(
     "billing.catalog.lookup",
@@ -129,8 +144,10 @@ async function startCheckout(
     customerId,
     productId: entry.providerProductId,
     requestId: row!.id,
-    metadata: { user_id: userId, key, checkout_ref: row!.id },
-    successUrl: successUrl(),
+    // source rides in Creem's checkout metadata (copied onto the subscription), so the webhook can attribute it
+    metadata: { user_id: userId, key, checkout_ref: row!.id, ...(ret ? { source: ret.source } : {}) },
+    // a panel checkout returns to the same report with its reference, where the page waits for the plan to apply
+    successUrl: ret ? `${appBase()}${ret.path}?unlock=${row!.id}` : billingSuccessUrl(),
     ...(topupUsd !== undefined ? { customPriceCents: amountCents } : {}),
   });
   await database.withSystem(
@@ -142,5 +159,5 @@ async function startCheckout(
         .where(eq(billingCheckouts.id, row!.id)),
     { audit: false },
   );
-  return { ok: true, url: s.url, key };
+  return { ok: true, url: s.url, key, ref: row!.id };
 }
