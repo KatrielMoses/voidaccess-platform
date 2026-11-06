@@ -3,7 +3,7 @@ export const auth = {
   signIn: {
     title: "Create your free account",
     /** {{tokens}} are filled from @voidaccess/config on the server (lib/facts.ts). */
-    description: "{{free.credits}} credits every month. No card. Already have an account? Same buttons; we'll sign you in.",
+    description: "{{free.credits}} credits every month. No card. Free runs show a preview. Pro unlocks full reports. Already have an account? Same buttons; we'll sign you in.",
     /** Under the form; {stars} is the live GitHub star count (lib/stats.ts). */
     github: "Open source on GitHub ({stars}★)",
     emailLabel: "Email",

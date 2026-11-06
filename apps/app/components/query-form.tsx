@@ -1,5 +1,6 @@
 "use client";
 import { OutOfCredits } from "@/components/billing/out-of-credits";
+import { previewCopy } from "@/content/preview";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,6 +30,7 @@ export function QueryForm({
   defaultDepth,
   showExamples = false,
   autoFocus = false,
+  previewNotice = false,
 }: {
   balance: number;
   emailVerified: boolean;
@@ -40,6 +42,8 @@ export function QueryForm({
   defaultDepth?: Depth;
   showExamples?: boolean;
   autoFocus?: boolean;
+  /** Free plan: say before the run that the report will be a preview */
+  previewNotice?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState(defaultQuery);
@@ -235,6 +239,14 @@ export function QueryForm({
         </span>
         . Fully refunded if it fails; cancel any time and get back the stages that didn&apos;t run.
       </p>
+      {previewNotice ? (
+        <p className="-mt-2 text-[14px] leading-[1.5] text-dim" data-testid="preview-disclosure">
+          <span className="text-paper">{previewCopy.disclosure}</span>{" "}
+          <Link href="/billing?from=preview_disclosure" className="va-link">
+            See plans
+          </Link>
+        </p>
+      ) : null}
     </form>
   );
 }

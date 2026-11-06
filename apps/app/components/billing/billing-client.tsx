@@ -535,6 +535,13 @@ export function BillingClient({
                 </div>
                 <ul className="flex flex-1 flex-col border-t border-line text-[15px] leading-[1.45] text-dim">
                   {!p.requiresCard ? <li className="border-b border-line py-2.5">{copy.noCard}</li> : null}
+                  {p.id === "free" ? (
+                    <li className="border-b border-line py-2.5 text-paper" data-testid="plan-preview-free">
+                      {copy.previewFree}
+                    </li>
+                  ) : (
+                    <li className="border-b border-line py-2.5 text-paper">{copy.fullReports}</li>
+                  )}
                   {p.historyDays !== null ? (
                     <li className="border-b border-line py-2.5">
                       {fill(copy.historyDays, { days: p.historyDays })}

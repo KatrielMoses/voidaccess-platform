@@ -3,13 +3,16 @@ import type { Faq, PageMeta } from "./types";
 export const meta: PageMeta = {
   title: "Pricing: VoidAccess",
   description:
-    "Free to start, no card. Pay for credits, not seats: a Standard investigation costs {{depth.standard}} credits. Pro from {{founding.price}}/mo at the founding price for the first {{founding.seats}} subscribers.",
+    "Free to start, no card; Free runs show a preview and Pro unlocks full reports. Pay for credits, not seats: a Standard investigation costs {{depth.standard}} credits. Pro from {{founding.price}}/mo at the founding price for the first {{founding.seats}} subscribers.",
 };
 
 export const hero = {
   title: "Pay for investigations, not seats",
   sub: "Every plan includes monthly credits. A Quick investigation costs {{depth.quick}} credits, a Standard one {{depth.standard}}. Failed or cancelled runs are refunded automatically.",
 };
+
+/** The pre-run disclosure, word for word as in the app (apps/app/content/preview.ts). */
+export const previewDisclosure = "Free runs show a preview. Pro unlocks full reports.";
 
 export const billing = { monthly: "Monthly", annual: "Annual", annualNote: "{{pro.monthsFree}} months free" };
 
@@ -30,13 +33,13 @@ export const planCopy = {
   free: {
     tagline: "Try it on a real question.",
     cta: "Start free",
-    lead: ["{{free.credits}} credits a month, about {{free.quickRuns}} Quick or {{free.standardRuns}} Standard investigations", "No card"],
-    extras: ["Quick and Standard investigations", "{{free.historyDays}}-day history"],
+    lead: ["{{free.credits}} credits a month, about {{free.quickRuns}} Quick or {{free.standardRuns}} Standard investigations", "No card", previewDisclosure],
+    extras: ["Quick and Standard investigations", "Reports show the counts, the first summary sentences, the first rows and the graph's shape", "{{free.historyDays}}-day history"],
   },
   pro: {
     tagline: "For regular investigations.",
     cta: "Choose Pro",
-    lead: ["{{pro.credits}} credits a month, about {{pro.standardRuns}} Standard investigations"],
+    lead: ["{{pro.credits}} credits a month, about {{pro.standardRuns}} Standard investigations", "Full reports for every run, past ones included"],
     extras: ["Quick and Standard investigations", "Deep investigations are not available at launch"],
   },
   pro_plus: {
@@ -58,7 +61,7 @@ export const planCopy = {
 
 export const explainer = {
   heading: "How credits work",
-  body: "A credit is the unit you spend on investigations. Viewing results, the graph and exports cost nothing.",
+  body: "A credit is the unit you spend on investigations. Viewing a report costs no credits. Free runs show a preview; Pro unlocks full reports and exports.",
   rows: [
     { name: "Quick investigation", credits: "{{depth.quick}}", note: "A faster, lighter pass." },
     { name: "Standard investigation", credits: "{{depth.standard}}", note: "The default depth." },
@@ -121,7 +124,8 @@ export const founding = {
 };
 
 export const faq: Faq[] = [
-  { q: "What is a credit?", a: "A credit is what an investigation costs. A Quick investigation is {{depth.quick}} credits and a Standard one is {{depth.standard}}. Viewing results, the graph, and exports cost nothing." },
+  { q: "What is a credit?", a: "A credit is what an investigation costs. A Quick investigation is {{depth.quick}} credits and a Standard one is {{depth.standard}}. Viewing a report costs no credits." },
+  { q: "What does Free include?", a: "{{free.credits}} credits a month for real investigations, no card. Free runs show a preview: the counts of everything found, the first sentences of the summary, the first rows of each section and the shape of the graph. Pro unlocks full reports, every export and past reports too, with no re-run." },
   { q: "Do unused credits roll over?", a: "No. Subscription credits reset every month. Top-up credits are different: they're spent after your monthly credits and last {{topup.expiryMonths}} months." },
   { q: "How much can I top up?", a: "Any whole-dollar amount from {{topup.min}} to {{topup.max}}, at {{topup.rate}} credits per dollar. Bigger top-ups get a volume bonus ({{topup.volume}}), and subscribers get a further bonus on top: +{{topup.proBonus}} on Pro, +{{topup.plusBonus}} on Pro+." },
   { q: "Do top-up credits expire?", a: "Yes, {{topup.expiryMonths}} months after purchase. They're spent after your monthly credits." },

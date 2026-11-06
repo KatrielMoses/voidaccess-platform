@@ -10,7 +10,7 @@ export const hero = {
   eyebrow: "Early access · founding seats open",
   title: "Dark-web threat intelligence, without the dark web.",
   sub: "Ask a question in plain English. VoidAccess searches dark-web and open-web sources, enriches what it finds, and hands you a graph of actors, malware, indicators and exports. You install nothing, run no Tor, and hold no keys.",
-  note: "Free plan: {{free.credits}} credits, no card. Founding seats: {{founding.price}}/mo for the first {{founding.seats}} paying members.",
+  note: "Free plan: {{free.credits}} credits, no card; Free runs show a preview. Founding seats: {{founding.price}}/mo for the first {{founding.seats}} paying members.",
   graphCaption:
     "A real investigation, redacted. Public group, malware and CVE names are kept; onion addresses and handles are replaced with generated ones.",
   graphAlt:
@@ -76,7 +76,7 @@ export const faq: Faq[] = [
   },
   {
     q: "What does it cost?",
-    a: "A free plan with {{free.credits}} credits a month and no card. Pro is {{founding.price}}/mo at the founding price for the first {{founding.seats}} subscribers ({{pro.monthly}}/mo after that) and Pro+ is {{plus.monthly}}/mo, with annual billing that gives {{pro.monthsFree}} months free. A Standard investigation costs {{depth.standard}} credits. Full details are on the pricing page.",
+    a: "A free plan with {{free.credits}} credits a month and no card; Free runs show a preview and Pro unlocks full reports. Pro is {{founding.price}}/mo at the founding price for the first {{founding.seats}} subscribers ({{pro.monthly}}/mo after that) and Pro+ is {{plus.monthly}}/mo, with annual billing that gives {{pro.monthsFree}} months free. A Standard investigation costs {{depth.standard}} credits. Full details are on the pricing page.",
   },
   {
     q: "Will it find everything about my organisation?",

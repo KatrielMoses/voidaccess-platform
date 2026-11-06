@@ -46,6 +46,7 @@ export default async function WelcomePage() {
           defaultDepth={recent.total > 0 ? undefined : "quick"}
           showExamples
           autoFocus
+          previewNotice={user.plan === "free"}
         />
       </div>
 

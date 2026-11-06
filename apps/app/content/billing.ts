@@ -25,6 +25,9 @@ export const billingCopy = {
   } as Record<string, string>,
   historyDays: "{days}-day history",
   noCard: "No card required",
+  /** the plan cards: Free's preview line (same words as content/preview.ts), and what paid plans add */
+  previewFree: "Free runs show a preview. Pro unlocks full reports.",
+  fullReports: "Full reports for every run, past ones included",
   checkout: {
     subscribe: "Subscribe to {plan}",
     notice:

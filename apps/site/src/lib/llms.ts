@@ -28,7 +28,8 @@ function planLines(): string[] {
       .filter((f) => f !== "deep" && f !== "history_unlimited")
       .map((f) => pricing.featureLabels[f]?.label + (pricing.featureLabels[f]?.soon ? " (after launch)" : ""))
       .filter(Boolean);
-    return `- **${p.name}**: ${bits.join("; ")}. Features: ${feats.join("; ")}.`;
+    if (p.id === "free") return `- **${p.name}**: ${bits.join("; ")}. ${pricing.previewDisclosure}`;
+    return `- **${p.name}**: ${bits.join("; ")}. Features: full reports; ${feats.join("; ")}.`;
   });
 }
 
