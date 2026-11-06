@@ -13,7 +13,7 @@ pnpm test                     # vitest (price guard, llms/JSON-LD, waitlist, DB)
 pnpm test:e2e                 # Playwright smoke: builds, starts on :3101, uses Turnstile test keys + log mail
 pnpm build && pnpm start      # then: pnpm lighthouse   (LH_PROFILE=slow4g for Lighthouse's stricter default)
 pnpm cf:preview               # OpenNext build + wrangler dev on :8788 (needs .dev.vars)
-pnpm deploy                   # minimal site by default; SITE_MODE=full pnpm deploy for the marketing site. Reads secrets
+pnpm run deploy               # minimal site by default; SITE_MODE=full pnpm run deploy for the marketing site. Reads secrets
                               # from GCP Secret Manager; deploys nothing if any is missing
 ```
 

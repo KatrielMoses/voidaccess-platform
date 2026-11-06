@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Deploys apps/site to Cloudflare Workers via OpenNext. Secrets are read from GCP Secret Manager at
 # deploy time into this process's environment only; nothing is printed or written to disk.
-#   CLOUDSDK_ACTIVE_CONFIG_NAME=voidaccess pnpm --filter site deploy                 # minimal site (default)
-#   SITE_MODE=full CLOUDSDK_ACTIVE_CONFIG_NAME=voidaccess pnpm --filter site deploy  # marketing site + waitlist
+#   CLOUDSDK_ACTIVE_CONFIG_NAME=voidaccess pnpm --filter site run deploy                 # minimal site (default)
+#   SITE_MODE=full CLOUDSDK_ACTIVE_CONFIG_NAME=voidaccess pnpm --filter site run deploy  # marketing site + waitlist
 # If ANY required secret has no enabled version, nothing is deployed and the missing ones are listed.
 #
 # minimal: home + auth + legal pages (wrangler.jsonc). Needs no database, Resend or IP salt, and no
