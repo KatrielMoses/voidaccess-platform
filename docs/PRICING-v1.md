@@ -20,8 +20,8 @@
 ## Plans
 | Plan | Monthly | Annual | Credits/mo | Gated features |
 |---|---:|---:|---:|---|
-| Free | $0, no card | — | 100 | Quick + Standard, CSV/JSON export, 7-day history |
-| Pro | $9 | $90 | 2,000 | + all exports (STIX/MISP/…), unlimited history, share links, Deep (when live) |
+| Free | $0, no card | — | 100 | Quick + Standard, 7-day history; **reports are a preview** (amendment 2) |
+| Pro | $9 | $90 | 2,000 | + full reports (every past run unlocks), all exports (CSV/JSON, STIX/MISP/…), unlimited history, share links, Deep (when live) |
 | Pro+ | $19 | $190 | 4,500 | + monitors & alerts, actor library, BYO API keys, priority queue |
 | Team / MSSP | later | later | — | P2 |
 
@@ -94,3 +94,11 @@ Approved: up to $100/mo for one commercial victim/ransomware feed. Buy at launch
 4. **Priority queue:** runs start immediately on Cloud Run Jobs. A global concurrency cap protects spend, and Pro+ jumps the line only when that cap is reached.
 5. **`/check`** needs a search-only engine mode (the source-gathering stage only). It is scheduled as an engine item with P1 `/check`; it is not part of launch.
 6. **Cost recheck after E1B:** if the speed pass lowers p90 cost, credit prices stay as decided. The margin gain is kept as headroom.
+
+## Amendment 2 (2026-11-06): Free shows a preview
+
+Free keeps its 100 credits and runs real investigations, but the report is a preview: the counts, the first sentences
+of the summary, the first 2 rows of each section and the graph's shape. The rest of the report and every export come
+with Pro or Pro+ (or a run paid partly from purchased top-up credits). Upgrading unlocks past reports at once, with no
+re-run. The disclosure shown before any run: "Free runs show a preview. Pro unlocks full reports." `PLANS.free.features`
+no longer lists `export_core`.

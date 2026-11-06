@@ -77,7 +77,8 @@ export const PLANS: Record<PlanId, Plan> = {
     annualUsd: null,
     monthlyCredits: 100,
     historyDays: 7,
-    features: ["export_core"],
+    // Free runs show a preview (2026-11-06): full reports and every export come with Pro, so no export feature here
+    features: [],
     topupBonus: 0,
     requiresCard: false,
   },
