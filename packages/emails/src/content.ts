@@ -148,7 +148,7 @@ If you're not sure what to search, reply with what you're working on and I'll su
 You've finished your first investigation. A few things worth knowing:
 
 - The graph shows how the entities connect. Open the Graph tab, click a node, and follow the edges to the sources behind them.
-- Exports: CSV and JSON are free on every plan. Pro adds STIX, MISP, Sigma, YARA and the other formats.
+- Free runs show a preview: the counts, the first sentences of the summary and the first rows of each section. Pro unlocks full reports, past ones included, and every export (CSV, JSON, STIX, MISP, Sigma, YARA and the rest).
 - Archive context: findings are also filed anonymously in a shared archive (no queries, no accounts). Your results show when something was seen before from other sources. Treat those as leads, not facts.
 - Credits: your monthly credits reset each month and don't roll over. If you need more, you can top up or move to Pro from the billing page: {{billingUrl}}
 
