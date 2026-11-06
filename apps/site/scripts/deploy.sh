@@ -67,9 +67,11 @@ export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-https://app.voidaccess.pro}"
 export NEXT_PUBLIC_AUTH_PROVIDERS="${NEXT_PUBLIC_AUTH_PROVIDERS:-github,google}"
 
 pnpm exec opennextjs-cloudflare build -c "$WRANGLER_CONFIG"
+# Deploy first, then sync secrets: after a `wrangler rollback` the latest version isn't the deployed one, and
+# Cloudflare refuses `secret put` until it is. The deployed version keeps the worker's existing secrets meanwhile.
+pnpm exec opennextjs-cloudflare deploy -c "$WRANGLER_CONFIG"
 if [ "$SITE_MODE" = "full" ]; then
   for var in DATABASE_URL RESEND_API_KEY TURNSTILE_SECRET_KEY IP_HASH_SALT; do
     printf '%s' "${!var}" | pnpm exec wrangler secret put "$var" -c "$WRANGLER_CONFIG" >/dev/null
   done
 fi
-pnpm exec opennextjs-cloudflare deploy -c "$WRANGLER_CONFIG"
