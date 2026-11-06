@@ -50,6 +50,15 @@ describe("counts phrase", () => {
     );
   });
 
+  it("puts telling categories ahead of links, dates and organisation names, which are used only as a last resort", () => {
+    expect(
+      countsPhrase(
+        totals({ sources: 9, byType: { URL: 105, ORGANIZATION_NAME: 25, RANSOMWARE_GROUP: 13 }, actors: 15 }),
+      ),
+    ).toBe("9 sources, 15 actors, 13 ransomware groups");
+    expect(countsPhrase(totals({ sources: 3, byType: { URL: 5 } }))).toBe("3 sources, 5 URLs");
+  });
+
   it("skips empty categories, and falls back to three categories when there are no sources", () => {
     expect(countsPhrase(totals({ byType: { MALWARE_FAMILY: 2, CVE_NUMBER: 1, DOMAIN: 5 } }))).toBe(
       "5 domains, 2 malware families, 1 CVE",

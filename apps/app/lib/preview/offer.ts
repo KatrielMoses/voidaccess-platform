@@ -92,8 +92,10 @@ export function countsPhrase(t: PreviewTotals): string {
       key: "~actors",
       text: `${t.actors.toLocaleString("en-US")} ${t.actors === 1 ? "actor" : "actors"}`,
     });
-  // largest first; ties keep a stable, readable order
-  cats.sort((a, b) => b.n - a.n || (a.key < b.key ? -1 : 1));
+  // largest first; ties keep a stable, readable order. Links, dates and organisation names are big but don't sell
+  // the report, so they're used only when there's nothing more telling.
+  const weak = (key: string) => /^(url|date|organi[sz]ation)/i.test(typeLabel(key).replace(/\s+/g, ""));
+  cats.sort((a, b) => Number(weak(a.key)) - Number(weak(b.key)) || b.n - a.n || (a.key < b.key ? -1 : 1));
   parts.push(...cats.slice(0, 3 - parts.length).map((c) => c.text));
   return parts.join(", ");
 }
