@@ -29,7 +29,7 @@
     "@voidaccess/ui": "workspace:*",
     "better-auth": "^1.7.7",
     "drizzle-orm": "~0.45.4",
-    "next": "16.4.1",
+    "next": "16.4.5",
     "pg": "^8.23.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -37,7 +37,7 @@
     "zod": "^4.6.6"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.20.10",
+    "@opennextjs/cloudflare": "^1.20.16",
     "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.19.2",
@@ -47,7 +47,7 @@
     "chrome-launcher": "^1.2.2",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.4.1",
+    "eslint-config-next": "16.4.5",
     "lighthouse": "^13.5.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.3",
