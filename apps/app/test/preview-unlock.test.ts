@@ -59,6 +59,7 @@ describe("counts phrase", () => {
 
   it("uses the existing type labels with singular and irregular plurals", () => {
     expect(countNoun("PERSON_NAME", 3)).toBe("3 people");
+    expect(countNoun("URL", 105)).toBe("105 URLs");
     expect(countNoun("PERSON_NAME", 1)).toBe("1 person");
     expect(countNoun("FILE_HASH_SHA256", 2)).toBe("2 SHA-256 hashes");
     expect(countNoun("RANSOMWARE_GROUP", 2)).toBe("2 ransomware groups");

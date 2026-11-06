@@ -33,6 +33,7 @@ export const priceLabel = (usd: number) => (Number.isInteger(usd) ? `$${usd}` : 
 
 /** Plurals for labels that don't take a plain "s" (the labels themselves come from entity-style). */
 const PLURAL: Record<string, string> = {
+  Url: "URLs",
   Malware: "malware families",
   Email: "emails",
   Phone: "phone numbers",
@@ -43,6 +44,7 @@ const PLURAL: Record<string, string> = {
   "SHA-256": "SHA-256 hashes",
 };
 const SINGULAR: Record<string, string> = {
+  Url: "URL",
   Malware: "malware family",
   Email: "email",
   Phone: "phone number",
