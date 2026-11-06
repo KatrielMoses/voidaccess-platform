@@ -20,7 +20,8 @@ vi.mock("next/headers", () => ({
 }));
 
 const ROOT = join(__dirname, "..");
-/** PRD §7, verbatim order: site_visit → signup_started → … → cancelled. */
+/** PRD §7, verbatim order: site_visit → signup_started → … → cancelled, with the preview-unlock steps (2026-11-06)
+ * between upgrade_viewed and subscribed. */
 const PRD_EVENTS = [
   "site_visit",
   "signup_started",
@@ -32,6 +33,10 @@ const PRD_EVENTS = [
   "export_used",
   "credits_80",
   "upgrade_viewed",
+  "preview_shown",
+  "unlock_clicked",
+  "checkout_started",
+  "checkout_failed",
   "subscribed",
   "topup_purchased",
   "monitor_created",

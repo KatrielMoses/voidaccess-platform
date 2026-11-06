@@ -73,10 +73,34 @@ export const FUNNEL_EVENTS: FunnelEvent[] = [
     note: "Billing page view by a user not on the top plan.",
   },
   {
+    name: "preview_shown",
+    emitters: ["lib/preview/events.ts"],
+    status: "emitted",
+    note: "Client-reported (POST /api/preview/events): a Free preview report viewed, once per report per browser session, with the full counts.",
+  },
+  {
+    name: "unlock_clicked",
+    emitters: ["lib/preview/events.ts"],
+    status: "emitted",
+    note: "Client-reported: the unlock panel's button pressed (origin = where the panel opened).",
+  },
+  {
+    name: "checkout_started",
+    emitters: ["app/api/billing/checkout/route.ts"],
+    status: "emitted",
+    note: "Server, when a Creem checkout is created; source=preview_unlock for the unlock panel, else billing.",
+  },
+  {
+    name: "checkout_failed",
+    emitters: ["lib/preview/events.ts", "lib/billing/post-effects.ts"],
+    status: "emitted",
+    note: "A panel checkout that came back unpaid (client: returned_without_payment | abandoned | expired | start_failed), or a past_due/unpaid subscription that started from the panel (webhook). Creem sends no failed-checkout event and no reason.",
+  },
+  {
     name: "subscribed",
     emitters: ["lib/billing/post-effects.ts"],
     status: "emitted",
-    note: "Creem webhook, after the subscription commits (plan in props).",
+    note: "Creem webhook, after the subscription commits (plan in props; source=preview_unlock from the checkout metadata when the panel started it).",
   },
   {
     name: "topup_purchased",
