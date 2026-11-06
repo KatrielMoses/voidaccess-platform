@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { hasFeature } from "@voidaccess/config";
-import { json401, json404, sessionUser } from "@/lib/results/http";
+import { PreviewLockedError } from "@/lib/access";
+import { json401, json402, json404, sessionUser } from "@/lib/results/http";
 import { trackEvent } from "@/lib/analytics";
 import { getArtifact, getPlanId, loadSnapshot, UUID_RE } from "@/lib/results/queries";
 import {
@@ -19,7 +20,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Exports are generated on request from the caller's own (RLS-scoped) snapshot. CSV and JSON are open to
- * every plan; everything else needs export_all, enforced here as well as in the UI.
+ * every plan with full report access; everything else needs export_all, enforced here as well as in the UI.
+ * A preview account (lib/access) gets 402 preview_locked for every format: loadSnapshot / getArtifact refuse it.
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string; format: string }> }) {
   const userId = await sessionUser();
@@ -27,7 +29,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id, format } = await params;
   if (!UUID_RE.test(id) || !isFormat(format)) return json404();
 
-  const snapshot = await loadSnapshot(userId, id);
+  let snapshot: Awaited<ReturnType<typeof loadSnapshot>>;
+  try {
+    snapshot = await loadSnapshot(userId, id);
+  } catch (e) {
+    if (e instanceof PreviewLockedError) return json402();
+    throw e;
+  }
   if (!snapshot) return json404();
 
   if (isGated(format) && !hasFeature(await getPlanId(userId), "export_all")) {

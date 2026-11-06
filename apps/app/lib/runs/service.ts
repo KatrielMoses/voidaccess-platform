@@ -3,6 +3,7 @@ import { and, count, desc, eq, gte, ilike, inArray, ne, or, sql } from "drizzle-
 import { DEPTHS, type Depth, type PlanId } from "@voidaccess/config";
 import { creditLedger, getDatabase, investigations, reserve, runEvents, users } from "@voidaccess/db";
 import { trackEvent } from "../analytics";
+import { accessMarker, redactRefinedQueries } from "../access";
 import { recordRateLimitEvent } from "../rate-limit";
 import { getEnv } from "../../env";
 import { getLauncher } from "../launcher";
@@ -283,7 +284,20 @@ export async function deleteInvestigation(userId: string, id: string): Promise<v
   });
 }
 
+/**
+ * Run status snapshot (API GET /api/investigations/{id}, the live page and the replay page). Carries the report
+ * `access` marker; for a preview account the refined queries (engine-written text) are placeholders.
+ */
 export async function getInvestigation(userId: string, id: string) {
+  const run = await readRunStatus(userId, id);
+  if (!run) return null;
+  const access = await accessMarker(userId, id);
+  return access.level === "full"
+    ? { ...run, access }
+    : { ...run, refinedQueries: redactRefinedQueries(run.refinedQueries), access };
+}
+
+async function readRunStatus(userId: string, id: string) {
   return getDatabase().withUser(userId, async (tx) => {
     const [r] = await tx.select().from(investigations).where(eq(investigations.id, id));
     if (!r) return null;

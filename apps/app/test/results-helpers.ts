@@ -1,7 +1,8 @@
 import pg from "pg";
+import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { investigations, users, type Database } from "@voidaccess/db";
-import type { PlanId } from "@voidaccess/config";
+import { adminGrant, investigations, reserve, topup, users, type Database } from "@voidaccess/db";
+import type { Depth, PlanId } from "@voidaccess/config";
 import { ingestBundle } from "@voidaccess/ingest";
 import { bundleDeps } from "@voidaccess/ingest/test-support";
 import type { ResultBundle } from "@voidaccess/engine-client";
@@ -54,4 +55,29 @@ export async function seedInvestigation(
   );
   await ingestBundle(`run-${id}`, bundleDeps(bundle, artifacts), { database: appDb() });
   return id;
+}
+
+/**
+ * Like seedInvestigation, but the run is paid from a PURCHASED top-up lot (a real `topup` + `reserve`), the case
+ * that unlocks the full report on the Free plan. `adminLot` uses an admin grant instead (no dollars: stays a preview).
+ */
+export async function seedTopupPaidInvestigation(
+  userId: string,
+  bundle: ResultBundle,
+  opts: { adminLot?: boolean; artifacts?: Record<string, string> } = {},
+) {
+  const ctx = { database: appDb() };
+  if (opts.adminLot) await adminGrant(userId, 500, userId, `grant-${randomUUID()}`, {}, ctx);
+  else await topup(userId, 5, `pay-${randomUUID()}`, ctx);
+  const id = await seedInvestigation(userId, bundle, opts.artifacts);
+  const r = await reserve(userId, id, bundle.depth as Depth, ctx);
+  if (!r.ok) throw new Error(`test reserve failed: ${r.reason}`);
+  return id;
+}
+
+/** Move a user to another plan (an upgrade or downgrade as billing would apply it). */
+export async function setPlan(userId: string, plan: PlanId) {
+  await appDb().withSystem("test.setPlan", (tx) =>
+    tx.update(users).set({ plan }).where(eq(users.id, userId)),
+  );
 }

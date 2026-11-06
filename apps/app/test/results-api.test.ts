@@ -1,7 +1,7 @@
 import { unzipSync, strFromU8 } from "fflate";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { fixtureBundle, rawSensitiveList } from "@voidaccess/ingest/test-support";
-import { appDb, makeUser, ownerPool, seedInvestigation } from "./results-helpers";
+import { appDb, makeUser, ownerPool, seedInvestigation, seedTopupPaidInvestigation } from "./results-helpers";
 
 // The only thing mocked is the session: routes must take the user from here and nowhere else.
 let current: string | null = null;
@@ -125,12 +125,22 @@ describe("masking reaches no API response or export (guarantee 2)", () => {
 });
 
 describe("plan gating comes from config (guarantee 5)", () => {
-  it("free: CSV and JSON yes; Markdown, IOC and every artifact are 403 upgrade_required", async () => {
+  it("free (preview report): every export format is 402 preview_locked", async () => {
+    asUser(FREE);
+    for (const f of ALL_FORMATS) {
+      const res = await exportGET(req(), idp(invFree, { format: f }));
+      expect(res.status, f).toBe(402);
+      expect(await res.json()).toEqual({ error: "preview_locked" });
+    }
+  });
+
+  it("free, run paid with purchased top-up credits: CSV and JSON yes; the rest 403 upgrade_required", async () => {
+    const inv = await seedTopupPaidInvestigation(FREE, bundle);
     asUser(FREE);
     for (const f of ["csv", "json"])
-      expect((await exportGET(req(), idp(invFree, { format: f }))).status).toBe(200);
+      expect((await exportGET(req(), idp(inv, { format: f }))).status).toBe(200);
     for (const f of ["markdown", "ioc", "stix", "misp", "sigma", "yara", "snort", "suricata"]) {
-      const res = await exportGET(req(), idp(invFree, { format: f }));
+      const res = await exportGET(req(), idp(inv, { format: f }));
       expect(res.status, f).toBe(403);
       expect(await res.json()).toMatchObject({ error: "upgrade_required" });
     }

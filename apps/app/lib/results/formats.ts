@@ -77,24 +77,28 @@ export function exportFilename(invId: string, format: ExportFormat): string {
 
 export interface ExportState {
   format: ExportFormat;
-  /** the plan lacks export_all, or the report is a preview (every format) */
+  /** the plan lacks export_all */
   locked: boolean;
   /** an artifact format the run did not produce */
   missing: boolean;
+  /** preview report (lib/access): every format is locked until the user upgrades (the API answers 402) */
+  previewLocked?: true;
 }
 
 export function exportStates(opts: {
   exportAll: boolean;
   artifacts: string[];
-  preview?: boolean;
+  previewLocked?: boolean;
 }): ExportState[] {
   return ALL_FORMATS.map((format) => {
     const gated = format !== "csv" && format !== "json";
     const isArtifact = !["csv", "json", "markdown", "ioc"].includes(format);
-    return {
+    const state: ExportState = {
       format,
-      locked: opts.preview === true || (gated && !opts.exportAll),
+      locked: (gated && !opts.exportAll) || Boolean(opts.previewLocked),
       missing: isArtifact && !opts.artifacts.includes(format),
     };
+    if (opts.previewLocked) state.previewLocked = true;
+    return state;
   });
 }
