@@ -9,6 +9,9 @@
  * view applies everything before it without motion (late joiners and reloads fast-forward, then go live).
  * At most SSE_BATCH_ROWS rows are read per poll; a full read is followed immediately by the next one.
  * The stream aborts with the request signal.
+ * Preview lock (lib/access): report access is resolved once when the stream opens. For a preview account every trace
+ * frame goes through redactTraceData (no host, entity value or refined-query text) and the status frame's refined
+ * queries are placeholders; status frames carry the `access` marker for everyone.
  */
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { creditLedger, getDatabase, investigations, runEvents } from "@voidaccess/db";
@@ -16,6 +19,7 @@ import { SSE_POLL_INTERVAL_MS } from "../limits";
 import { RunError } from "./errors";
 import { isTerminalStatus } from "./settle";
 import { VIEW_TOUCH_SECONDS, markViewed } from "./viewers";
+import { accessMarker, redactRefinedQueries, redactTraceData } from "../access";
 
 /**
  * "Someone is watching" is recorded in investigations.last_viewed_at (lib/runs/viewers.ts), so every instance sees
@@ -36,12 +40,12 @@ export function parseLastEventId(raw: string | null): number {
 export const SSE_BATCH_ROWS = 1000;
 
 type Row = typeof runEvents.$inferSelect;
-export const traceFrame = (r: Row) =>
+export const traceFrame = (r: Row, preview = false) =>
   `id: ${r.seq}\nevent: trace\ndata: ${JSON.stringify({
     seq: r.seq,
     stage: r.stage,
     kind: r.kind,
-    data: r.data,
+    data: preview ? redactTraceData(r.kind, r.data, r.seq) : r.data,
     at: r.at.toISOString(),
   })}\n\n`;
 const progressFrame = (r: Row) => {
@@ -55,7 +59,8 @@ const progressFrame = (r: Row) => {
   })}\n\n`;
 };
 
-export const eventFrame = (r: Row) => (r.type === "trace" ? traceFrame(r) : progressFrame(r));
+export const eventFrame = (r: Row, preview = false) =>
+  r.type === "trace" ? traceFrame(r, preview) : progressFrame(r);
 
 export async function openEventStream(
   userId: string,
@@ -90,6 +95,8 @@ export async function openEventStream(
   const lastTouch = { at: 0 };
   if (first) touchViewer(id, lastTouch); // only a run the caller owns is marked as viewed
   if (!first) throw new RunError("not_found", "Investigation not found.");
+  let access = await accessMarker(userId, id);
+  const preview = access.level !== "full";
 
   const enc = new TextEncoder();
   let closed = false;
@@ -124,7 +131,7 @@ export async function openEventStream(
         while (!closed && snap) {
           touchViewer(id, lastTouch);
           for (const r of snap.evs) {
-            send(eventFrame(r));
+            send(eventFrame(r, preview));
             after = Math.max(after, r.seq);
           }
           const more = snap.evs.length >= SSE_BATCH_ROWS;
@@ -137,12 +144,15 @@ export async function openEventStream(
             continue;
           }
           const terminal = isTerminalStatus(snap.run.status);
+          // the final frame carries fresh totals (the snapshot is ingested by now); redaction never relaxes mid-stream
+          if (terminal && preview) access = await accessMarker(userId, id);
           const status = {
             status: snap.run.status,
-            refinedQueries: snap.run.refinedQueries,
+            refinedQueries: preview ? redactRefinedQueries(snap.run.refinedQueries) : snap.run.refinedQueries,
             failureReason: snap.run.failureReason,
             cancelRequested: snap.run.cancelRequestedAt != null,
             ...(terminal ? { creditsRefunded: snap.refunded } : {}),
+            access,
           };
           const key = JSON.stringify(status);
           if (key !== statusKey) {
