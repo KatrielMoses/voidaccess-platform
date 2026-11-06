@@ -130,7 +130,7 @@ Users never reach the engine. The platform launches **one short-lived engine con
 
 **Run lifecycle**
 - Statuses: `reserved → launching → running → ingesting → completed | failed | cancelled`.
-- The **watchdog** cron runs every 5 minutes. If a run has had no progress event for 10 minutes, or its job execution has failed, it marks the run failed, refunds it, and sends an email.
+- The **watchdog** cron runs every 15 minutes (on the quarter hour, so the database can sleep between jobs). If a run has had no progress event for 10 minutes, or its job execution has failed, it marks the run failed, refunds it, and sends an email.
 - Results survive refreshes and deploys, because state lives in Postgres and runs live in Cloud Run.
 
 **Masking**

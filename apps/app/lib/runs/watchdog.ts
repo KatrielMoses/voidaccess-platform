@@ -1,5 +1,5 @@
 /**
- * Watchdog (POST /api/cron/watchdog, every 5 minutes via Cloud Scheduler).
+ * Watchdog (POST /api/cron/watchdog, every 15 minutes via Cloud Scheduler).
  *  1. cancel requested more than CANCEL_SETTLE_TIMEOUT_SECONDS ago and the engine never said `cancelled`
  *     (run still reserved/launching/running): settle as cancelled, stages derived from the stored stage events.
  *  2. running/ingesting with no engine callback for WATCHDOG_SILENCE_MINUTES: failed, full refund.

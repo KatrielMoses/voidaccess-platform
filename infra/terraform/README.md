@@ -71,5 +71,5 @@ terraform -chdir=infra/terraform apply -target=module.iam -target=module.app
 - Admin console: `ADMIN_PATH` comes from the `admin-path` secret (the owner's secret URL slug; only the name is here) and
   `ADMIN_EMAIL` is `var.admin_email`. Create the secret first (`bash infra/bootstrap/add-secret.sh admin-path`), or the
   plan fails on the missing data source. Steps: apps/app/docs/ADMIN.md, "Ops: setting up the console".
-- Scheduler jobs are enabled (watchdog */5, credit-alerts hourly, founding and grants daily), OIDC as `va-app`.
+- Scheduler jobs are enabled (watchdog and archive */15, credit-alerts hourly, founding and grants daily), OIDC as `va-app`.
 - The production proof lives in `apps/app/e2e-prod` (`playwright.prod.config.ts`); screenshots in `e2e-prod/evidence`.
