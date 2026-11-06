@@ -114,5 +114,52 @@ export function previewSummary(
     }
     if (para.length) paragraphs.push(para);
   }
-  return paragraphs.map((p) => p.join(" ")).join("\n\n");
+  const prose = paragraphs.map((p) => p.join(" ")).join("\n\n");
+  return prose || insightsTeaser(markdown, maxSentences, maxChars);
+}
+
+/** A section title that marks the report's conclusions (engine presets: "Key Insights", or a summary/assessment). */
+const INSIGHTS_TITLE = /^\s*(?:#{1,6}\s*|\d{1,2}[.)]\s*)?\**\s*(key\s+insights?|insights|key\s+findings|summary|executive\s+summary|assessment|overview)\b/i;
+const NEXT_SECTION = /^\s*(?:#{1,6}\s+|\d{1,2}[.)]\s+\**\s*(next\s+steps|recommendations|source|investigation\s+artifacts|artifacts|input\s+query)\b)/i;
+const LIST_ITEM = /^\s*(?:[-*+]|\d{1,9}[.)])\s+(.*)$/;
+/** URLs, onion hosts and bare domains-with-paths are never shown in a teaser. */
+const stripLinks = (s: string) =>
+  s
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\s*\((?:[^()]*?(?:https?|hxxps?):\/\/|[^()]*?\.onion)[^()]*\)/gi, "")
+    .replace(/\b(?:https?|hxxps?):\/\/\S+/gi, "")
+    .replace(/\b\S+\.onion\S*/gi, "")
+    .replace(/\s+([,.;:])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * Fallback when the summary has no opening prose (the engine writes a numbered outline: query, sources, artifacts,
+ * key insights, next steps): the first insight items, as plain text without links, within the same limits.
+ */
+export function insightsTeaser(
+  markdown: string,
+  maxItems = PREVIEW_SUMMARY_SENTENCES,
+  maxChars = PREVIEW_SUMMARY_CHARS,
+): string {
+  const lines = markdown.split(/\r?\n/);
+  const at = lines.findIndex((l) => INSIGHTS_TITLE.test(l));
+  if (at < 0) return "";
+  const items: string[] = [];
+  let used = 0;
+  for (const line of lines.slice(at + 1)) {
+    if (items.length >= Math.min(2, maxItems)) break;
+    if (NEXT_SECTION.test(line) && !LIST_ITEM.test(line.replace(/^\s{2,}/, ""))) break;
+    if (NEXT_SECTION.test(line) && /^\S/.test(line)) break;
+    const m = LIST_ITEM.exec(line) ?? (line.trim() && !/^\s*#/.test(line) ? [line, line] : null);
+    if (!m) continue;
+    const text = stripLinks(plain(m[1] ?? ""));
+    if (text.length < 20) continue;
+    const room = maxChars - used - (items.length ? 2 : 0);
+    if (room < 40) break;
+    const item = cutWords(text, room);
+    items.push(item);
+    used += item.length + (items.length > 1 ? 2 : 0);
+  }
+  return items.join("\n\n");
 }

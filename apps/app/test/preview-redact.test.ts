@@ -260,3 +260,34 @@ describe("exportStates", () => {
     expect(full.every((s) => !s.locked && !("previewLocked" in s))).toBe(true);
   });
 });
+
+
+describe("summary teaser for the engine's numbered outline", () => {
+  const outline = [
+    "1. **Input Query:** example group",
+    "2. **Source Links Referenced for Analysis:**",
+    "   - http://" + "a".repeat(56) + ".onion/leaks",
+    "3. **Investigation Artifacts:**",
+    "   - Wallet: bc1qcanaryartifact",
+    "4. **Key Insights:**",
+    "   - **Insight 1:** The group posted 12 new victims on its leak site (http://" + "b".repeat(56) + ".onion/a) this week.",
+    "   - **Insight 2:** It reuses access sold by an initial access broker on a forum, see https://forum.test/t/1 now.",
+    "   - **Insight 3:** canary third insight never shown.",
+    "5. **Next Steps:**",
+    "   - canary next step",
+  ].join("\n");
+
+  it("shows the first two key insights as plain text, without links, sources, artifacts or next steps", async () => {
+    const { previewSummary } = await import("@/lib/access/summary");
+    const out = previewSummary(outline);
+    expect(out).toContain("Insight 1: The group posted 12 new victims on its leak site this week.");
+    expect(out).toContain("Insight 2:");
+    for (const hidden of [".onion", "http", "bc1qcanaryartifact", "canary third", "canary next step", "Input Query"])
+      expect(out).not.toContain(hidden);
+  });
+
+  it("is empty when the summary has neither prose nor an insights section", async () => {
+    const { previewSummary } = await import("@/lib/access/summary");
+    expect(previewSummary("- only a list\n- of things")).toBe("");
+  });
+});
