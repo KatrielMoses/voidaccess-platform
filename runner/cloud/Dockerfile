@@ -35,7 +35,7 @@ ENV PYTHONPATH=/app/engine:/app/runner
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    tor=0.4.9.14-0+deb13u1 ca-certificates \
+    tor=0.4.9.15-0+deb13u1 ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 10001 runner \
     && mkdir -p /var/lib/tor-cloud /tmp/va-run \
