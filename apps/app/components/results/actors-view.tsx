@@ -7,15 +7,32 @@ import { Contour } from "./contour";
 import { SideDrawer } from "./side-drawer";
 import { TypeBadge } from "./type-badge";
 import { H, RULED, UL, VALUE_LINK } from "./ui";
+import { usePreview } from "./preview/preview-context";
+import { LockedBar, LockedRegion, ShownOf } from "./preview/locked";
+import { isLockedRow, isLockedText } from "@/lib/preview/types";
 
 /** Actor cards follow the design's entity card: index, mono type label, contour drawing, name, mono value. */
 export function ActorsView({ actors, investigationId }: { actors: ActorView[]; investigationId: string }) {
   const [open, setOpen] = useState<ActorView | null>(null);
+  const { preview, totals, openUnlock } = usePreview();
+  const real = preview ? actors.filter((a) => !isLockedRow(a)) : actors;
+  const locked = preview ? actors.filter((a) => isLockedRow(a)) : [];
   if (actors.length === 0) return <p className="text-dim">No actors were identified in this run.</p>;
   return (
     <>
+      {preview ? (
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="flex items-baseline gap-3 text-[22px] leading-tight font-medium tracking-[-0.02em]">
+            Actors{" "}
+            <span className="font-mono text-[13px] font-normal tracking-normal text-mute tabular-nums">
+              {totals.actors.toLocaleString("en-US")}
+            </span>
+          </h2>
+          <ShownOf shown={real.length} total={totals.actors} noun="actors" />
+        </div>
+      ) : null}
       <ul className="grid gap-px border border-line bg-line md:grid-cols-2 lg:grid-cols-3">
-        {actors.map((a, i) => (
+        {real.map((a, i) => (
           <li key={a.bundleId} className="flex">
             <article
               className="group relative flex w-full flex-col overflow-hidden bg-bg px-6 pt-6 pb-6 transition-colors duration-[600ms] ease-out hover:bg-bg-2 focus-within:bg-bg-2 sm:px-7 sm:pt-7"
@@ -45,13 +62,14 @@ export function ActorsView({ actors, investigationId }: { actors: ActorView[]; i
                   Also seen as: <span className="text-paper">{a.aliases.join(", ")}</span>
                 </p>
               ) : null}
-              {a.summary ? (
+              {a.summary && !isLockedText(a.summary) ? (
                 <p className="relative mt-3 line-clamp-3 text-[14px] text-dim">{a.summary}</p>
               ) : null}
               <button
                 type="button"
                 className={`${UL} relative mt-6 self-start pt-0 text-[14px]`}
-                onClick={() => setOpen(a)}
+                // a preview has no actor profiles: Details opens the unlock panel
+                onClick={() => (preview ? openUnlock("actors") : setOpen(a))}
               >
                 Details <span aria-hidden>→</span>
               </button>
@@ -59,7 +77,22 @@ export function ActorsView({ actors, investigationId }: { actors: ActorView[]; i
           </li>
         ))}
       </ul>
-      <SideDrawer open={open !== null} onClose={() => setOpen(null)} title={open?.handle ?? ""}>
+      {preview ? (
+        <LockedRegion origin="actors" minHeight="26rem" className="mt-px">
+          <ul className="grid gap-px border border-line bg-line md:grid-cols-2 lg:grid-cols-3">
+            {locked.map((a, i) => (
+              <li key={`${a.bundleId}-${i}`} className="flex" data-testid="actor-card-locked">
+                <div className="flex h-[17rem] w-full flex-col justify-end gap-3 bg-bg px-6 pb-6 sm:px-7">
+                  <LockedBar text={a.handle} className="h-[1.1em]" />
+                  <LockedBar text="████████████████" />
+                  <LockedBar text="██████████" className="h-[0.55em]" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </LockedRegion>
+      ) : null}
+      <SideDrawer open={open !== null && !preview} onClose={() => setOpen(null)} title={open?.handle ?? ""}>
         {open ? (
           <div className="flex flex-col gap-7 text-[14px]">
             {open.summary ? <p className="text-[15px] leading-relaxed text-dim">{open.summary}</p> : null}

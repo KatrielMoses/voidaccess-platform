@@ -11,6 +11,9 @@ import { StarPrompt } from "@/components/results/star-prompt";
 import { RelevancePanel } from "@/components/results/relevance";
 import { starPromptVisible } from "@/lib/ops/star-prompt";
 import { GITHUB_URL } from "@/lib/site";
+import { LockedBar, LockedLines, LockedRegion } from "@/components/results/preview/locked";
+import { isPreview, isLockedText } from "@/lib/preview/types";
+import { accessOf, summaryIsLocked } from "@/lib/preview/view";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +44,8 @@ function Notes({ title, items, mark }: { title: string; items: string[]; mark?: 
               {mark ?? String(i + 1).padStart(2, "0")}
             </span>
             <span className="min-w-0 [overflow-wrap:anywhere]">
-              <InlineMarkdown>{f}</InlineMarkdown>
+              {/* a preview's locked finding arrives as filler: drawn as a bar, never printed */}
+              {isLockedText(f) ? <LockedBar text={f} /> : <InlineMarkdown>{f}</InlineMarkdown>}
             </span>
           </li>
         ))}
@@ -65,13 +69,16 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
   const empty = body.trim().length === 0;
   // summary_kind is set at ingest: llm | fallback | none (legacy seed rows: "ai"). Only a real fallback gets the notice.
   const fallback = inv.summaryKind === "fallback";
+  // Free preview: the server sent only the first sentences; the rest is drawn as placeholder lines under the panel
+  const preview = isPreview(accessOf(inv));
+  const cut = preview || summaryIsLocked(inv);
   const types = Object.entries(summary.entityCounts).sort((a, b) => b[1] - a[1]);
   const maxCount = types[0]?.[1] ?? 1;
 
   return (
     <div className="flex flex-col gap-12">
       {showStar ? <StarPrompt href={GITHUB_URL} /> : null}
-      {fallback || empty ? (
+      {(fallback || empty) && !cut ? (
         <div role="note" className="border-l border-line-3 pl-4 text-[15px] text-dim">
           <span className="font-medium text-paper">Note. </span>
           {empty
@@ -104,7 +111,29 @@ export default async function SummaryPage({ params }: { params: Promise<{ id: st
           {summary.riskNotes.length > 0 ? (
             <Notes title="Risk notes" items={summary.riskNotes} mark="▲" />
           ) : null}
-          {!empty ? (
+          {cut ? (
+            <section className="flex flex-col gap-5" data-testid="summary-preview">
+              <h2 className="text-[22px] leading-tight font-medium tracking-[-0.025em]">
+                Intelligence summary
+              </h2>
+              <div className="flex flex-col gap-6 border-t border-line pt-6">
+                {!empty ? (
+                  <div data-testid="summary-markdown">
+                    <SafeMarkdown>{body}</SafeMarkdown>
+                  </div>
+                ) : null}
+                <LockedRegion origin="summary" minHeight="27rem">
+                  <LockedLines count={5} />
+                  <div className="mt-6">
+                    <LockedLines count={4} seed={2} />
+                  </div>
+                  <div className="mt-6">
+                    <LockedLines count={3} seed={4} />
+                  </div>
+                </LockedRegion>
+              </div>
+            </section>
+          ) : !empty ? (
             <section className="flex flex-col gap-5">
               <h2 className="text-[22px] leading-tight font-medium tracking-[-0.025em]">
                 Intelligence summary

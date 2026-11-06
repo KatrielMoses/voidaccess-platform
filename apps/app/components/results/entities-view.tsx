@@ -31,6 +31,10 @@ import { TypeBadge } from "./type-badge";
 import { ShapeGlyph } from "./type-glyph";
 import { MaskedMark, UL } from "./ui";
 import { TierHeading, tierHelp } from "./relevance";
+import { usePreview } from "./preview/preview-context";
+import { LockedBar, LockedRegion } from "./preview/locked";
+import { isLockedRow, isPreviewLockedResponse } from "@/lib/preview/types";
+import { accessOf } from "@/lib/preview/view";
 
 type SeenMap = Record<string, { firstSeen: string; tier: "unconfirmed" | "corroborated" | "feed_validated" }>;
 
@@ -66,6 +70,7 @@ export function EntitiesView({
   const pathname = usePathname();
   const sp = useSearchParams();
   const filters = useMemo(() => parseFilters(new URLSearchParams(sp.toString())), [sp]);
+  const { preview, openUnlock } = usePreview();
 
   const [seenMap, setSeenMap] = useState<SeenMap | null>(null);
   useEffect(() => {
@@ -91,6 +96,14 @@ export function EntitiesView({
     },
     [router, pathname],
   );
+
+  // a preview has no entity details: a ?focus= link opens the unlock panel instead of the drawer
+  useEffect(() => {
+    if (preview && filters.focus) {
+      openUnlock("entity_detail");
+      setFilters({ ...filters, focus: null });
+    }
+  }, [preview, filters, openUnlock, setFilters]);
 
   // debounce the search box into the URL
   useEffect(() => {
@@ -119,7 +132,8 @@ export function EntitiesView({
   );
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-4">
+      {/* a preview has two rows to filter: only the type chips (with the full counts) stay */}
+      <div className={`flex flex-wrap items-end gap-4 ${preview ? "hidden" : ""}`}>
         <label className="flex min-w-56 flex-1 flex-col gap-1.5 text-[13px] text-dim">
           Search values and tags
           <Input
@@ -226,7 +240,7 @@ export function EntitiesView({
         })}
       </div>
 
-      {tierCounts
+      {tierCounts && !preview
         ? TIERS.map((tier) => {
             const n = tierCounts[tier];
             const bg = tier === "background";
@@ -283,11 +297,11 @@ export function EntitiesView({
       </p>
 
       <SideDrawer
-        open={filters.focus !== null}
+        open={filters.focus !== null && !preview}
         onClose={() => setFilters({ ...filters, focus: null })}
         title="Entity details"
       >
-        {filters.focus ? (
+        {filters.focus && !preview ? (
           <EntityDetailView
             key={filters.focus}
             invId={investigationId}
@@ -324,6 +338,10 @@ function EntityTable({
   const inFlight = useRef(false);
   const scroller = useRef<HTMLDivElement>(null);
   const rowEls = useRef(new Map<number, HTMLDivElement>());
+  const pv = usePreview();
+  // the server marks a preview page; its rows are the 2 real ones, then placeholders (never more pages)
+  const [pagePreview, setPagePreview] = useState(false);
+  const preview = pv.preview || pagePreview;
 
   const fetchPage = useCallback(
     async (offset: number, signal?: AbortSignal): Promise<EntityPage | null> => {
@@ -332,9 +350,13 @@ function EntityTable({
       p.set("offset", String(offset));
       p.set("limit", String(PAGE));
       const res = await fetch(`/api/investigations/${investigationId}/entities?${p}`, { signal });
+      // locked without a marker: draw the preview (the inline panel), never an error
+      if (await isPreviewLockedResponse(res)) {
+        return { rows: [], total: 0, access: { level: "preview", totals: pv.totals } } as EntityPage;
+      }
       return res.ok ? ((await res.json()) as EntityPage) : null;
     },
-    [filters, investigationId, tier],
+    [filters, investigationId, tier, pv.totals],
   );
   // first page whenever the filters change
   useEffect(() => {
@@ -345,6 +367,7 @@ function EntityTable({
     fetchPage(0, ctl.signal)
       .then((page) => {
         if (!page) return setFailed(true);
+        setPagePreview(accessOf(page)?.level === "preview");
         setRows(page.rows);
         setTotal(page.total);
         setActive(0);
@@ -358,7 +381,7 @@ function EntityTable({
     return () => ctl.abort();
   }, [queryKey]);
 
-  const hasMore = total !== null && rows.length < total;
+  const hasMore = !preview && total !== null && rows.length < total;
   const loadMore = useCallback(async () => {
     if (inFlight.current || !hasMore) return;
     inFlight.current = true;
@@ -406,12 +429,18 @@ function EntityTable({
     else if (e.key === "PageUp") go(i - 10);
     else if (e.key === "Enter") {
       e.preventDefault();
-      setFilters({ ...filters, focus: row.bundleId });
+      openRow(row);
     } else if (e.key === " ") {
       e.preventDefault();
       toggleSelect(row.bundleId);
     }
   };
+  // a preview has no entity details: every row opens the unlock panel
+  const openRow = (row: EntityRowView) =>
+    preview || isLockedRow(row)
+      ? pv.openUnlock("entity_detail")
+      : setFilters({ ...filters, focus: row.bundleId });
+  const realRows = rows.filter((r) => !isLockedRow(r));
   const toggleSelect = (id: string) =>
     setSelected((s) => {
       const n = new Set(s);
@@ -420,12 +449,133 @@ function EntityTable({
       return n;
     });
 
-  const selectedRows = rows.filter((r) => selected.has(r.bundleId));
-  const allSelected = rows.length > 0 && selectedRows.length === rows.length;
+  const selectedRows = realRows.filter((r) => selected.has(r.bundleId));
+  const allSelected = realRows.length > 0 && selectedRows.length === realRows.length;
   const arrow = (k: EntitySort | null) =>
     k && filters.sort === k ? (filters.dir === "asc" ? " ↑" : " ↓") : "";
   // a tier section is only as tall as its rows (up to the usual height); the untiered table keeps its fixed height
   const height = tier ? Math.min(Math.max(total ?? 2, 2) * ROW_H + 8, 640) : undefined;
+
+  /** One real row; `start` is the virtual offset, or null for the static preview list. */
+  const renderRow = (r: EntityRowView, index: number, start: number | null) => {
+    const isSel = selected.has(r.bundleId);
+    return (
+      <div
+        key={r.bundleId}
+        ref={(el) => {
+          if (el) rowEls.current.set(index, el);
+          else rowEls.current.delete(index);
+        }}
+        role="row"
+        aria-rowindex={index + 2}
+        aria-selected={isSel}
+        tabIndex={index === active ? 0 : -1}
+        data-testid="entity-row"
+        onKeyDown={(e) => onKeyDown(e, index)}
+        onFocus={() => setActive(index)}
+        onClick={() => openRow(r)}
+        style={
+          start === null
+            ? { height: ROW_H }
+            : {
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: ROW_H,
+                transform: `translateY(${start}px)`,
+              }
+        }
+        className={`${GRID} group cursor-pointer border-b border-line text-[14px] transition-colors duration-300 hover:bg-bg-2 focus-visible:bg-bg-2 focus-visible:outline-offset-[-2px] ${isSel ? "bg-bg-2" : ""}`}
+      >
+        <div role="gridcell" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSel}
+            onCheckedChange={() => toggleSelect(r.bundleId)}
+            aria-label={`Select ${r.displayValue}`}
+          />
+        </div>
+        <div role="gridcell" className="flex min-w-0 items-center gap-2">
+          <span
+            className="truncate font-mono text-[13px] text-paper transition-colors duration-300 group-hover:text-v-200 group-focus-visible:text-v-200"
+            title={r.displayValue}
+          >
+            {r.displayValue}
+          </span>
+          {r.sensitive ? <MaskedMark /> : null}
+          <CopyButton
+            text={r.displayValue}
+            label={r.sensitive ? "Copy masked value" : "Copy value"}
+            className="ml-auto"
+          />
+        </div>
+        <div role="gridcell">
+          <TypeBadge type={r.type} />
+        </div>
+        <div role="gridcell" className="font-mono text-[13px] tabular-nums">
+          {r.confidence.toFixed(2)}
+        </div>
+        <div role="gridcell" className="text-[13px] text-dim tabular-nums">
+          {formatDate(r.firstSeen)}
+        </div>
+        <div role="gridcell" className="font-mono text-[13px] tabular-nums">
+          {r.sourceCount}
+        </div>
+        <div
+          role="gridcell"
+          className="flex flex-wrap items-center gap-2 text-[13px]"
+          data-testid="seen-before-cell"
+        >
+          {seenMap?.[r.bundleId] ? (
+            <>
+              <span className="text-dim tabular-nums">{formatDate(seenMap[r.bundleId]!.firstSeen)}</span>
+              <TierBadge tier={seenMap[r.bundleId]!.tier} />
+            </>
+          ) : (
+            <span className="font-mono text-[12px] text-mute">
+              {seenMap ? archiveCopy.entities.never : "…"}
+            </span>
+          )}
+        </div>
+        <div role="gridcell" className="truncate font-mono text-[12px] text-dim" title={r.tags.join(", ")}>
+          {r.tags.join(", ")}
+        </div>
+      </div>
+    );
+  };
+  /** A placeholder row: the server's filler drawn as bars (only the entity type is real). */
+  const renderLockedRow = (r: EntityRowView, index: number) => (
+    <div
+      key={`${r.bundleId}-${index}`}
+      data-testid="entity-row-locked"
+      style={{ height: ROW_H }}
+      className={`${GRID} border-b border-line text-[14px]`}
+    >
+      <div />
+      <div className="min-w-0">
+        <LockedBar text={r.displayValue} />
+      </div>
+      <div>
+        <TypeBadge type={r.type} />
+      </div>
+      <div>
+        <LockedBar text="████" />
+      </div>
+      <div>
+        <LockedBar text="████████" />
+      </div>
+      <div>
+        <LockedBar text="██" />
+      </div>
+      <div>
+        <LockedBar text="██████" />
+      </div>
+      <div>
+        <LockedBar text="████████" />
+      </div>
+    </div>
+  );
+  const lockedRows = rows.filter((r) => isLockedRow(r));
 
   return (
     <div className="flex flex-col gap-4">
@@ -433,14 +583,16 @@ function EntityTable({
         <p aria-live="polite" data-testid="entity-count" className="tabular-nums">
           {total === null
             ? "Loading…"
-            : `Showing ${rows.length.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} entities`}
+            : preview
+              ? `Showing ${realRows.length.toLocaleString("en-US")} of ${pv.totals.entities.toLocaleString("en-US")} entities`
+              : `Showing ${rows.length.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} entities`}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <CopyButton
-            text={rows.map((r) => r.displayValue).join("\n")}
-            label={`Copy ${rows.length} loaded values (sensitive values masked)`}
+            text={realRows.map((r) => r.displayValue).join("\n")}
+            label={`Copy ${realRows.length} loaded values (sensitive values masked)`}
           />
-          <span className="font-mono text-[12px] text-mute tabular-nums">column ({rows.length})</span>
+          <span className="font-mono text-[12px] text-mute tabular-nums">column ({realRows.length})</span>
           {selectedRows.length > 0 ? (
             <>
               <CopyButton
@@ -462,7 +614,7 @@ function EntityTable({
               <Checkbox
                 checked={allSelected ? true : selectedRows.length > 0 ? "indeterminate" : false}
                 onCheckedChange={(c) =>
-                  setSelected(c === true ? new Set(rows.map((r) => r.bundleId)) : new Set())
+                  setSelected(c === true ? new Set(realRows.map((r) => r.bundleId)) : new Set())
                 }
                 aria-label="Select all loaded rows"
               />
@@ -494,114 +646,40 @@ function EntityTable({
               </div>
             ))}
           </div>
-          <div
-            ref={scroller}
-            className={`relative overflow-y-auto ${tier ? "max-h-[min(65vh,40rem)]" : "h-[min(65vh,40rem)]"}`}
-            style={height ? { height } : undefined}
-            data-testid="entity-scroller"
-          >
-            {failed ? (
-              <p className="p-6 text-[15px] text-paper">Couldn&apos;t load entities. Try again.</p>
-            ) : null}
-            {!failed && total === 0 ? (
-              <p className="p-6 text-[15px] text-dim">No entities match these filters.</p>
-            ) : null}
-            <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
-              {items.map((v) => {
-                const r = rows[v.index];
-                if (!r) return null;
-                const isSel = selected.has(r.bundleId);
-                return (
-                  <div
-                    key={r.bundleId}
-                    ref={(el) => {
-                      if (el) rowEls.current.set(v.index, el);
-                      else rowEls.current.delete(v.index);
-                    }}
-                    role="row"
-                    aria-rowindex={v.index + 2}
-                    aria-selected={isSel}
-                    tabIndex={v.index === active ? 0 : -1}
-                    data-testid="entity-row"
-                    onKeyDown={(e) => onKeyDown(e, v.index)}
-                    onFocus={() => setActive(v.index)}
-                    onClick={() => setFilters({ ...filters, focus: r.bundleId })}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      height: ROW_H,
-                      transform: `translateY(${v.start}px)`,
-                    }}
-                    className={`${GRID} group cursor-pointer border-b border-line text-[14px] transition-colors duration-300 hover:bg-bg-2 focus-visible:bg-bg-2 focus-visible:outline-offset-[-2px] ${isSel ? "bg-bg-2" : ""}`}
-                  >
-                    <div role="gridcell" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={isSel}
-                        onCheckedChange={() => toggleSelect(r.bundleId)}
-                        aria-label={`Select ${r.displayValue}`}
-                      />
-                    </div>
-                    <div role="gridcell" className="flex min-w-0 items-center gap-2">
-                      <span
-                        className="truncate font-mono text-[13px] text-paper transition-colors duration-300 group-hover:text-v-200 group-focus-visible:text-v-200"
-                        title={r.displayValue}
-                      >
-                        {r.displayValue}
-                      </span>
-                      {r.sensitive ? <MaskedMark /> : null}
-                      <CopyButton
-                        text={r.displayValue}
-                        label={r.sensitive ? "Copy masked value" : "Copy value"}
-                        className="ml-auto"
-                      />
-                    </div>
-                    <div role="gridcell">
-                      <TypeBadge type={r.type} />
-                    </div>
-                    <div role="gridcell" className="font-mono text-[13px] tabular-nums">
-                      {r.confidence.toFixed(2)}
-                    </div>
-                    <div role="gridcell" className="text-[13px] text-dim tabular-nums">
-                      {formatDate(r.firstSeen)}
-                    </div>
-                    <div role="gridcell" className="font-mono text-[13px] tabular-nums">
-                      {r.sourceCount}
-                    </div>
-                    <div
-                      role="gridcell"
-                      className="flex flex-wrap items-center gap-2 text-[13px]"
-                      data-testid="seen-before-cell"
-                    >
-                      {seenMap?.[r.bundleId] ? (
-                        <>
-                          <span className="text-dim tabular-nums">
-                            {formatDate(seenMap[r.bundleId]!.firstSeen)}
-                          </span>
-                          <TierBadge tier={seenMap[r.bundleId]!.tier} />
-                        </>
-                      ) : (
-                        <span className="font-mono text-[12px] text-mute">
-                          {seenMap ? archiveCopy.entities.never : "…"}
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      role="gridcell"
-                      className="truncate font-mono text-[12px] text-dim"
-                      title={r.tags.join(", ")}
-                    >
-                      {r.tags.join(", ")}
-                    </div>
-                  </div>
-                );
-              })}
+          {preview ? (
+            <div data-testid="entity-preview">
+              {failed ? (
+                <p className="p-6 text-[15px] text-paper">Couldn&apos;t load entities. Try again.</p>
+              ) : null}
+              {realRows.map((r, i) => renderRow(r, i, null))}
+              <LockedRegion origin="entities" minHeight="26rem">
+                {lockedRows.map((r, i) => renderLockedRow(r, i))}
+              </LockedRegion>
             </div>
-            {loading && rows.length > 0 ? (
-              <p className="p-3 text-center font-mono text-[12px] text-mute">Loading more…</p>
-            ) : null}
-          </div>
+          ) : (
+            <div
+              ref={scroller}
+              className={`relative overflow-y-auto ${tier ? "max-h-[min(65vh,40rem)]" : "h-[min(65vh,40rem)]"}`}
+              style={height ? { height } : undefined}
+              data-testid="entity-scroller"
+            >
+              {failed ? (
+                <p className="p-6 text-[15px] text-paper">Couldn&apos;t load entities. Try again.</p>
+              ) : null}
+              {!failed && total === 0 ? (
+                <p className="p-6 text-[15px] text-dim">No entities match these filters.</p>
+              ) : null}
+              <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+                {items.map((v) => {
+                  const r = rows[v.index];
+                  return r ? renderRow(r, v.index, v.start) : null;
+                })}
+              </div>
+              {loading && rows.length > 0 ? (
+                <p className="p-3 text-center font-mono text-[12px] text-mute">Loading more…</p>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -11,26 +11,47 @@ import { TypeBadge } from "./type-badge";
 import { TypeGlyph } from "./type-glyph";
 import { Field, H, InfoTip, MaskedMark, RULED, VALUE_LINK } from "./ui";
 import { TierWord } from "./relevance";
+import { usePreview } from "./preview/preview-context";
+import { isPreviewLockedResponse } from "@/lib/preview/types";
+import { previewCopy } from "@/content/preview";
 
 export function useEntityDetail(invId: string, bundleId: string | null) {
-  const [state, setState] = useState<{ key: string; data: EntityDetail | null; error: boolean } | null>(null);
+  const { openUnlock } = usePreview();
+  const [state, setState] = useState<{
+    key: string;
+    data: EntityDetail | null;
+    error: boolean;
+    locked?: boolean;
+  } | null>(null);
   useEffect(() => {
     if (!bundleId) return;
     const key = `${invId}/${bundleId}`;
     let cancelled = false;
     fetch(`/api/investigations/${invId}/entities/${encodeURIComponent(bundleId)}`)
-      .then((r) => (r.ok ? (r.json() as Promise<EntityDetail>) : Promise.reject(new Error(String(r.status)))))
-      .then((data) => !cancelled && setState({ key, data, error: false }))
+      .then(async (r) => {
+        // a preview's entity details are locked (402 preview_locked): the unlock panel, never an error
+        if (await isPreviewLockedResponse(r)) {
+          if (!cancelled) {
+            setState({ key, data: null, error: false, locked: true });
+            openUnlock("entity_detail");
+          }
+          return;
+        }
+        if (!r.ok) throw new Error(String(r.status));
+        const data = (await r.json()) as EntityDetail;
+        if (!cancelled) setState({ key, data, error: false });
+      })
       .catch(() => !cancelled && setState({ key, data: null, error: true }));
     return () => {
       cancelled = true;
     };
-  }, [invId, bundleId]);
+  }, [invId, bundleId, openUnlock]);
   const current = bundleId && state?.key === `${invId}/${bundleId}` ? state : null;
   return {
     detail: current?.data ?? null,
     loading: Boolean(bundleId) && !current,
     error: current?.error ?? false,
+    locked: current?.locked ?? false,
   };
 }
 
@@ -49,7 +70,7 @@ export function EntityDetailView({
   bundleId: string;
   onOpenEntity?: (bundleId: string) => void;
 }) {
-  const { detail, loading, error } = useEntityDetail(invId, bundleId);
+  const { detail, loading, error, locked } = useEntityDetail(invId, bundleId);
   if (loading)
     return (
       <div className="flex flex-col gap-3" aria-busy>
@@ -58,6 +79,7 @@ export function EntityDetailView({
         <Skeleton className="h-32" />
       </div>
     );
+  if (locked) return <p className="text-[15px] text-dim">{previewCopy.locked.detail}</p>;
   if (error || !detail) return <p className="text-[15px] text-paper">Couldn&apos;t load this entity.</p>;
 
   return (

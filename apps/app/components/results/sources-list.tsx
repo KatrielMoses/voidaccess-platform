@@ -7,6 +7,9 @@ import { formatDate } from "@/lib/results/format";
 import { CopyOnlyUrl } from "./copy-text";
 import { TierHeading, tierHelp } from "./relevance";
 import { UL } from "./ui";
+import { usePreview } from "./preview/preview-context";
+import { LockedBar, LockedRegion, ShownOf } from "./preview/locked";
+import { isLockedRow, isLockedText } from "@/lib/preview/types";
 
 const PAGE_KIND_LABEL: Record<string, string> = {
   directory: "Link directory",
@@ -40,6 +43,7 @@ export function SourcesList({
   tiered?: boolean;
   query?: string;
 }) {
+  const { preview, totals } = usePreview();
   const [kind, setKind] = useState<string>("all");
   // When nothing is Direct or Related, Background is all there is: open it rather than show an empty page.
   const [showBackground, setShowBackground] = useState(
@@ -73,6 +77,50 @@ export function SourcesList({
     for (const s of filtered) m.set(s.kind, [...(m.get(s.kind) ?? []), s]);
     return [...m];
   }, [filtered]);
+
+  if (preview) {
+    // Free preview: the first rows (host and title only), then the server's placeholders under the unlock panel
+    const real = sources.filter((x) => !isLockedRow(x));
+    const locked = sources.filter((x) => isLockedRow(x));
+    return (
+      <div className="flex flex-col gap-4" data-testid="sources-preview">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="flex items-baseline gap-3 text-[22px] leading-tight font-medium tracking-[-0.02em]">
+            Sources{" "}
+            <span className="font-mono text-[13px] font-normal tracking-normal text-mute tabular-nums">
+              {totals.sources.toLocaleString("en-US")}
+            </span>
+          </h2>
+          <ShownOf shown={real.length} total={totals.sources} noun="sources" />
+        </div>
+        <ul className="flex flex-col divide-y divide-line border-t border-line">
+          {real.map((x) => (
+            <SourceItem key={x.bundleId} s={x} tiered={tiered} preview />
+          ))}
+        </ul>
+        <LockedRegion origin="sources" minHeight="26rem">
+          <ul className="flex flex-col divide-y divide-line border-y border-line">
+            {locked.map((x, i) => (
+              <li
+                key={`${x.bundleId}-${i}`}
+                className="grid gap-x-8 gap-y-2 py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
+                data-testid="source-item-locked"
+              >
+                <div className="flex flex-col gap-2">
+                  <LockedBar text={x.name} />
+                  <LockedBar text="██████████" className="h-[0.55em]" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <LockedBar text={x.excerpt || "████████████████████████████"} />
+                  <LockedBar text="██████████████████████" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </LockedRegion>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -184,7 +232,7 @@ export function SourcesList({
   );
 }
 
-function SourceItem({ s, tiered }: { s: SourceView; tiered: boolean }) {
+function SourceItem({ s, tiered, preview = false }: { s: SourceView; tiered: boolean; preview?: boolean }) {
   return (
     <li
       className="grid gap-x-8 gap-y-2 py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
@@ -192,7 +240,13 @@ function SourceItem({ s, tiered }: { s: SourceView; tiered: boolean }) {
     >
       <div className="flex flex-col gap-1.5">
         <span className="text-[15px] font-medium text-paper">{s.name}</span>
-        <span className="font-mono text-[12px] text-mute tabular-nums">{formatDate(s.fetchedAt, true)}</span>
+        {isLockedText(s.fetchedAt) ? (
+          <LockedBar text={s.fetchedAt} className="h-[0.55em]" />
+        ) : (
+          <span className="font-mono text-[12px] text-mute tabular-nums">
+            {formatDate(s.fetchedAt, true)}
+          </span>
+        )}
         {tiered ? (
           <span className="font-mono text-[12px] text-mute" data-testid="source-meta">
             {KIND_LABEL[s.kind] ?? s.kind}
@@ -202,12 +256,16 @@ function SourceItem({ s, tiered }: { s: SourceView; tiered: boolean }) {
         ) : null}
       </div>
       <div className="min-w-0">
-        {s.excerpt ? (
+        {s.excerpt && isLockedText(s.excerpt) ? (
+          <LockedBar text={s.excerpt} />
+        ) : s.excerpt ? (
           <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-dim">{s.excerpt}</p>
+        ) : preview ? (
+          <p className="font-mono text-[12px] text-mute">The excerpt is in the full report.</p>
         ) : (
           <p className="font-mono text-[12px] text-mute">No excerpt kept.</p>
         )}
-        {s.url ? (
+        {s.url && !isLockedText(s.url) ? (
           <div className="mt-3">
             <CopyOnlyUrl url={s.url} />
           </div>

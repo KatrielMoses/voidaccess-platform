@@ -25,6 +25,7 @@ export default async function NewInvestigationPage({
         defaultQuery={(q ?? "").slice(0, 500)}
         showExamples
         autoFocus
+        previewNotice={user.plan === "free"}
       />
     </div>
   );

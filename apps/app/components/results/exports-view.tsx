@@ -14,6 +14,8 @@ import {
 } from "@voidaccess/ui";
 import { UPGRADE_URL } from "@/lib/results/entity-style";
 import { FORMAT_META, exportFilename, type ExportFormat, type ExportState } from "@/lib/results/formats";
+import { previewCopy } from "@/content/preview";
+import { usePreview } from "./preview/preview-context";
 
 /** The secondary label of each cell: its category, switching to the file name on hover (design.md §6). */
 const CATEGORY: Record<ExportFormat, string> = {
@@ -33,8 +35,19 @@ const CATEGORY: Record<ExportFormat, string> = {
  * The exports field: the view's one violet thing. Cells are separated by paper hairlines; on hover a v-700 fill
  * rises from the bottom and the category label becomes the file name. Buttons on this view are paper, never violet.
  */
-export function ExportsView({ investigationId, states }: { investigationId: string; states: ExportState[] }) {
+export function ExportsView({
+  investigationId,
+  states,
+  preview: previewProp = false,
+}: {
+  investigationId: string;
+  states: ExportState[];
+  /** a Free preview: every format is locked and opens the unlock panel */
+  preview?: boolean;
+}) {
   const [upsell, setUpsell] = useState<ExportFormat | null>(null);
+  const pv = usePreview();
+  const preview = previewProp || pv.preview;
   return (
     <>
       <section aria-labelledby="exports-h" className="overflow-hidden rounded-lg bg-v-600 text-paper">
@@ -42,8 +55,10 @@ export function ExportsView({ investigationId, states }: { investigationId: stri
           <h2 id="exports-h" className="text-[26px] leading-tight font-medium tracking-[-0.03em]">
             Take it with you
           </h2>
-          <p className="max-w-[44ch] text-[14px] text-v-100">
-            CSV and JSON are on every plan. Credentials and personal data are always masked in exports.
+          <p className="max-w-[44ch] text-[14px] text-v-100" data-testid="exports-note">
+            {preview
+              ? previewCopy.locked.exportsNote
+              : "CSV and JSON come with every full report. Credentials and personal data are always masked in exports."}
           </p>
         </div>
         <ul className="grid grid-cols-2 gap-px border-t border-paper/30 bg-paper/20 md:grid-cols-5">
@@ -91,6 +106,15 @@ export function ExportsView({ investigationId, states }: { investigationId: stri
                       </button>
                     </span>
                   </Tooltip>
+                ) : preview ? (
+                  <button
+                    type="button"
+                    onClick={() => pv.openUnlock("exports")}
+                    aria-label={`${meta.label} is locked: unlock the full report to download`}
+                    className={cell}
+                  >
+                    {body(previewCopy.locked.exportState)}
+                  </button>
                 ) : s.locked ? (
                   <button
                     type="button"
@@ -116,7 +140,7 @@ export function ExportsView({ investigationId, states }: { investigationId: stri
           <DialogHeader>
             <DialogTitle>Upgrade to export {upsell ? FORMAT_META[upsell].label : ""}</DialogTitle>
             <DialogDescription>
-              CSV and JSON exports are on every plan. Markdown, the IOC package, STIX, MISP and the
+              CSV and JSON come with every full report. Markdown, the IOC package, STIX, MISP and the
               detection-rule formats are included with Pro and Pro+.
             </DialogDescription>
           </DialogHeader>

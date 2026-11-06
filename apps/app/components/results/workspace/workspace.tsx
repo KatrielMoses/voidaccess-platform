@@ -34,6 +34,36 @@ import { IconFit, IconImage, IconMinus, IconPlus, IconReset, IconTable, IconVect
 import { Sidebar } from "./sidebar";
 import { useGraph } from "./use-graph";
 import { THIN_RESULT, thinResultNote } from "@/lib/results/small-results";
+import { isPreviewLockedResponse, isLockedText } from "@/lib/preview/types";
+import { accessOf } from "@/lib/preview/view";
+import { usePreview } from "../preview/preview-context";
+import { UnlockPanel } from "../preview/unlock-panel";
+
+/** Preview panel width on the graph (where the values sidebar sits on a full report). */
+const PREVIEW_W = 384;
+
+/**
+ * A preview graph keeps its shape and types; the server sends no labels (null) and no tags. Labels become empty
+ * strings so the canvas draws glyphs only and nothing downstream has to know.
+ */
+export function previewGraph(d: GraphData): GraphData {
+  return {
+    ...d,
+    nodes: d.nodes.map((n) => {
+      const label = n[2] as string | null;
+      return [
+        n[0],
+        n[1],
+        typeof label === "string" && !isLockedText(label) ? label : "",
+        n[3],
+        n[4],
+        n[5],
+        n[6],
+        [],
+      ];
+    }),
+  };
+}
 
 const INSET = 16;
 const SIDEBAR_W = 320;
@@ -103,6 +133,12 @@ function ToolButton({
 export function Workspace({ investigationId }: { investigationId: string }) {
   const [data, setData] = useState<GraphData | null>(null);
   const [error, setError] = useState(false);
+  const pv = usePreview();
+  const [dataPreview, setDataPreview] = useState(false);
+  /** the graph answered 402 preview_locked: the unlock panel in place of the graph, never an error */
+  const [locked, setLocked] = useState(false);
+  const preview = pv.preview || dataPreview;
+  const openUnlock = pv.openUnlock;
   const mobile = useMedia("(max-width: 959px)");
   const reduced = useMedia("(prefers-reduced-motion: reduce)");
 
@@ -132,13 +168,24 @@ export function Workspace({ investigationId }: { investigationId: string }) {
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/investigations/${investigationId}/graph`)
-      .then((r) => (r.ok ? (r.json() as Promise<GraphData>) : Promise.reject(new Error(String(r.status)))))
-      .then((d) => !cancelled && setData(d))
-      .catch(() => !cancelled && setError(true));
+      .then(async (r) => {
+        if (await isPreviewLockedResponse(r)) {
+          if (!cancelled) setLocked(true);
+          return Promise.reject(new Error("preview_locked"));
+        }
+        return r.ok ? (r.json() as Promise<GraphData>) : Promise.reject(new Error(String(r.status)));
+      })
+      .then((d) => {
+        if (cancelled) return;
+        const locked = accessOf(d)?.level === "preview" || pv.preview;
+        setDataPreview(locked);
+        setData(locked ? previewGraph(d) : d);
+      })
+      .catch((e: Error) => !cancelled && e.message !== "preview_locked" && setError(true));
     return () => {
       cancelled = true;
     };
-  }, [investigationId]);
+  }, [investigationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // the workspace fills the viewport below the results header; the page itself does not scroll
   useEffect(() => {
@@ -253,7 +300,8 @@ export function Workspace({ investigationId }: { investigationId: string }) {
     container: canvasRef,
     data,
     investigationId,
-    onClickNode: (id) => select(id, "graph"),
+    // a preview has no node details: a click opens the unlock panel
+    onClickNode: (id) => (preview ? openUnlock("graph_node") : select(id, "graph")),
     onClickStage: () => clear(),
     onHoverNode: () => undefined,
     onHoverEdge: setEdgeTip,
@@ -286,10 +334,10 @@ export function Workspace({ investigationId }: { investigationId: string }) {
         right: 0,
         bottom: selected ? (height ?? 600) * 0.62 : sheet === "full" ? (height ?? 600) * 0.72 : 158,
       };
-    const left = INSET + (sb.mode === "expanded" ? SIDEBAR_W : RAIL_W);
+    const left = INSET + (preview ? PREVIEW_W : sb.mode === "expanded" ? SIDEBAR_W : RAIL_W);
     const right = selected ? INSET + DETAIL_W : 0;
     return { left, right };
-  }, [mobile, sb.mode, selected, sheet, height]);
+  }, [mobile, sb.mode, selected, sheet, height, preview]);
 
   // the camera follows the selection (from the graph, the sidebar, search or the trail alike)
   const insetsRef = useRef(insets);
@@ -398,7 +446,7 @@ export function Workspace({ investigationId }: { investigationId: string }) {
     (x) => x.count > 0,
   );
   const labelOf = useCallback((id: string) => byId.get(id)?.display ?? id, [byId]);
-  const selectedOk = selected && byId.has(selected) ? selected : null;
+  const selectedOk = !preview && selected && byId.has(selected) ? selected : null;
 
   return (
     <div
@@ -418,7 +466,18 @@ export function Workspace({ investigationId }: { investigationId: string }) {
         data-testid="graph-canvas"
         className="absolute inset-0 touch-none"
       />
-      {!data && !error ? (
+      {locked ? (
+        <div className="absolute inset-0 flex items-center justify-center px-4" data-testid="graph-locked">
+          <UnlockPanel
+            investigationId={investigationId}
+            totals={pv.totals}
+            offer={pv.offer}
+            origin="graph"
+            failed={pv.failed}
+          />
+        </div>
+      ) : null}
+      {!data && !error && !locked ? (
         <p
           className="absolute inset-0 flex items-center justify-center font-mono text-[13px] text-dim"
           role="status"
@@ -446,62 +505,83 @@ export function Workspace({ investigationId }: { investigationId: string }) {
         </p>
       ) : null}
 
+      {data && data.nodes.length > 0 && preview ? (
+        <div
+          className={cn(
+            "pointer-events-auto absolute z-20 overflow-y-auto",
+            mobile ? "inset-x-3 bottom-3 max-h-[60%]" : "top-4 bottom-4 flex items-start",
+          )}
+          style={mobile ? undefined : { left: INSET, width: PREVIEW_W }}
+          data-testid="graph-preview-panel"
+        >
+          <UnlockPanel
+            investigationId={investigationId}
+            totals={pv.totals}
+            offer={pv.offer}
+            origin="graph"
+            failed={pv.failed}
+          />
+        </div>
+      ) : null}
+
       {data && data.nodes.length > 0 ? (
         <>
-          <Sidebar
-            groups={groups}
-            total={rows.length}
-            query={q}
-            onQuery={setQ}
-            matches={matches}
-            activeId={activeRow?.id ?? null}
-            onMoveActive={(d) => {
-              flushQuery();
-              setActive(
-                (a) => (a + d + Math.max(1, liveOrdered().length)) % Math.max(1, liveOrdered().length),
-              );
-            }}
-            onEnter={() => {
-              // Enter may come before the debounce: search what is typed now
-              const list = liveOrdered();
-              flushQuery();
-              const row = list[Math.min(active, list.length - 1)];
-              if (row) select(row.id, "search");
-            }}
-            openGroup={openGroup}
-            closing={closing}
-            onOpenGroup={setOpenGroup}
-            selectedId={selectedOk}
-            onSelect={(id) => select(id, matches ? "search" : "sidebar")}
-            onHoverRow={onHoverRow}
-            hiddenGroups={filters.hiddenGroups}
-            searchRef={searchRef}
-            mode={sb.mode}
-            animate={sb.animate}
-            pinned={sb.pinned}
-            onToggle={() => dispatch({ t: "toggle" })}
-            onTogglePin={() => dispatch({ t: "togglePin" })}
-            onRailHoverRest={() => dispatch({ t: "railHoverRest" })}
-            onRailFocus={() => dispatch({ t: "railFocus" })}
-            onPointerLeave={() => dispatch({ t: "pointerLeave" })}
-            mobile={mobile}
-            sheet={sheet}
-            onSheet={setSheet}
-            footer={
-              <FiltersControl
-                filters={filters}
-                onChange={setFilters}
-                groups={groupCounts}
-                archiveState={{ loading: archive.loading, nodes: archive.nodes, failed: archive.failed }}
-                counts={{
-                  visible: visible?.nodes.size ?? 0,
-                  total: data.nodes.length,
-                  edges: visible?.edges.size ?? 0,
-                  big: isBig(data),
-                }}
-              />
-            }
-          />
+          {preview ? null : (
+            <Sidebar
+              groups={groups}
+              total={rows.length}
+              query={q}
+              onQuery={setQ}
+              matches={matches}
+              activeId={activeRow?.id ?? null}
+              onMoveActive={(d) => {
+                flushQuery();
+                setActive(
+                  (a) => (a + d + Math.max(1, liveOrdered().length)) % Math.max(1, liveOrdered().length),
+                );
+              }}
+              onEnter={() => {
+                // Enter may come before the debounce: search what is typed now
+                const list = liveOrdered();
+                flushQuery();
+                const row = list[Math.min(active, list.length - 1)];
+                if (row) select(row.id, "search");
+              }}
+              openGroup={openGroup}
+              closing={closing}
+              onOpenGroup={setOpenGroup}
+              selectedId={selectedOk}
+              onSelect={(id) => select(id, matches ? "search" : "sidebar")}
+              onHoverRow={onHoverRow}
+              hiddenGroups={filters.hiddenGroups}
+              searchRef={searchRef}
+              mode={sb.mode}
+              animate={sb.animate}
+              pinned={sb.pinned}
+              onToggle={() => dispatch({ t: "toggle" })}
+              onTogglePin={() => dispatch({ t: "togglePin" })}
+              onRailHoverRest={() => dispatch({ t: "railHoverRest" })}
+              onRailFocus={() => dispatch({ t: "railFocus" })}
+              onPointerLeave={() => dispatch({ t: "pointerLeave" })}
+              mobile={mobile}
+              sheet={sheet}
+              onSheet={setSheet}
+              footer={
+                <FiltersControl
+                  filters={filters}
+                  onChange={setFilters}
+                  groups={groupCounts}
+                  archiveState={{ loading: archive.loading, nodes: archive.nodes, failed: archive.failed }}
+                  counts={{
+                    visible: visible?.nodes.size ?? 0,
+                    total: data.nodes.length,
+                    edges: visible?.edges.size ?? 0,
+                    big: isBig(data),
+                  }}
+                />
+              }
+            />
+          )}
 
           <div
             role="toolbar"
@@ -536,10 +616,20 @@ export function Workspace({ investigationId }: { investigationId: string }) {
             {!mobile ? (
               <>
                 <span aria-hidden className="mx-0.5 h-5 w-px bg-line" />
-                <ToolButton label="Export PNG" onClick={onPng} disabled={exporting} testId="export-png">
+                <ToolButton
+                  label="Export PNG"
+                  onClick={preview ? () => openUnlock("graph") : onPng}
+                  disabled={exporting}
+                  testId="export-png"
+                >
                   <IconImage />
                 </ToolButton>
-                <ToolButton label="Export SVG" onClick={onSvg} disabled={exporting} testId="export-svg">
+                <ToolButton
+                  label="Export SVG"
+                  onClick={preview ? () => openUnlock("graph") : onSvg}
+                  disabled={exporting}
+                  testId="export-svg"
+                >
                   <IconVector />
                 </ToolButton>
               </>

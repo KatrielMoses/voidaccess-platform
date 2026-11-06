@@ -1,5 +1,6 @@
 "use client";
 
+import { isPreviewLockedResponse } from "@/lib/preview/types";
 import { useEffect, useState } from "react";
 import type { ArchiveContext } from "@voidaccess/archive";
 import { Skeleton } from "@voidaccess/ui";
@@ -20,24 +21,36 @@ export function ArchivePanel({
   entityKey?: string;
   compact?: boolean;
 }) {
-  const [state, setState] = useState<{ key: string; ctx: ArchiveContext | null; error: boolean } | null>(
-    null,
-  );
+  const [state, setState] = useState<{
+    key: string;
+    ctx: ArchiveContext | null;
+    error: boolean;
+    locked?: boolean;
+  } | null>(null);
   const key = `${investigationId}/${entityKey ?? ""}`;
   useEffect(() => {
     let cancelled = false;
     const q = entityKey ? `?entity=${encodeURIComponent(entityKey)}` : "";
     fetch(`/api/investigations/${investigationId}/archive${q}`)
-      .then((r) =>
-        r.ok ? (r.json() as Promise<ArchiveContext>) : Promise.reject(new Error(String(r.status))),
+      .then(async (r) => {
+        // a preview's archive context is locked (402 preview_locked): the panel stays out of the way, no error
+        if (await isPreviewLockedResponse(r)) return "locked" as const;
+        return r.ok ? (r.json() as Promise<ArchiveContext>) : Promise.reject(new Error(String(r.status)));
+      })
+      .then(
+        (ctx) =>
+          !cancelled &&
+          setState(
+            ctx === "locked" ? { key, ctx: null, error: false, locked: true } : { key, ctx, error: false },
+          ),
       )
-      .then((ctx) => !cancelled && setState({ key, ctx, error: false }))
       .catch(() => !cancelled && setState({ key, ctx: null, error: true }));
     return () => {
       cancelled = true;
     };
   }, [investigationId, entityKey, key]);
   const cur = state?.key === key ? state : null;
+  if (cur?.locked) return null;
 
   const wrap = (children: React.ReactNode) =>
     compact ? (
