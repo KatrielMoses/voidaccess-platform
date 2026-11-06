@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { fixtureBundle, rawSensitiveList } from "@voidaccess/ingest/test-support";
 import { GROUPS } from "@/lib/results/categories";
+import type { GraphData } from "@/lib/results/types";
 import { getGraph, searchEntities } from "@/lib/results/queries";
 import { buildIndex, searchIndex } from "@/lib/results/search";
 import { rowsByGroup } from "@/lib/results/workspace-model";
@@ -27,7 +28,7 @@ afterAll(async () => {
 describe("results workspace data", () => {
   it("masking is identical to the entities table, value for value", async () => {
     const ctx = { database: appDb() };
-    const graph = (await getGraph(A, inv, ctx))!;
+    const graph = (await getGraph(A, inv, ctx))! as GraphData; // pro user: full graph
     const table = new Map<string, { display: string; sensitive: boolean }>();
     for (let offset = 0; ; offset += 500) {
       const page = (await searchEntities(A, inv, { offset, limit: 500 }, ctx))!;
@@ -41,7 +42,7 @@ describe("results workspace data", () => {
   });
 
   it("every entity is in exactly one sidebar group, and group counts sum to the entity count", async () => {
-    const graph = (await getGraph(A, inv, { database: appDb() }))!;
+    const graph = (await getGraph(A, inv, { database: appDb() }))! as GraphData;
     const groups = rowsByGroup(graph);
     const ids = GROUPS.flatMap((g) => groups.get(g.id)!.map((r) => r.id));
     expect(new Set(ids).size).toBe(ids.length);
@@ -50,7 +51,7 @@ describe("results workspace data", () => {
   });
 
   it("search only ever sees masked values: no raw sensitive value is findable", async () => {
-    const graph = (await getGraph(A, inv, { database: appDb() }))!;
+    const graph = (await getGraph(A, inv, { database: appDb() }))! as GraphData;
     const idx = buildIndex([...rowsByGroup(graph).values()].flat());
     const raw = rawSensitiveList();
     expect(raw.length).toBeGreaterThan(0);

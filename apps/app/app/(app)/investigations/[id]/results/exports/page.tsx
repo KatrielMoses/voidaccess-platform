@@ -10,8 +10,9 @@ export const dynamic = "force-dynamic";
 export default async function ExportsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const userId = await getSessionUserId();
-  const artifacts = userId ? await listArtifactFormats(userId, id) : null;
-  if (!userId || !artifacts) notFound();
+  const list = userId ? await listArtifactFormats(userId, id) : null;
+  if (!userId || !list) notFound();
   const exportAll = hasFeature(await getPlanId(userId), "export_all");
-  return <ExportsView investigationId={id} states={exportStates({ exportAll, artifacts })} />;
+  const states = exportStates({ exportAll, artifacts: list.formats, previewLocked: list.locked });
+  return <ExportsView investigationId={id} states={states} />;
 }

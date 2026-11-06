@@ -10,7 +10,7 @@ import { trackEvent, trackMonitorCreated } from "@/lib/analytics";
 import { POST as authPOST } from "@/app/api/auth/[...all]/route";
 import { GET as graphGET } from "@/app/api/investigations/[id]/graph/route";
 import { GET as exportGET } from "@/app/api/investigations/[id]/exports/[format]/route";
-import { appDb, makeUser, ownerPool, seedInvestigation } from "./results-helpers";
+import { appDb, makeUser, ownerPool, seedInvestigation, seedTopupPaidInvestigation } from "./results-helpers";
 
 let current: string | null = null;
 vi.mock("@/lib/dev-session", () => ({ getSessionUserId: async () => current }));
@@ -251,9 +251,15 @@ describe("emitters fire server-side", () => {
     const free = await makeUser("free");
     const freeInv = await seedInvestigation(free, bundle);
     current = free;
-    expect((await exportGET(new Request("http://x/e"), ctx(freeInv, "stix"))).status).toBe(403);
+    // a preview report: every export is locked (402) and records nothing
+    expect((await exportGET(new Request("http://x/e"), ctx(freeInv, "stix"))).status).toBe(402);
+    expect((await exportGET(new Request("http://x/e"), ctx(freeInv, "csv"))).status).toBe(402);
     expect(await eventsFor(free, "export_used")).toHaveLength(0);
-    expect((await exportGET(new Request("http://x/e"), ctx(freeInv, "csv"))).status).toBe(200);
+    // a run paid with purchased top-up credits is a full report: plan gating (403) applies as before
+    const paidInv = await seedTopupPaidInvestigation(free, bundle);
+    expect((await exportGET(new Request("http://x/e"), ctx(paidInv, "stix"))).status).toBe(403);
+    expect(await eventsFor(free, "export_used")).toHaveLength(0);
+    expect((await exportGET(new Request("http://x/e"), ctx(paidInv, "csv"))).status).toBe(200);
     expect(await eventsFor(free, "export_used")).toHaveLength(1);
     current = null;
   });

@@ -2,6 +2,11 @@
  * Every read goes through withUser(userId, …): Postgres RLS scopes it to the signed-in user, so another
  * user's investigation id simply returns nothing (callers answer 404). No function accepts a user id from
  * the client; routes take it from the session.
+ *
+ * PREVIEW LOCK (lib/access): the exported readers at the bottom of this file are the ONE choke point for report data.
+ * Each reads the real rows (read* below, already masked by the existing safety rules), then applies the caller's
+ * report access: full access gets exactly the same payload plus `access: {level:"full"}`; a preview account gets the
+ * lib/access redactor output (placeholders built from positions only) or PreviewLockedError (exports, entity detail).
  */
 import { and, asc, desc, eq, gte, inArray, lte, notInArray, sql, type SQL } from "drizzle-orm";
 import {
@@ -17,6 +22,21 @@ import {
   type Database,
 } from "@voidaccess/db";
 import type { PlanId } from "@voidaccess/config";
+import {
+  PREVIEW_PLACEHOLDER_ROWS,
+  PREVIEW_ROWS,
+  PreviewLockedError,
+  accessMarker,
+  getReportAccess,
+  redactActors,
+  redactEntityPage,
+  redactGraph,
+  redactInvestigation,
+  redactSources,
+  type AccessMarker,
+  type GraphPayload,
+  type InvestigationPayload,
+} from "@/lib/access";
 import type {
   ActorView,
   EntityDetail,
@@ -47,7 +67,7 @@ export async function getPlanId(userId: string, ctx?: QueryCtx): Promise<PlanId>
 }
 
 /** The investigation header + summary, or null if it doesn't exist, isn't yours, or has no snapshot yet. */
-export async function getInvestigation(
+async function readInvestigation(
   userId: string,
   id: string,
   ctx?: QueryCtx,
@@ -145,7 +165,7 @@ const SORTS = {
 export const ENTITY_PAGE_MAX = 500;
 
 /** Filtered, sorted, paged entity search served by Postgres (trigram index on search_text). */
-export async function searchEntities(
+async function readEntities(
   userId: string,
   id: string,
   q: EntityQuery,
@@ -236,7 +256,7 @@ const sourceCols = {
   pageKind: invSources.pageKind,
 };
 
-export async function getSources(userId: string, id: string, ctx?: QueryCtx): Promise<SourceView[] | null> {
+async function readSources(userId: string, id: string, ctx?: QueryCtx): Promise<SourceView[] | null> {
   if (!UUID_RE.test(id)) return null;
   return dbOf(ctx).withUser(userId, async (tx) => {
     const [exists] = await tx
@@ -254,7 +274,7 @@ export async function getSources(userId: string, id: string, ctx?: QueryCtx): Pr
   });
 }
 
-export async function getEntityDetail(
+async function readEntityDetail(
   userId: string,
   id: string,
   bundleId: string,
@@ -330,7 +350,7 @@ export async function getEntityDetail(
   });
 }
 
-export async function getGraph(userId: string, id: string, ctx?: QueryCtx): Promise<GraphData | null> {
+async function readGraph(userId: string, id: string, ctx?: QueryCtx): Promise<GraphData | null> {
   if (!UUID_RE.test(id)) return null;
   return dbOf(ctx).withUser(userId, async (tx) => {
     const [sum] = await tx
@@ -384,7 +404,7 @@ export async function getGraph(userId: string, id: string, ctx?: QueryCtx): Prom
   });
 }
 
-export async function getActors(userId: string, id: string, ctx?: QueryCtx): Promise<ActorView[] | null> {
+async function readActors(userId: string, id: string, ctx?: QueryCtx): Promise<ActorView[] | null> {
   if (!UUID_RE.test(id)) return null;
   return dbOf(ctx).withUser(userId, async (tx) => {
     const [exists] = await tx
@@ -446,11 +466,7 @@ export async function getActors(userId: string, id: string, ctx?: QueryCtx): Pro
 }
 
 /** Which runner artifacts were stored at ingest (STIX, MISP, Sigma, YARA, Snort, Suricata). */
-export async function listArtifactFormats(
-  userId: string,
-  id: string,
-  ctx?: QueryCtx,
-): Promise<string[] | null> {
+async function readArtifactFormats(userId: string, id: string, ctx?: QueryCtx): Promise<string[] | null> {
   if (!UUID_RE.test(id)) return null;
   return dbOf(ctx).withUser(userId, async (tx) => {
     const [exists] = await tx
@@ -467,7 +483,7 @@ export async function listArtifactFormats(
   });
 }
 
-export async function getArtifact(
+async function readArtifact(
   userId: string,
   id: string,
   format: string,
@@ -485,12 +501,8 @@ export async function getArtifact(
 }
 
 /** Everything needed by the CSV/JSON/Markdown/IOC exports, in one RLS-scoped transaction. */
-export async function loadSnapshot(
-  userId: string,
-  id: string,
-  ctx?: QueryCtx,
-): Promise<SnapshotForExport | null> {
-  const investigation = await getInvestigation(userId, id, ctx);
+async function readSnapshot(userId: string, id: string, ctx?: QueryCtx): Promise<SnapshotForExport | null> {
+  const investigation = await readInvestigation(userId, id, ctx);
   if (!investigation) return null;
   const [entities, relationships, actors, sources] = await Promise.all([
     dbOf(ctx).withUser(userId, (tx) =>
@@ -513,8 +525,8 @@ export async function loadSnapshot(
         .from(invRelationships)
         .where(eq(invRelationships.investigationId, id)),
     ),
-    getActors(userId, id, ctx),
-    getSources(userId, id, ctx),
+    readActors(userId, id, ctx),
+    readSources(userId, id, ctx),
   ]);
   return {
     investigation,
@@ -523,4 +535,122 @@ export async function loadSnapshot(
     actors: actors ?? [],
     sources: sources ?? [],
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Report readers with the preview lock applied (the only exported way to read report data).
+
+/** The investigation header + summary with its `access` marker; null if missing, not yours, or no snapshot yet. */
+export async function getInvestigation(
+  userId: string,
+  id: string,
+  ctx?: QueryCtx,
+): Promise<InvestigationPayload | null> {
+  const inv = await readInvestigation(userId, id, ctx);
+  if (!inv) return null;
+  const access = await accessMarker(userId, id, ctx);
+  return access.level === "full" ? { ...inv, access } : redactInvestigation(inv, access.totals);
+}
+
+/**
+ * Entity search. A preview account always gets the first PREVIEW_ROWS rows of the unfiltered default order plus
+ * placeholders, whatever the filters (with real totals, filters would be a search oracle over locked values).
+ */
+export async function searchEntities(
+  userId: string,
+  id: string,
+  q: EntityQuery,
+  ctx?: QueryCtx,
+): Promise<(EntityPage & { access: AccessMarker }) | null> {
+  if (!UUID_RE.test(id)) return null;
+  const access = await accessMarker(userId, id, ctx);
+  if (access.level === "full") {
+    const page = await readEntities(userId, id, q, ctx);
+    return page ? { ...page, access } : null;
+  }
+  const first = await readEntities(userId, id, { limit: PREVIEW_ROWS + PREVIEW_PLACEHOLDER_ROWS }, ctx);
+  return first ? redactEntityPage(first.rows, access.totals, q.offset ?? 0) : null;
+}
+
+/** Sources in fetch order. Arrays carry no `access` field: read it from getInvestigation(...).access. */
+export async function getSources(userId: string, id: string, ctx?: QueryCtx): Promise<SourceView[] | null> {
+  const rows = await readSources(userId, id, ctx);
+  if (!rows) return null;
+  return (await getReportAccess(userId, id, ctx)) === "full" ? rows : redactSources(rows);
+}
+
+/** Actors by handle. Arrays carry no `access` field: read it from getInvestigation(...).access. */
+export async function getActors(userId: string, id: string, ctx?: QueryCtx): Promise<ActorView[] | null> {
+  const rows = await readActors(userId, id, ctx);
+  if (!rows) return null;
+  return (await getReportAccess(userId, id, ctx)) === "full" ? rows : redactActors(rows);
+}
+
+/** Entity detail. Throws PreviewLockedError for a preview account (all detail is locked, visible rows included). */
+export async function getEntityDetail(
+  userId: string,
+  id: string,
+  bundleId: string,
+  ctx?: QueryCtx,
+): Promise<(EntityDetail & { access: AccessMarker }) | null> {
+  const d = await readEntityDetail(userId, id, bundleId, ctx);
+  if (!d) return null;
+  if ((await getReportAccess(userId, id, ctx)) !== "full") throw new PreviewLockedError();
+  return { ...d, access: { level: "full" } };
+}
+
+/** The graph; a preview account gets the shape only (opaque shuffled ids, no labels). */
+export async function getGraph(userId: string, id: string, ctx?: QueryCtx): Promise<GraphPayload | null> {
+  const g = await readGraph(userId, id, ctx);
+  if (!g) return null;
+  const access = await accessMarker(userId, id, ctx);
+  return access.level === "full" ? { ...g, access: { level: "full" } } : redactGraph(g, access.totals);
+}
+
+export interface ArtifactFormats {
+  /** runner artifacts stored at ingest (STIX, MISP, Sigma, YARA, Snort, Suricata) */
+  formats: string[];
+  /** true for a preview account: every export is locked (402), the list is still sent so the UI can show them */
+  locked: boolean;
+  access: AccessMarker;
+}
+
+export async function listArtifactFormats(
+  userId: string,
+  id: string,
+  ctx?: QueryCtx,
+): Promise<ArtifactFormats | null> {
+  const formats = await readArtifactFormats(userId, id, ctx);
+  if (!formats) return null;
+  const access = await accessMarker(userId, id, ctx);
+  return { formats, locked: access.level !== "full", access };
+}
+
+/** A stored runner artifact. Throws PreviewLockedError for a preview account. */
+export async function getArtifact(
+  userId: string,
+  id: string,
+  format: string,
+  ctx?: QueryCtx,
+): Promise<{ bytes: Buffer } | null> {
+  if (!UUID_RE.test(id)) return null;
+  if ((await getReportAccess(userId, id, ctx)) !== "full") {
+    if (!(await readInvestigation(userId, id, ctx))) return null;
+    throw new PreviewLockedError();
+  }
+  return readArtifact(userId, id, format, ctx);
+}
+
+/** Everything the CSV/JSON/Markdown/IOC exports need. Throws PreviewLockedError for a preview account. */
+export async function loadSnapshot(
+  userId: string,
+  id: string,
+  ctx?: QueryCtx,
+): Promise<SnapshotForExport | null> {
+  if (!UUID_RE.test(id)) return null;
+  if ((await getReportAccess(userId, id, ctx)) !== "full") {
+    if (!(await readInvestigation(userId, id, ctx))) return null;
+    throw new PreviewLockedError();
+  }
+  return readSnapshot(userId, id, ctx);
 }
