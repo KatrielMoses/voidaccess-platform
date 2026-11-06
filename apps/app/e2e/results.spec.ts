@@ -99,17 +99,22 @@ test("results: tabs, graph filter and node panel, entity search, exports", async
   expect(downloads.length).toBe(2);
 });
 
-test("free plan: CSV is open, locked formats prompt an upgrade, and the server refuses them", async ({
+test("free plan: the report is a preview; every export is locked, opens the unlock panel, and the server refuses it", async ({
   page,
 }) => {
   await as(page, S.free!);
+  await page.goto(`${base(S.freeInv!)}/summary`);
+  await expect(page.getByTestId("summary-preview")).toBeVisible();
+  await expect(page.getByTestId("unlock-panel").first()).toContainText("Your full report is ready.");
   await page.goto(`${base(S.freeInv!)}/exports`);
-  await expect(page.getByTestId("export-csv").getByRole("link")).toBeVisible();
-  await page.getByTestId("export-markdown").getByRole("button").click();
-  await expect(page.getByRole("dialog")).toContainText("Upgrade");
-  await expect(page.getByTestId("upgrade-link")).toBeVisible();
-  const res = await page.request.get(`/api/investigations/${S.freeInv}/exports/markdown`);
-  expect(res.status()).toBe(403);
+  await expect(page.getByTestId("export-csv").getByRole("link")).toHaveCount(0);
+  await page.getByTestId("export-csv").getByRole("button").click();
+  await expect(page.getByTestId("unlock-dialog")).toContainText("Unlock this report");
+  for (const f of ["csv", "markdown"]) {
+    const res = await page.request.get(`/api/investigations/${S.freeInv}/exports/${f}`);
+    expect(res.status(), f).toBe(402);
+    expect(await res.json()).toEqual({ error: "preview_locked" });
+  }
 });
 
 test("another user's results are a 404 on every route", async ({ page }) => {

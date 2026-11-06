@@ -12,6 +12,10 @@ test("sign up, run on the mock engine, watch it finish, then cancel a second run
   await expect.poll(() => pillBalance(page)).toBe(PLANS.free.monthlyCredits);
   await expect(page.getByText(`${DEPTHS.quick.credits} credits`).first()).toBeVisible();
   await expect(page.getByText(`${DEPTHS.standard.credits} credits`).first()).toBeVisible();
+  // honest before the first run: a Free report is a preview
+  await expect(page.getByTestId("preview-disclosure")).toContainText(
+    "Free runs show a preview. Pro unlocks full reports.",
+  );
 
   // first run: Quick, from an example chip
   await page.getByRole("button", { name: "LockBit ransomware group" }).click();
